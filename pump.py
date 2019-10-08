@@ -2,7 +2,7 @@
 """
 Created on Fri May 17 07:54:42 2019
 
-@author: Tanguy
+@author: Sergio Gualteros, Tanguy Lunel
 
 module defining a pump and functions for modeling of the pump.
 
@@ -16,16 +16,13 @@ import numpy as np
 import tkinter as tk
 import tkinter.filedialog as tkfile
 from itertools import count
-from matplotlib.pyplot import plot,figure,xlabel,ylabel,title
+from matplotlib.pyplot import plot
 import matplotlib.pyplot as plt
 from matplotlib.patches import Polygon
 from matplotlib.collections import PatchCollection
-import matplotlib.cm as cm
 from scipy.optimize import curve_fit, fmin
 import scipy.optimize as opt
 import scipy.interpolate as spint
-from mpl_toolkits.mplot3d import Axes3D
-import time
 
 import errors
 

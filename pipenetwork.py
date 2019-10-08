@@ -14,7 +14,7 @@ Still to do :
 
 """
 import numpy as np
-import properties_mod as prm
+import waterproperties as prm
 import fluids as fl
 
 

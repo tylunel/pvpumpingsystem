@@ -599,7 +599,7 @@ if __name__ == '__main__':
 
     glass_params = {'K': 4, 'L': 0.002, 'n': 1.526}
     pvsys1 = pvlib.pvsystem.PVSystem(
-                surface_tilt=0, surface_azimuth=180,
+                surface_tilt=50, surface_azimuth=180,
                 albedo=0, surface_type=None,
                 module=CECMOD.Kyocera_Solar_KU270_6MCA,
                 module_parameters={**dict(CECMOD.Kyocera_Solar_KU270_6MCA),
@@ -640,7 +640,7 @@ if __name__ == '__main__':
     consumption1 = cs.Consumption(constant_flow=1)
     reservoir1 = rv.Reservoir(10000, 0)
 
-    pvps1 = PVPumpSystem(chain1, pump1, coupling='direct', pipes=pipes1,
+    pvps1 = PVPumpSystem(chain1, pump1, coupling='mppt', pipes=pipes1,
                          consumption=consumption1, reservoir=reservoir1)
 #    iv = pvps1.functioning_point_noiteration(plot=True)
 #    print(iv)

@@ -6,9 +6,6 @@ Created on Fri May 17 07:54:42 2019
 
 module defining a pump and functions for modeling of the pump.
 
-----Still to come :
-    - change functVforIH and functQforVH so as they accept array as input
-
 
 """
 import collections
@@ -47,19 +44,20 @@ class Pump:
     """
     _ids = count(1)
 
-    def __init__(self,model=None,cat=None,price=None,path=None
-                 ,power=None,controler=None,diam_out=None):
-        if path == None:
+    def __init__(self, model=None, cat=None, price=None, path=None,
+                 power=None, controler=None, diam_out=None):
+        if path is None:
             tk.Tk().withdraw()
             filepath = tkfile.askopenfilename()
-            self.path=filepath
+            self.path = filepath
 
         try :
             self.tension, self.lpm, self.tdh, self.courant, self.watts, \
-            self.efficacite = getdatapump(path) # getdatapump gather data  \
+            self.efficacite = getdatapump(path)  # getdatapump gather data  \
                                         #   from txt datasheet given by path
         except IOError:
-            print('The mentionned path does not exist, please select another')
+            print('The mentionned path does not exist, please select another'
+                  ' in the pop-up window')
             tk.Tk().withdraw()
             filepath = tkfile.askopenfilename()
             self.path=filepath
@@ -78,13 +76,6 @@ class Pump:
         self.coeff_tdh=None
 
         self.id   = next(self._ids)
-
-## Message confirming the correct creation of the object
-#        print('\nPump created successfully')
-#        print('Pump created with :')
-#        for attr in self.__dict__:
-#            print(attr,':', self.__dict__[attr],', ')
-#        print('---------')
 
 
     def __repr__(self):
@@ -113,27 +104,28 @@ class Pump:
         def func_model(x, a, b, c, d, e):
             return a*x**4+b*x**3+c*x**2+d*x+e
 
-        self.coeff_eff  = {} # coeff from curve-fitting of efficiency vs lpm
-        self.coeff_tdh  = {}# coeff from curve-fitting of tdh vs lpm
-        self.coeff_pow  = {}# coeff from curve-fitting of power vs lpm
+        self.coeff_eff = {}  # coeff from curve-fitting of efficiency vs lpm
+        self.coeff_tdh = {}  # coeff from curve-fitting of tdh vs lpm
+        self.coeff_pow = {}  # coeff from curve-fitting of power vs lpm
 
         for V in self.tension:
             # curve-fit of efficiency vs lpm
-            coeffs_eff,matcov = curve_fit(func_model,self.lpm[V],
-                                          self.efficacite[V])
-            self.coeff_eff[V]=coeffs_eff# save the coeffs in dict
+            coeffs_eff, matcov = curve_fit(func_model, self.lpm[V],
+                                           self.efficacite[V])
+            self.coeff_eff[V] = coeffs_eff# save the coeffs in dict
 
             # curve-fit of tdh vs lpm
-            coeffs_tdh,matcov = curve_fit(func_model,self.lpm[V],
-                                          self.tdh[V])
-            self.coeff_tdh[V]=coeffs_tdh
+            coeffs_tdh, matcov = curve_fit(func_model, self.lpm[V],
+                                           self.tdh[V])
+            self.coeff_tdh[V] = coeffs_tdh
 
             # curve-fit of power vs lpm
-            coeffs_P,matcov = curve_fit(func_model,self.lpm[V],
-                                        self.watts[V])
-            self.coeff_pow[V]=coeffs_P
+            coeffs_P, matcov = curve_fit(func_model, self.lpm[V],
+                                         self.watts[V])
+            self.coeff_pow[V] = coeffs_P
 
-        return {'eff':self.coeff_eff,'tdh':self.coeff_tdh,'pow':self.coeff_pow}
+        return {'eff': self.coeff_eff, 'tdh': self.coeff_tdh,
+                'pow': self.coeff_pow}
 
 
     def startingVPI(self,tdh):
@@ -151,87 +143,42 @@ class Pump:
                 float: value of minimum starting voltage
 
         """
-        if self.coeff_tdh==None:
+        if self.coeff_tdh is None:
             self.curves_coeffs()
 
-        tdhmax={}
-        powmin={}
+        tdhmax = {}
+        powmin = {}
         for V in self.tension:
             tdhmax[V] = self.coeff_tdh[V][4] # y-intercept of tdh vs lpm
             powmin[V] = self.coeff_pow[V][4]
 
         #interpolation:
         # of Vmin vs tdh
-        newf_t=spint.interp1d(list(tdhmax.values()),list(tdhmax.keys()),
+        newf_t = spint.interp1d(list(tdhmax.values()),list(tdhmax.keys()),
                               kind='cubic')
         # of power vs V
-        newf_p=spint.interp1d(list(powmin.keys()),list(powmin.values()),
+        newf_p = spint.interp1d(list(powmin.keys()),list(powmin.values()),
                               kind='cubic')
 
         if tdh<min(tdhmax.values()):
             print('The resqueted tdh is out of the range for the pump,'
                   'it is below the minimum tdh.')
-            vmin='below'
-            pmin=None
-            imin=None
+            vmin = 'below'
+            pmin = None
+            imin = None
         elif tdh>max(tdhmax.values()):
             print('The resqueted tdh is out of the range for the pump,'
                   'it is above the maximum tdh delivered by the pump.')
-            vmin='above'
-            pmin=None
-            imin=None
+            vmin = 'above'
+            pmin = None
+            imin = None
         else:
-            vmin=newf_t(tdh)
-            pmin=newf_p(vmin)
-            imin=pmin/vmin
+            vmin = newf_t(tdh)
+            pmin = newf_p(vmin)
+            imin = pmin/vmin
 
-        return {'V':vmin,'P':pmin,'I':imin}
+        return {'V': vmin, 'P': pmin, 'I': imin}
 
-    def opti_zone(self,lpm_tol=0.05):
-        """Fonction qui permet de calculer et tracer la zone d'opération
-        préférentielle de la pompe.
-
-        """
-
-        # dict having the voltages as keys
-        self.best_eff_pt   = {} # Best Efficiency Points (lpm,tdh)
-        self.lim_min= {}# low limit of efficiency accepted
-        self.lim_max= {}# high limit of efficiency accepted
-
-        for V in self.tension:
-            # efficiency function
-            def eff_funct(x):
-                return self.coeff_eff[V][0]*x**4+self.coeff_eff[V][1]*x**3+ \
-                        self.coeff_eff[V][2]*x**2+self.coeff_eff[V][3]*x+ \
-                        self.coeff_eff[V][4]
-
-            # function tdh
-            def tdh_funct(x):
-                return self.coeff_tdh[V][0]*x**4+self.coeff_tdh[V][1]*x**3+ \
-                        self.coeff_tdh[V][2]*x**2+self.coeff_tdh[V][3]*x+ \
-                        self.coeff_tdh[V][4]
-
-            # optimal efficiency : maximizing of eff_funct
-            lpm_at_eff_max =fmin(lambda x: -eff_funct(x), 0)
-            self.best_eff_pt[V] = (lpm_at_eff_max,tdh_funct(lpm_at_eff_max))
-
-            # range of acceptability for lpm around efficiency max
-            lpm_min=lpm_at_eff_max*(1 - lpm_tol) # low limit
-            lpm_max=lpm_at_eff_max*(1 + lpm_tol) # high limit
-            self.lim_min[V] = (lpm_min , tdh_funct(lpm_min))
-            self.lim_max[V] = (lpm_max , tdh_funct(lpm_max))
-
-        point        = np.zeros((4,2))
-        point[0]     = self.lim_min[min(self.tension)]
-        point[1]     = self.lim_min[max(self.tension)]
-        point[2]     = self.lim_max[max(self.tension)]
-        point[3]     = self.lim_max[min(self.tension)]
-        self.polygon = Polygon(point,closed='True')
-        # This polygon does not guarantee a good efficiency anywhere in it,
-        # indeed, efficiency at 120V will be way higher than at 60V. It should
-        # be changed for another kind of polygon in which the efficiency could
-        # be at least a certain value.
-        return self.polygon
 
     def plot_tdh_Q(self):
         """Print the graph of tdh(in m) vs Q(in lpm)
@@ -244,9 +191,9 @@ class Pump:
 
         tdh_x = {}
         eff_x = {}
-        #greatest value of lpm encountered in data
-        lpm_max    = max(self.lpm[max(self.tension)])
-        self.lpm_x = np.arange(0,lpm_max) # vector of lpm
+        # greatest value of lpm encountered in data
+        lpm_max = max(self.lpm[max(self.tension)])
+        self.lpm_x = np.arange(0,lpm_max)  # vector of lpm
 
         for V in self.tension:
             # efficiency function
@@ -717,166 +664,9 @@ def getdatapump(path):
     return tension, lpm, tdh, courant, watts, efficacite
 
 if __name__=="__main__":
-#%% creation de la variable pompe
+#%% pump creation
     pump1=Pump(path="fichiers_pompes/SCB_10_150_120_BL.txt",
                        model='SCB_10')
-#    plt.figure()
-#    for h in np.arange(0, 80, 10):
-#        res=pump1.IVcurvedata(h)
-#        plt.plot(res['V'], res['I'])
-#    IV = pump1.IVcurvedata(28)
-
-#    pump1.curves_coeffs()
-#    print(pump1.opti_zone(0.1))
-
-
-#%% exploration tension et puissance de démarrage :
-#    print(pump1.startingVPI(15))
-#    print(pump1.startingVPI(30))
-#
-#    tdhrange=np.arange(10,100)
-#    Vmin=np.zeros(len(tdhrange))
-#    Pmin=np.zeros(len(tdhrange))
-#    Imin=np.zeros(len(tdhrange))
-#
-#    for i,td in enumerate(tdhrange):
-#            try :
-#                res=pump1.startingVPI(td)
-#                Vmin[i]=res['V']
-#                Pmin[i]=res['P']
-#                Imin[i]=res['I']
-#
-#            except ValueError:
-#                Vmin[i]=0
-#    plt.figure(2)
-#    plt.plot(tdhrange,Vmin,label='Vmin')
-#    plt.plot(tdhrange,Pmin,label='Pmin')
-#    plt.plot(tdhrange,Imin*100,label='Imin*100')
-#    plt.legend()
-
-#%% plot 3d test :
-#    X=np.arange(0,10)
-#    Xmat=np.matrix(X)
-#    Xmat=np.transpose(Xmat)
-#    Y=np.arange(0,10)
-#    Ymat=np.matrix(Y)
-#    Zmat=Xmat*Ymat
-#    Zmat[5,5]=15
-#    fig = plt.figure(3)
-#    ax = fig.add_subplot(111, projection='3d')
-#    ax.plot_surface(Xmat, Ymat, Zmat)
-#
-#    tup=pump1.functVforIH()
-#
-#    fct=tup[0]
-#    res=fct(X,Y)
-#
-#    fig = plt.figure(3)
-#    ax = fig.add_subplot(111, projection='3d')
-#    ax.scatter(resmat[:,2],resmat[:,1],resmat[:,0])
-
-
-#%% selection du modèle de fonction pour curve_fit multi-dimensionnel
-
-#    def funct1(inp,c1,h1):
-#        x,y = inp[0],inp[1]
-#        return c1*x + h1*y
-#    def funct2(inp,c1,h1,t1):
-#        x,y = inp[0],inp[1]
-#        return c1*x + h1*y + t1*x*y
-#    def funct3(inp,a,c1,h1,t1):
-#        x,y = inp[0],inp[1]
-#        return a + c1*x + h1*y + t1*x*y
-#    def funct41(inp,a,c1,c2,h1,t1):
-#        x,y = inp[0],inp[1]
-#        return a + c1*x + c2*x**2 + h1*y + t1*x*y
-#    def funct42(inp,a,c1,h1,h2,t1):
-#        x,y = inp[0],inp[1]
-#        return a + c1*x + h1*y + h2*y**2 + t1*x*y
-#    def funct5(inp,a,c1,c2,h1,h2,t1):
-#        x,y = inp[0],inp[1]
-#        return a + c1*x + c2*x**2 + h1*y + h2*y**2 + t1*x*y
-#    def funct6(inp,a,c1,c2,c3,h1,h2,t1):
-#        x,y = inp[0],inp[1]
-#        return a + c1*x + c2*x**2 +c3*x**3 + h1*y + h2*y**2 + t1*x*y
-#    def funct71(inp,a,c1,c2,c3,h1,h2,h3,t1):
-#        x,y = inp[0],inp[1]
-#        return a + c1*x + c2*x**2 +c3*x**3 + h1*y + h2*y**2+ h3*y**3 + t1*x*y
-#    def funct72(inp,a,c1,c2,c3,c4,h1,h2,t1):
-#        x,y = inp[0],inp[1]
-#        return a + c1*x + c2*x**2 +c3*x**3 + c4*x**4 + h1*y + h2*y**2+ t1*x*y
-#
-#    fct_list=[funct1,funct2,funct3,funct4,funct5,funct6]
-#
-#    res=pump1.functVforIH() # NE MARCHE PLUS
-#    datax = [np.array(res['I']),np.array(res['H'])]
-#    dataz = np.array(np.array(res['V']))
-#
-#    funct=funct1
-#    para, covmat = curve_fit(funct, datax, dataz)
-#    stddev = np.sqrt(np.diag(covmat))
-#    datacheck=funct(datax,para[0],para[1])
-#    ectyp=np.sqrt(sum((dataz-datacheck)**2)/len(dataz))
-#    print(funct,'\nectyp:',ectyp)
-#
-#    funct=funct2
-#    para, covmat = curve_fit(funct, datax, dataz)
-#    stddev = np.sqrt(np.diag(covmat))
-#    datacheck=funct(datax,para[0],para[1],para[2])
-#    ectyp=np.sqrt(sum((dataz-datacheck)**2)/len(dataz))
-#    print(funct,'\nectyp:',ectyp)
-#
-#    funct=funct3
-#    para, covmat = curve_fit(funct, datax, dataz)
-#    stddev = np.sqrt(np.diag(covmat))
-#    datacheck=funct(datax,para[0],para[1],para[2],para[3])
-#    ectyp=np.sqrt(sum((dataz-datacheck)**2)/len(dataz))
-#    print(funct,'\nectyp:',ectyp)
-#
-#    funct=funct41
-#    para, covmat = curve_fit(funct, datax, dataz)
-#    stddev = np.sqrt(np.diag(covmat))
-#    datacheck=funct(datax,para[0],para[1],para[2],para[3],para[4])
-#    ectyp=np.sqrt(sum((dataz-datacheck)**2)/len(dataz))
-#    print(funct,'\nectyp:',ectyp)
-#
-#    funct=funct42
-#    para, covmat = curve_fit(funct, datax, dataz)
-#    stddev = np.sqrt(np.diag(covmat))
-#    datacheck=funct(datax,para[0],para[1],para[2],para[3],para[4])
-#    ectyp=np.sqrt(sum((dataz-datacheck)**2)/len(dataz))
-#    print(funct,'\nectyp:',ectyp)
-#
-#    funct=funct5
-#    para, covmat = curve_fit(funct, datax, dataz)
-#    stddev = np.sqrt(np.diag(covmat))
-#    datacheck=funct(datax,para[0],para[1],para[2],para[3],para[4],para[5])
-#    ectyp=np.sqrt(sum((dataz-datacheck)**2)/len(dataz))
-#    print(funct,'\nectyp:',ectyp)
-#
-#    funct=funct6
-#    para, covmat = curve_fit(funct, datax, dataz)
-#    stddev = np.sqrt(np.diag(covmat))
-#    datacheck=funct(datax,para[0],para[1],para[2],para[3],para[4],para[5],
-#                    para[6])
-#    ectyp=np.sqrt(sum((dataz-datacheck)**2)/len(dataz))
-#    print(funct,'\nectyp:',ectyp)
-#
-#    funct=funct71
-#    para, covmat = curve_fit(funct, datax, dataz)
-#    stddev = np.sqrt(np.diag(covmat))
-#    datacheck=funct(datax,para[0],para[1],para[2],para[3],para[4],para[5],
-#                    para[6],para[7])
-#    ectyp=np.sqrt(sum((dataz-datacheck)**2)/len(dataz))
-#    print(funct,'\nectyp:',ectyp)
-#
-#    funct=funct72
-#    para, covmat = curve_fit(funct, datax, dataz)
-#    stddev = np.sqrt(np.diag(covmat))
-#    datacheck=funct(datax,para[0],para[1],para[2],para[3],para[4],para[5],
-#                    para[6],para[7])
-#    ectyp=np.sqrt(sum((dataz-datacheck)**2)/len(dataz))
-#    print(funct,'\nectyp:',ectyp)
 
 
 #%% plot of functVforIH
@@ -908,9 +698,9 @@ if __name__=="__main__":
 
 #%% plot of functIforVH
 
-    vol=[]
-    tdh=[]
-    cur=[]
+    vol = []
+    tdh = []
+    cur = []
     for V in pump1.tension:
         for i, I in enumerate(pump1.courant[V]):
             vol.append(V)

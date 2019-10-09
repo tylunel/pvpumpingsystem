@@ -14,7 +14,7 @@ Still to do :
 
 """
 import numpy as np
-import waterproperties as prm
+import waterproperties as wp
 import fluids as fl
 
 
@@ -60,11 +60,16 @@ class PipeNetwork(object):
         """Calculates the dynamic head of the pipe network according to the
         flow given Q.
 
-        Parameter :
-            Q: water flow in liter per minute (lpm)
-            T: water temperature in °C
-            verbose: allows printing of Re numbers of the computing
-                more details (for improvements): https://stackoverflow.com/questions/5980042/how-to-implement-the-verbose-or-v-option-into-a-script
+        Parameters :
+        -----------
+        Q: numeric
+            water flow in liter per minute (lpm)
+        T: numeric
+            water temperature in °C
+        verbose: allows printing of Re numbers of the computing
+            more details (for improvements):
+                'https://stackoverflow.com/questions/5980042/
+                how-to-implement-the-verbose-or-v-option-into-a-script
 
         Returns:
             h_dyna: dynamic head [m]
@@ -76,14 +81,14 @@ class PipeNetwork(object):
         else:
             Q = Qlpm/60000  # flow [m3/s]
             Ap = self.diam**2*np.pi/4  # Area of pipe section [m2]
-            viscosity_dyn = prm.eau_prop('nuf', T+273.15)  # Pa.s
+            viscosity_dyn = wp.water_prop('nuf', T+273.15)  # [Pa.s¸]
             speed = Q/Ap
             Re = speed*self.diam/viscosity_dyn
 
             darcycoeff = fl.friction.friction_factor(
                     Re, eD=self.roughness/self.diam)
             # https://en.wikipedia.org/wiki/Darcy%E2%80%93Weisbach_equation
-            rho = prm.eau_prop('rhof', T+273.15)
+            rho = wp.water_prop('rhof', T+273.15)
             press_loss = self.l_tot * darcycoeff * rho/2 * speed**2/self.diam
             h_dyna = press_loss/(rho*9.81)
 

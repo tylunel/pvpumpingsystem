@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import tqdm
 import time
 import pvlib
-import pvlib_pvps_tools
+from warnings import warn
 
 import pump as pp
 import pipenetwork as pn
@@ -120,17 +120,19 @@ class PVPumpSystem(object):
             v_high_boundary = self.modelchain.system.module.V_oc_ref * M_s*1.1
             Vrange_pv = np.arange(0, v_high_boundary)
             # IV curve of PV array for good conditions
-            params_good = self.modelchain.system.calcparams_desoto(1000, 25)
-            Ivect_pv_good = pvlib_pvps_tools.function_i_with_v(Vrange_pv,
-                                                               *params_good,
-                                                               M_s, M_p)
+            IL, I0, Rs, Rsh, nNsVth = \
+                self.modelchain.system.calcparams_desoto(1000, 25)
+            Ivect_pv_good = self.modelchain.system.i_from_v(Rsh, Rs, nNsVth,
+                                                            Vrange_pv,
+                                                            I0, IL)
             plt.plot(Vrange_pv, Ivect_pv_good,
                      label='pv array with S = 1000 W and Tcell = 25°C')
             # IV curve of PV array for poor conditions
-            params_poor = self.modelchain.system.calcparams_desoto(100, 60)
-            Ivect_pv_poor = pvlib_pvps_tools.function_i_with_v(Vrange_pv,
-                                                               *params_poor,
-                                                               M_s, M_p)
+            IL, I0, Rs, Rsh, nNsVth = \
+                self.modelchain.system.calcparams_desoto(100, 60)
+            Ivect_pv_poor = self.modelchain.system.i_from_v(Rsh, Rs, nNsVth,
+                                                            Vrange_pv,
+                                                            I0, IL)
             plt.plot(Vrange_pv, Ivect_pv_poor,
                      label='pv array with S = 100 W and Tcell = 60°C')
             # IV curve of load (pump)
@@ -218,6 +220,93 @@ class PVPumpSystem(object):
             self.calc_flow()
         self.water_stored = calc_reservoir(self.reservoir, self.flow.Qlpm,
                                            self.consumption.flow.consumption)
+
+
+def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
+                      M_s=1, M_p=1):
+    """
+    Deprecated :
+    'function_i_from_v' deprecated. Use pvlib.pvsystem.i_from_v instead
+
+    Function I=f(V) coming from equation of Single Diode Model
+    with parameters adapted to the irradiance and temperature.
+
+    The adaptation of the 5 parameters from module parameters to array
+    parameters is made according to [1].
+
+    Parameters
+    ----------
+    V: numeric
+        Voltage at which the corresponding current is to be calculated in volt.
+
+    I_L: numeric
+        The light-generated current (or photocurrent) in amperes.
+
+    I_o: numeric
+        The dark or diode reverse saturation current in amperes.
+
+    nNsVth: numeric
+        The product of the usual diode ideality factor (n, unitless),
+        number of cells in series (Ns), and cell thermal voltage at reference
+        conditions, in units of V.
+
+    R_sh: numeric
+        The shunt resistance in ohms.
+
+    R_s: numeric
+        The series resistance in ohms.
+
+    M_s: numeric
+        The number of module in series in the whole pv system.
+        (= modules_per_strings)
+
+    M_p: numeric
+        The number of module in parallel in the whole pv system.
+        (= strings_per_inverter)
+
+    Returns
+    -------
+    I : numeric
+        Output current of the whole pv source, in A.
+
+    Notes / Issues
+    --------
+    - According to the speed of the computations,
+    it seems that the complexity of this function is cubic
+    O(n^3), and therefore it takes too much time to compute this way for
+    long vectors (around 45min for 8760 elements).
+
+    - Different from pvsystem.i_from_v because it includes M_s and M_p,
+    so it gives the corresponding current at the output of the array,
+    not only the module.
+
+    References
+    -------
+    [1] Petrone & al (2017), "Photovoltaic Sources Modeling", Wiley, p.5.
+        URL: http://doi.wiley.com/10.1002/9781118755877
+    """
+    warn("'function_i_from_v' deprecated. Use pvlib.pvsystem.i_from_v instead",
+         DeprecationWarning)
+
+    if (M_s, M_p) != (1, 1):
+        I_L = M_p * I_L
+        I_o = M_p * I_o
+        nNsVth = nNsVth * M_s
+        R_s = (M_s/M_p) * R_s
+        R_sh = (M_s/M_p) * R_sh
+
+    def I_pv_fct(I):
+        return -I + I_L - I_o*(np.exp((V+I*R_s)/nNsVth) - 1) - (V+I*R_s)/R_sh
+
+    Varr = np.array(V)
+    Iguess = (np.zeros(Varr.size)) + I_L/2
+    sol = opt.root(I_pv_fct, x0=Iguess)
+
+    if (sol.x).any() < 0:
+        warn('A current is negative. The PV module may be '
+             'absorbing energy and it can lead to unusual degradation.')
+
+    return sol.x
 
 
 def functioning_point_noiteration(params, modules_per_string,
@@ -322,6 +411,48 @@ def functioning_point_noiteration(params, modules_per_string,
     return pdresult
 
 
+def calc_flow_noiteration(fct_Q_from_inputs, input_1, static_head):
+    """Function computing the flow at the output of the PVPS according
+    to the input_1 at functioning point.
+
+    Parameters
+    ----------
+    fct_Q_from_inputs: function
+        Function computing flow rate of the pump in liter/minute.
+        Should preferentially come from 'Pump.fct_Q_from_inputs()'
+
+    input_1: numeric
+        Voltage or Power at the functioning point.
+
+    static_head: numeric
+        Static head of the hydraulic network
+
+    Returns
+    ---------
+    Q: water discharge in liter/timestep of input_1 data (typically
+                                                           hours)
+    """
+    if not type(input_1) is float:
+        input_1 = float(input_1)
+
+    if input_1 == 0:
+        Qlpm = 0
+    else:
+        # compute total head h_tot
+        h_tot = static_head
+        # compute discharge Q
+        try:
+            Qlpm = fct_Q_from_inputs(input_1, h_tot)
+        except (errors.VoltageError, errors.PowerError):
+            Qlpm = 0
+    if Qlpm < 0:
+        Qlpm = 0
+
+    discharge = Qlpm  # temp: 60 should be replaced by timestep
+
+    return discharge
+
+
 def calc_flow_directly_coupled(modelchain, motorpump, pipes,
                                atol=0.1,
                                stop=8760):
@@ -398,9 +529,9 @@ def calc_flow_directly_coupled(modelchain, motorpump, pipes,
             else:
                 power = iv_data.V*iv_data.I
             # compute flow
-            Qlpmnew = pvlib_pvps_tools.calc_flow_noiteration(fctQwithPH,
-                                                             power,
-                                                             h_tot)
+            Qlpmnew = calc_flow_noiteration(fctQwithPH,
+                                            power,
+                                            h_tot)
 
             # code for exiting while loop if problem
             mem.append(Qlpmnew)
@@ -481,9 +612,9 @@ def calc_flow_mppt_coupled(modelchain, motorpump, pipes,
             h_tot = pipes.h_stat + \
                 pipes.dynamichead(Qlpm, T=temp_water)
             # compute flow
-            Qlpmnew = pvlib_pvps_tools.calc_flow_noiteration(fctQwithPH,
-                                                             power,
-                                                             h_tot)
+            Qlpmnew = calc_flow_noiteration(fctQwithPH,
+                                            power,
+                                            h_tot)
 
             # code for exiting while loop if problem
             mem.append(Qlpmnew)
@@ -642,7 +773,7 @@ if __name__ == '__main__':
 
     pvps1 = PVPumpSystem(chain1, pump1, coupling='mppt', pipes=pipes1,
                          consumption=consumption1, reservoir=reservoir1)
-#    iv = pvps1.functioning_point_noiteration(plot=True)
+    iv = pvps1.functioning_point_noiteration(plot=True)
 #    print(iv)
 
 #    res1 = calc_flow_directly_coupled(chain1, pump1, pipes1, atol=0.01,
@@ -654,27 +785,27 @@ if __name__ == '__main__':
 #    eff1 = calc_efficiency(res1, chain1.effective_irradiance, pv_area)
 #    eff2 = calc_efficiency(res2, chain1.effective_irradiance, pv_area)
 
-    pvps1.calc_flow()
-    pvps1.calc_efficiency()
-    pvps1.calc_reservoir()
-
-#    plt.plot(pvps1.water_stored.index, pvps1.water_stored.volume)
-#    plt.plot(pvps1.efficiency.index, pvps1.efficiency.electric_power)
-#    plt.plot(pvps1.efficiency.index, pvps1.flow.Qlpm)
-#    plt.plot(pvps1.efficiency.index, pvps1.modelchain.effective_irradiance)
-
-    fig, ax1 = plt.subplots()
-
-    ax1.set_xlabel('time')
-    ax1.set_ylabel('Water volume in tank [L]', color='r')
-    ax1.plot(pvps1.water_stored.index, pvps1.water_stored.volume, color='r')
-    ax1.tick_params(axis='y', labelcolor='r')
-
-    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
-
-    ax2.set_ylabel('Pump output flow-rate [L/min]', color='b')
-    ax2.plot(pvps1.efficiency.index, pvps1.flow.Qlpm, color='b')
-    ax2.tick_params(axis='y', labelcolor='b')
-
-    fig.tight_layout()  # otherwise the right y-label is slightly clipped
-    plt.show()
+#    pvps1.calc_flow()
+#    pvps1.calc_efficiency()
+#    pvps1.calc_reservoir()
+#
+##    plt.plot(pvps1.water_stored.index, pvps1.water_stored.volume)
+##    plt.plot(pvps1.efficiency.index, pvps1.efficiency.electric_power)
+##    plt.plot(pvps1.efficiency.index, pvps1.flow.Qlpm)
+##    plt.plot(pvps1.efficiency.index, pvps1.modelchain.effective_irradiance)
+#
+#    fig, ax1 = plt.subplots()
+#
+#    ax1.set_xlabel('time')
+#    ax1.set_ylabel('Water volume in tank [L]', color='r')
+#    ax1.plot(pvps1.water_stored.index, pvps1.water_stored.volume, color='r')
+#    ax1.tick_params(axis='y', labelcolor='r')
+#
+#    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+#
+#    ax2.set_ylabel('Pump output flow-rate [L/min]', color='b')
+#    ax2.plot(pvps1.efficiency.index, pvps1.flow.Qlpm, color='b')
+#    ax2.tick_params(axis='y', labelcolor='b')
+#
+#    fig.tight_layout()  # otherwise the right y-label is slightly clipped
+#    plt.show()

@@ -603,20 +603,22 @@ class Pump:
 
 def getdatapump(path):
     """
-    Cette fonction permet de charger les données de pompe présentes sur le
-    fichier .txt désigné par le path. Ce fichiers .txt possède les
-    caractéristiques des datasheets. Les données sont renvoyées sous
-    forme de 6 tableaux (liste contenants des listes en vrai) :
-    tension, lpm, tdh, courant, watts, efficacite.
+    This function is used to load the pump data from the
+     .txt file designated by the path. This .txt files has the
+     characteristics of the datasheets. The data is returned in the
+     form of 6 tables (list containing lists in real):
+     voltage, lpm, tdh, current, watts, efficiency.
 
-    Fonctionne correctement. Attention cependant, cette fonction a été
-    changé depuis la version en py2 et ne renvoie pas tout à fait la même
-    chose (renvoie des listes de liste, à la place de tuple de tableaux).
-    A priori l'appel aux valeurs contenues se fait de la même manière et
-    ne devrait donc pas poser de problème, mais c'est à vérifier.
-    Bref, rester prudent !
+    Parameters:
+    -----------
+    path: str
+        path to the file of the pump data
 
-    (comes from former function 'data_pompe' in 'donnees_pompe')
+    Returns:
+    --------
+    tuple
+        tuple containing list
+
     """
 
     #%% Importation des données
@@ -665,7 +667,7 @@ def getdatapump(path):
 
 if __name__=="__main__":
 #%% pump creation
-    pump1=Pump(path="fichiers_pompes/SCB_10_150_120_BL.txt",
+    pump1 = Pump(path="fichiers_pompes/SCB_10_150_120_BL.txt",
                        model='SCB_10')
 
 

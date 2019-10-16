@@ -393,9 +393,9 @@ def water_prop(nom,  T):
     return p
 
 
-def Psat(Tk):
-    """Calcul la pression de saturation of water.
-    Tk est donne en Kelvin"""
+def vap_p(Tk):
+    """Compute vapor pressure of water.
+    Tk is given in Kelvin"""
     T = Tk - 273.15
     p = 6.11*10**(7.5*T/(237.3+T))
     p = p*100.0

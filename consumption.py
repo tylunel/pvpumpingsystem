@@ -18,38 +18,38 @@ class Consumption(object):
 
     Parameters
     ----------
-    flow: pd.DataFrame
+    flow_rate: pd.DataFrame
         The consumption schedule in itself. It is given in liter per minute.
 
     constant_flow: numeric
         Parameter allowing to build consumption data with constant consumption
-        through the flows DataFrame.
+        through the flow_rates DataFrame.
 
     constant_flow: 1D array-like
         Parameter allowing to build consumption data with a repeated
         consumption through the time.
     """
 
-    def __init__(self, flow=None, constant_flow=None, repeated_flow=None):
-        if flow is None:
+    def __init__(self, flow_rate=None, constant_flow=None, repeated_flow=None):
+        if flow_rate is None:
             index = pd.date_range(datetime.datetime(2005, 1, 1, 0),
                                   datetime.datetime(2005, 12, 31, 23),
                                   freq='H')
-            self.flow = pd.DataFrame(index=index, columns=('consumption',))
+            self.flow_rate = pd.DataFrame(index=index, columns=('Qlpm',))
         else:
-            self.flow = flow
+            self.flow_rate = flow_rate
 
         if constant_flow is not None:
-            self.flow = self.flow.fillna(constant_flow)
+            self.flow_rate = self.flow_rate.fillna(constant_flow)
         elif repeated_flow is not None:
             length = len(repeated_flow)
-            for i, index in enumerate(self.flow.index):
-                self.flow.loc[index] = repeated_flow[i % length]
+            for i, index in enumerate(self.flow_rate.index):
+                self.flow_rate.loc[index] = repeated_flow[i % length]
         else:
-            self.flow = self.flow.fillna(0)
+            self.flow_rate = self.flow_rate.fillna(0)
 
     def __repr__(self):
-        return str(self.flow)
+        return str(self.flow_rate)
 
 
 if __name__ == '__main__':

@@ -18,6 +18,7 @@ from mpl_toolkits.mplot3d import Axes3D  # needed for plotting in 3d
 from matplotlib.collections import PatchCollection
 import scipy.optimize as opt
 import scipy.interpolate as spint
+import pandas as pd
 
 from pvpumpingsystem import errors
 
@@ -32,18 +33,29 @@ class Pump:
             The path to the txt file with specifications. Can be given
             through constructor or through pop-up window.
 
+        lpm: dict
+            Dictionary of flow rate (values) [liter per minute] according to
+            voltage (keys) [V]
+        tdh: dict
+            Dictionary of total dynamic head (values) [m]
+            according to voltage (keys) [V]
+        current: dict
+            Dictionary of current (values) [A]
+            according to voltage (keys) [V]
+        voltage: list
+            list of voltage (the keys of preceding dictionaries) [V]
+
+
         category: str,
             centrifugal or positive displacement
-
         model: str
             name of the pump
-
         price: numeric
-
-        power: numeric
-
+            The price of the pump
+        power_rating: numeric
+            Power rating of the pump (in fact)
         controler: str
-
+            Name of controller
         diameter_output: numeric
             output diameter
 
@@ -52,34 +64,39 @@ class Pump:
     """
     _ids = count(1)
 
-    def __init__(self, model=None, category=None, price=None, path=None,
-                 power=None, controler=None, diameter_output=None):
-        if path is None:
-            tk.Tk().withdraw()
-            filepath = tkfile.askopenfilename()
-            self.path = filepath
+    def __init__(self, path='',
+                 lpm=None, tdh=None, current=None,
+                 model=None, category=None,
+                 price=None, power_rating=None,
+                 controler=None, diameter_output=None):
+        # use input data to create pump object
+        if None not in (lpm, tdh, current):
+            self.lpm = lpm
+            self.tdh = tdh
+            self.current = current
+            self.voltage = list(self.lpm.keys())
+            self.watts = get_watts_from_current(current)
 
+        # retrieve pump data from txt datasheet given by path
         try:
-            self.voltage, self.lpm, self.tdh, self.current, self.watts, \
-                self.efficiency = getdatapump(path)
-        # getdatapump gather data from txt datasheet given by path
+            self.voltage, self.lpm, self.tdh, self.current, \
+                self.watts = getdatapump(path)
         except IOError:
             print('The mentionned path does not exist, please select another'
                   ' in the pop-up window.')
             tk.Tk().withdraw()
             filepath = tkfile.askopenfilename()
             self.path = filepath
-            self.voltage, self.lpm, self.tdh, self.current, self.watts, \
-                self.efficiency = getdatapump(filepath)
+            self.voltage, self.lpm, self.tdh, self.current, \
+                self.watts = getdatapump(path)
 
         self.model = model
         self.category = category
         self.price = price
-        self.power = power
+        self.power_rating = power_rating
         self.controler = controler
         self.diameter_output = diameter_output
 
-        self.coeff_eff = None
         self.coeff_pow = None
         self.coeff_tdh = None
 
@@ -89,38 +106,31 @@ class Pump:
         affich = "model :" + str(self.model) + \
                  "\ncategory :" + str(self.category) + \
                  "\nprice :" + str(self.price) + \
-                 "\npower (HP) :" + str(self.power) + \
+                 "\npower rating (HP) :" + str(self.power_rating) + \
                  "\ncontroler :" + str(self.controler) + \
                  "\noutput diameter (inches) :" + str(self.diameter_output)
         return affich
 
     def curves_coeffs(self):
         """Compute curve-fitting coefficient from data for :
-            - efficiency vs lpm
             - tdh vs lpm
             - power vs lpm
 
         returns a dict of sub-dict :
-            -the first dict contains the 3 curves as keys : 'eff','tdh','pow'
-            resp. for efficiency, total dynamic head and power
+            -the first dict contains the 2 curves as keys : 'tdh','pow'
+            resp. for total dynamic head and power
                 -the sub-dicts contain the available voltage as keys, typically
                 '60','75','90','105','120'
         These same 3 dictionnary are saved as attributes in the pump object,
-        under the name 'self.coeff_eff', 'self.coeff_tdh', 'self.coeff_pow'
+        under the name 'self.coeff_tdh', 'self.coeff_pow'
         """
         def func_model(x, a, b, c, d, e):
             return a*x**4+b*x**3+c*x**2+d*x+e
 
-        self.coeff_eff = {}  # coeff from curve-fitting of efficiency vs lpm
         self.coeff_tdh = {}  # coeff from curve-fitting of tdh vs lpm
         self.coeff_pow = {}  # coeff from curve-fitting of power vs lpm
 
         for V in self.voltage:
-            # curve-fit of efficiency vs lpm
-            coeffs_eff, matcov = opt.curve_fit(func_model, self.lpm[V],
-                                               self.efficiency[V])
-            self.coeff_eff[V] = coeffs_eff  # save the coeffs in dict
-
             # curve-fit of tdh vs lpm
             coeffs_tdh, matcov = opt.curve_fit(func_model, self.lpm[V],
                                                self.tdh[V])
@@ -131,7 +141,7 @@ class Pump:
                                              self.watts[V])
             self.coeff_pow[V] = coeffs_P
 
-        return {'eff': self.coeff_eff, 'tdh': self.coeff_tdh,
+        return {'tdh': self.coeff_tdh,
                 'pow': self.coeff_pow}
 
 
@@ -544,6 +554,29 @@ class Pump:
         return {'I': Itab, 'V': Vtab}
 
 
+def get_watts_from_current(current_dict):
+    """Compute electric power.
+
+    Parameter
+    ---------
+    current_dict: dict
+        Dictionary containing list of currents (values) drawn by the pump
+        according to the voltages (keys).
+
+    Return
+    ------
+    * dictionary with voltage as keys and with power drawn by the pump
+        as values.
+
+    """
+
+    current_df = pd.DataFrame(current_dict)
+    watts_df = current_df*current_df.columns
+    watts_dict = wattdf.to_dict('list')
+
+    return watts_dict
+
+
 def getdatapump(path):
     """
     This function is used to load the pump data from the .txt file
@@ -584,7 +617,6 @@ def getdatapump(path):
     tdh = {}
     current = {}
     watts = {}
-    efficiency = {}
 
     k = 0
     for V in voltage:
@@ -592,22 +624,18 @@ def getdatapump(path):
         current_temp = []
         lpm_temp = []
         watts_temp = []
-        efficiency_temp = []
         for j in range(0, counter[V]):
             tdh_temp.append(data[k][1])
             current_temp.append(data[k][2])
             lpm_temp.append(data[k][3])
             watts_temp.append(data[k][4])
-            efficiency_temp.append(data[k][5])
             k = k+1
-
         tdh[V] = tdh_temp
         current[V] = current_temp
         lpm[V] = lpm_temp
         watts[V] = watts_temp
-        efficiency[V] = efficiency_temp
 
-    return voltage, lpm, tdh, current, watts, efficiency
+    return voltage, lpm, tdh, current, watts
 
 
 if __name__=="__main__":

@@ -86,7 +86,6 @@ class PumpTest(unittest.TestCase):
         with self.assertRaises(errors.HeadError):
             functQ(75, 120)
 
-
     def test_IVcurvedata(self):
         """Test if the IV curve is as expected.
         """
@@ -114,5 +113,6 @@ class PumpTest(unittest.TestCase):
         np.testing.assert_allclose((IV['I'], IV['V']), IV_expected,
                                    rtol=1e-3)
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     unittest.main()

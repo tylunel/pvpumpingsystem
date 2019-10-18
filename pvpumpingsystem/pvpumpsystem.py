@@ -17,11 +17,11 @@ import time
 import pvlib
 from warnings import warn
 
-import pump as pp
-import pipenetwork as pn
-import reservoir as rv
-import consumption as cs
-import errors
+import pvpumpingsystem.pump as pp
+import pvpumpingsystem.pipenetwork as pn
+import pvpumpingsystem.reservoir as rv
+import pvpumpingsystem.consumption as cs
+from pvpumpingsystem import errors
 
 
 class PVPumpSystem(object):

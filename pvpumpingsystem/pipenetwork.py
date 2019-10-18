@@ -14,7 +14,7 @@ Still to do :
 
 """
 import numpy as np
-import waterproperties as wp
+import pvpumpingsystem.waterproperties as wp
 import fluids as fl
 
 

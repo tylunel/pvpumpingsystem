@@ -4,8 +4,7 @@ Created on Fri May 17 07:54:42 2019
 
 @author: Sergio Gualteros, Tanguy Lunel
 
-module defining a pump and functions for modeling of the pump.
-
+module defining class and functions for modeling the pump.
 
 """
 import collections
@@ -15,76 +14,84 @@ import tkinter.filedialog as tkfile
 from itertools import count
 from matplotlib.pyplot import plot
 import matplotlib.pyplot as plt
-from matplotlib.patches import Polygon
+from mpl_toolkits.mplot3d import Axes3D  # needed for plotting in 3d
 from matplotlib.collections import PatchCollection
-from scipy.optimize import curve_fit, fmin
 import scipy.optimize as opt
 import scipy.interpolate as spint
 
-import errors
+from pvpumpingsystem import errors
 
 
 class Pump:
     """
     Class representing a pump.
 
-    The minimum attributes are :
+    Attribute:
+    ----------
+        path: str,
+            The path to the txt file with specifications. Can be given
+            through constructor or through pop-up window.
 
-        path (str) : given through constructor or through window
-            -> contains the path to the txt file with specifications
-    optionnal attributes are :
-        cat (str) : centrifugal or positive displacement
-        model (str) : name of the pump
-        price (numeric)
-        power (numeric)
-        controler
-        output diameter (numeric)
+        category: str,
+            centrifugal or positive displacement
+
+        model: str
+            name of the pump
+
+        price: numeric
+
+        power: numeric
+
+        controler: str
+
+        diameter_output: numeric
+            output diameter
+
         data extracted from datasheet :
-            (tension, lpm, tdh, Courant, watts, efficacite ).
+            (voltage, lpm, tdh, current, watts, efficiency ).
     """
     _ids = count(1)
 
-    def __init__(self, model=None, cat=None, price=None, path=None,
-                 power=None, controler=None, diam_out=None):
+    def __init__(self, model=None, category=None, price=None, path=None,
+                 power=None, controler=None, diameter_output=None):
         if path is None:
             tk.Tk().withdraw()
             filepath = tkfile.askopenfilename()
             self.path = filepath
 
-        try :
-            self.tension, self.lpm, self.tdh, self.courant, self.watts, \
-            self.efficacite = getdatapump(path)  # getdatapump gather data  \
-                                        #   from txt datasheet given by path
+        try:
+            self.voltage, self.lpm, self.tdh, self.current, self.watts, \
+                self.efficiency = getdatapump(path)
+        # getdatapump gather data from txt datasheet given by path
         except IOError:
             print('The mentionned path does not exist, please select another'
-                  ' in the pop-up window')
+                  ' in the pop-up window.')
             tk.Tk().withdraw()
             filepath = tkfile.askopenfilename()
-            self.path=filepath
-            self.tension, self.lpm, self.tdh, self.courant, self.watts, \
-            self.efficacite = getdatapump(filepath) # getdatapump gather data  \
-                                            #   from txt datasheet given by path
+            self.path = filepath
+            self.voltage, self.lpm, self.tdh, self.current, self.watts, \
+                self.efficiency = getdatapump(filepath)
+
         self.model = model
-        self.cat = cat
+        self.category = category
         self.price = price
         self.power = power
         self.controler = controler
-        self.diam_out = diam_out
+        self.diameter_output = diameter_output
 
-        self.coeff_eff=None
-        self.coeff_pow=None
-        self.coeff_tdh=None
+        self.coeff_eff = None
+        self.coeff_pow = None
+        self.coeff_tdh = None
 
-        self.id   = next(self._ids)
-
+        self.id = next(self._ids)
 
     def __repr__(self):
-        affich= "model :" +str(self.model) + \
-                "\ncategory :" +str(self.cat) + \
-                "\nprice :" +str(self.price) + \
-                "\npower (HP) :" +str(self.power) + \
-                "\ncontroler :" +str(self.controler) + \
-                "\noutput diameter (inches) :" +str(self.diam_out)
+        affich = "model :" + str(self.model) + \
+                 "\ncategory :" + str(self.category) + \
+                 "\nprice :" + str(self.price) + \
+                 "\npower (HP) :" + str(self.power) + \
+                 "\ncontroler :" + str(self.controler) + \
+                 "\noutput diameter (inches) :" + str(self.diameter_output)
         return affich
 
     def curves_coeffs(self):
@@ -108,27 +115,27 @@ class Pump:
         self.coeff_tdh = {}  # coeff from curve-fitting of tdh vs lpm
         self.coeff_pow = {}  # coeff from curve-fitting of power vs lpm
 
-        for V in self.tension:
+        for V in self.voltage:
             # curve-fit of efficiency vs lpm
-            coeffs_eff, matcov = curve_fit(func_model, self.lpm[V],
-                                           self.efficacite[V])
-            self.coeff_eff[V] = coeffs_eff# save the coeffs in dict
+            coeffs_eff, matcov = opt.curve_fit(func_model, self.lpm[V],
+                                               self.efficiency[V])
+            self.coeff_eff[V] = coeffs_eff  # save the coeffs in dict
 
             # curve-fit of tdh vs lpm
-            coeffs_tdh, matcov = curve_fit(func_model, self.lpm[V],
-                                           self.tdh[V])
+            coeffs_tdh, matcov = opt.curve_fit(func_model, self.lpm[V],
+                                               self.tdh[V])
             self.coeff_tdh[V] = coeffs_tdh
 
             # curve-fit of power vs lpm
-            coeffs_P, matcov = curve_fit(func_model, self.lpm[V],
-                                         self.watts[V])
+            coeffs_P, matcov = opt.curve_fit(func_model, self.lpm[V],
+                                             self.watts[V])
             self.coeff_pow[V] = coeffs_P
 
         return {'eff': self.coeff_eff, 'tdh': self.coeff_tdh,
                 'pow': self.coeff_pow}
 
 
-    def startingVPI(self,tdh):
+    def startingVPI(self, tdh):
         """
         ------------------------- TO CHECK !! -------------------------
         --------- consistant with results from functVforIH ??? --------
@@ -143,30 +150,32 @@ class Pump:
                 float: value of minimum starting voltage
 
         """
+        raise NotImplementedError
+
         if self.coeff_tdh is None:
             self.curves_coeffs()
 
         tdhmax = {}
         powmin = {}
-        for V in self.tension:
-            tdhmax[V] = self.coeff_tdh[V][4] # y-intercept of tdh vs lpm
+        for V in self.voltage:
+            tdhmax[V] = self.coeff_tdh[V][4]  # y-intercept of tdh vs lpm
             powmin[V] = self.coeff_pow[V][4]
 
-        #interpolation:
+        # interpolation:
         # of Vmin vs tdh
-        newf_t = spint.interp1d(list(tdhmax.values()),list(tdhmax.keys()),
-                              kind='cubic')
+        newf_t = spint.interp1d(list(tdhmax.values()), list(tdhmax.keys()),
+                                kind='cubic')
         # of power vs V
-        newf_p = spint.interp1d(list(powmin.keys()),list(powmin.values()),
-                              kind='cubic')
+        newf_p = spint.interp1d(list(powmin.keys()), list(powmin.values()),
+                                kind='cubic')
 
-        if tdh<min(tdhmax.values()):
+        if tdh < min(tdhmax.values()):
             print('The resqueted tdh is out of the range for the pump,'
                   'it is below the minimum tdh.')
             vmin = 'below'
             pmin = None
             imin = None
-        elif tdh>max(tdhmax.values()):
+        elif tdh > max(tdhmax.values()):
             print('The resqueted tdh is out of the range for the pump,'
                   'it is above the maximum tdh delivered by the pump.')
             vmin = 'above'
@@ -176,59 +185,56 @@ class Pump:
             vmin = newf_t(tdh)
             pmin = newf_p(vmin)
             imin = pmin/vmin
-
         return {'V': vmin, 'P': pmin, 'I': imin}
 
 
     def plot_tdh_Q(self):
         """Print the graph of tdh(in m) vs Q(in lpm)
-
         """
-
-        if self.coeff_eff==None:
+        if self.coeff_eff is None:
             self.curves_coeffs()
             self.opti_zone()
 
         tdh_x = {}
         eff_x = {}
         # greatest value of lpm encountered in data
-        lpm_max = max(self.lpm[max(self.tension)])
-        self.lpm_x = np.arange(0,lpm_max)  # vector of lpm
+        lpm_max = max(self.lpm[max(self.voltage)])
+        self.lpm_x = np.arange(0, lpm_max)  # vector of lpm
 
-        for V in self.tension:
-            # efficiency function
+        for V in self.voltage:
             def eff_funct(x):
-                return self.coeff_eff[V][0]*x**4+self.coeff_eff[V][1]*x**3+ \
-                        self.coeff_eff[V][2]*x**2+self.coeff_eff[V][3]*x+ \
+                # efficiency function
+                return self.coeff_eff[V][0]*x**4 + self.coeff_eff[V][1]*x**3 +\
+                        self.coeff_eff[V][2]*x**2 + self.coeff_eff[V][3]*x + \
                         self.coeff_eff[V][4]
-            # function tdh
+
             def tdh_funct(x):
-                return self.coeff_tdh[V][0]*x**4+self.coeff_tdh[V][1]*x**3+ \
-                        self.coeff_tdh[V][2]*x**2+self.coeff_tdh[V][3]*x+ \
+                # function tdh
+                return self.coeff_tdh[V][0]*x**4 + self.coeff_tdh[V][1]*x**3 +\
+                        self.coeff_tdh[V][2]*x**2 + self.coeff_tdh[V][3]*x + \
                         self.coeff_tdh[V][4]
 
             # vectors of tdh and efficiency with lpm - ready to be printed
-            tdh_x[V]   = tdh_funct(self.lpm_x)
-            eff_x[V]   = eff_funct(self.lpm_x)
+            tdh_x[V] = tdh_funct(self.lpm_x)
+            eff_x[V] = eff_funct(self.lpm_x)
 
         fig = plt.figure(facecolor='White')
         # add space in height between the subplots:
         fig.subplots_adjust(hspace=0.5)
+        ax1 = plt.subplot(2, 1, 1)
 
-        ax1 = plt.subplot(2,1,1)
-
-        for i,V in enumerate(self.tension):# for each voltage available :
+        for i, V in enumerate(self.voltage):  # for each voltage available :
             # get the next color to have the same color by voltage:
             col = next(ax1._get_lines.prop_cycler)['color']
-            plot(self.lpm_x,tdh_x[V],linestyle='-',linewidth=2,color=col,
+            plot(self.lpm_x, tdh_x[V], linestyle='-', linewidth=2, color=col,
                  label=str(V)+'VDC')
-            plot(self.lpm_x,eff_x[V],linestyle='--',linewidth=1,color=col,
+            plot(self.lpm_x, eff_x[V], linestyle='--', linewidth=1, color=col,
                  label='efficiency')
-        ax1.set_title(str(self.model)+ \
-                      ' Courbes Debit Vs. Hauteur manometrique et efficacite')
+        ax1.set_title(str(self.model) +
+                      ' Courbes Debit Vs. Hauteur manometrique et efficiency')
         ax1.set_xlabel('lpm')
         ax1.set_ylabel('Hauteur manometrique (m) / (%)')
-        ax1.set_ylim(0,max(tdh_x[max(self.tension)]))
+        ax1.set_ylim(0, max(tdh_x[max(self.voltage)]))
         ax1.legend(loc='best')
         ax1.grid(True)
         patches = []
@@ -236,89 +242,24 @@ class Pump:
         collection = PatchCollection(patches, alpha=0.5)
         ax1.add_collection(collection)
 
-        ax2 = plt.subplot(2,1,2)
-        for V in self.tension:
-            plot(self.lpm[V],self.watts[V],linewidth=2,
-                 label=str(V)+' VDC')
+        ax2 = plt.subplot(2, 1, 2)
+        for V in self.voltage:
+            plot(self.lpm[V], self.watts[V], linewidth=2,
+                 label=str(V) + ' VDC')
         ax2.set_xlabel('lpm')
         ax2.set_ylabel('watts')
-        ax2.set_title(str(self.model)+'Courbes Debit Vs. Puissance electrique')
+        ax2.set_title(str(self.model) +
+                      'Courbes Debit Vs. Puissance electrique')
         ax2.grid(True)
         ax2.legend(loc='best')
 
         plt.show()
 
-
-#    def plot_P_Q_atV(self,V):
-#        """-----------------------not finished-------------------------
-#        """
-#
-#        #greatest value of lpm encountered in data
-#        lpm_max    = max(self.lpm.values())
-#        self.lpm_x = np.arange(0,lpm_max) # vector of lpm
-#        # efficiency function
-#        def eff_funct(x):
-#            return self.coeff_eff[V][0]*x**4+self.coeff_eff[V][1]*x**3+ \
-#                    self.coeff_eff[V][2]*x**2+self.coeff_eff[V][3]*x+ \
-#                    self.coeff_eff[V][4]
-#        # function tdh
-#        def tdh_funct(x):
-#            return self.coeff_tdh[V][0]*x**4+self.coeff_tdh[V][1]*x**3+ \
-#                    self.coeff_tdh[V][2]*x**2+self.coeff_tdh[V][3]*x+ \
-#                    self.coeff_tdh[V][4]
-#        # power function
-#        def pow_funct(x):
-#            return self.coeff_pow[V][0]*x**4+self.coeff_pow[V][1]*x**3+ \
-#                    self.coeff_pow[V][2]*x**2+self.coeff_pow[V][3]*x+ \
-#                    self.coeff_pow[V][4]
-#
-#        # vectors of tdh and efficiency with lpm - ready to be printed
-#        tdh_x   = tdh_funct(self.lpm_x)
-#        eff_x   = eff_funct(self.lpm_x)
-#        pow_x   = pow_funct(self.lpm_x)
-#
-#
-#        num   = np.size(self.tension)
-#
-#        fig = plt.figure(facecolor='White')
-#        # add space in height between the subplots
-#        fig.subplots_adjust(hspace=0.5)
-#
-#        ax1 = plt.subplot(2,1,1)
-#
-#        for i,V in enumerate(self.tension):# for each voltage available :
-#            # get the next color to have the same color by voltage:
-#            col = next(ax1._get_lines.prop_cycler)['color']
-#            plot(self.lpm_x,self.tdh_x[V],linestyle='-',linewidth=2,color=col,
-#                 label=str(V)+'VDC')
-#            plot(self.lpm_x,self.eff_x[V],linestyle='--',linewidth=1,color=col,
-#                 label='efficiency')
-#        ax1.set_title(str(self.model)+ \
-#                      ' Courbes Debit Vs. Hauteur manometrique et efficacite')
-#        ax1.set_xlabel('lpm')
-#        ax1.set_ylabel('Hauteur manometrique (m) / (%)')
-#        ax1.set_ylim(0,max(tdh_x[max(self.tension)]))
-#        ax1.legend(loc='best')
-#        ax1.grid(True)
-#        patches = []
-#        patches.append(self.polygon)
-#        collection = PatchCollection(patches, alpha=0.5)
-#        ax1.add_collection(collection)
-#
-#        ax2 = plt.subplot(2,1,2)
-#        for i in range (0,num):
-#            plot(self.lpm[i],self.watts[i],linewidth=2,
-#                 label=str(int(self.tension[i]))+' VDC')
-#        ax2.set_xlabel('lpm')
-#        ax2.set_ylabel('watts')
-#        ax2.set_title(str(self.model)+'Courbes Debit Vs. Puissance electrique')
-#        ax2.grid(True)
-#        ax2.legend(loc='best')
-#
-#        plt.show()
-
     def functVforIH(self):
-        """Returns a tuple containing :
+        """
+        Returns:
+        --------
+        * Tuple containing :
             - the function giving V according to I and H static for the pump :
                 V = f1(I, H)
             - the standard deviation on V between real data points and data
@@ -339,8 +280,8 @@ class Pump:
         vol = []
         tdh = []
         cur = []
-        for V in self.tension:
-            for i, Idata in enumerate(self.courant[V]):
+        for V in self.voltage:
+            for i, Idata in enumerate(self.current[V]):
                 vol.append(V)
                 tdh.append(self.tdh[V][i])
                 cur.append(Idata)
@@ -358,7 +299,7 @@ class Pump:
         data_i = []
         data_tdh = []
         for key in self.tdh.keys():
-            data_i.append(min(self.courant[key]))
+            data_i.append(min(self.current[key]))
             data_tdh.append(max(self.tdh[key]))
         param_tdh, pcov_tdh = opt.curve_fit(funct_model_intervals,
                                             data_i, data_tdh)
@@ -425,8 +366,8 @@ class Pump:
         vol = []  # voltage
         tdh = []  # total dynamic head
         cur = []  # current
-        for V in self.tension:
-            for i, I in enumerate(self.courant[V]):
+        for V in self.voltage:
+            for i, I in enumerate(self.current[V]):
                 vol.append(V)
                 cur.append(I)
                 tdh.append(self.tdh[V][i])
@@ -494,27 +435,27 @@ class Pump:
             -the standard deviation on Q between real data points and data
                 computed with this function
         """
-        def funct_mod(inp,a,v1,v2,h1,h2,t1):# model for linear regression
-            x,y = inp[0],inp[1]
+        def funct_mod(inp, a, v1, v2, h1, h2, t1):# model for linear regression
+            x, y = inp[0], inp[1]
             return a + v1*x + v2*x**2 + h1*y + h2*y**2 + t1*x*y
         # gathering of data needed
-        vol=[]
-        tdh=[]
-        lpm=[]
-        for V in self.tension:
+        vol = []
+        tdh = []
+        lpm = []
+        for V in self.voltage:
             for i, Q in enumerate(self.lpm[V]):
                 vol.append(V)
                 tdh.append(self.tdh[V][i])
                 lpm.append(Q)
 
-        datax = [np.array(vol),np.array(tdh)]
+        datax = [np.array(vol), np.array(tdh)]
         dataz = np.array(np.array(lpm))
         # computing of linear regression
-        para, covmat = curve_fit(funct_mod, datax, dataz)
+        para, covmat = opt.curve_fit(funct_mod, datax, dataz)
 
-        datacheck=funct_mod(datax,para[0],para[1],para[2],para[3],
-                            para[4],para[5])
-        ectyp=np.sqrt(sum((dataz-datacheck)**2)/len(dataz))
+        datacheck = funct_mod(datax, para[0], para[1], para[2], para[3],
+                              para[4], para[5])
+        ectyp = np.sqrt(sum((dataz-datacheck)**2)/len(dataz))
 
         def functQ(V, H):
             if not min(vol) <= V <= max(vol):
@@ -538,14 +479,16 @@ class Pump:
             -the standard deviation on Q between real data points and data
                 computed with this function
         """
-        def funct_mod(inp, a, v1, v2, h1, h2, t1):# model for linear regression
+
+        def funct_mod(inp, a, v1, v2, h1, h2, t1):
+            # model for linear regression
             x, y = inp[0], inp[1]
             return a + v1*x + v2*x**2 + h1*y + h2*y**2 + t1*x*y
         # gathering of data needed
         power = []
         tdh = []
         lpm = []
-        for V in self.tension:
+        for V in self.voltage:
             for i, Q in enumerate(self.lpm[V]):
                 power.append(self.watts[V][i])
                 tdh.append(self.tdh[V][i])
@@ -554,7 +497,7 @@ class Pump:
         datax = [np.array(power), np.array(tdh)]
         dataz = np.array(np.array(lpm))
         # computing of linear regression
-        para, covmat = curve_fit(funct_mod, datax, dataz)
+        para, covmat = opt.curve_fit(funct_mod, datax, dataz)
 
         datacheck = funct_mod(datax, para[0], para[1], para[2], para[3],
                               para[4], para[5])
@@ -603,11 +546,11 @@ class Pump:
 
 def getdatapump(path):
     """
-    This function is used to load the pump data from the
-     .txt file designated by the path. This .txt files has the
-     characteristics of the datasheets. The data is returned in the
-     form of 6 tables (list containing lists in real):
-     voltage, lpm, tdh, current, watts, efficiency.
+    This function is used to load the pump data from the .txt file
+    designated by the path. This .txt files has the
+    characteristics of the datasheets. The data is returned in the
+    form of 6 tables (list containing lists in real):
+    voltage, lpm, tdh, current, watts, efficiency.
 
     Parameters:
     -----------
@@ -620,76 +563,87 @@ def getdatapump(path):
         tuple containing list
 
     """
-
-    #%% Importation des données
-    data = np.loadtxt(path, dtype={'names': ('Tension', 'tdh', 'Courant',
-                                             'lpm', 'watts','efficacite'),
+    # Import data
+    data = np.loadtxt(path, dtype={'names': ('voltage', 'tdh', 'current',
+                                             'lpm', 'watts', 'efficiency'),
                       'formats': (float, float, float, float, float, float)},
-                        skiprows=1)
+                      skiprows=1)
 
-    #%% Tri des données
-    volt = np.zeros(data.size)                 #Crée un tableau de zéros de la taille indiqué
-    for i in range (0,data.size):
+    # sorting of data
+    volt = np.zeros(data.size)  # array filled with 0
+    for i in range(0, data.size):
         volt[i] = data[i][0]
-    counter = collections.Counter(volt)    # crée un dictionnaire avec pour clés les valeurs de volt et en valeur le nombre d'occurence
-    keys_sorted= sorted(list(counter.keys()))    # liste des tensions par ordre croissant
-#    val_sorted= sorted(list(y.values()))  # liste des nombres d'occurences de chaque tensions dans le document
+    # create dict with voltage as keys and with number of occurence as values
+    counter = collections.Counter(volt)
+    keys_sorted = sorted(list(counter.keys()))  # voltages in increasing order
 
-    #%% Création et remplissage des listes des données
-    tension = keys_sorted
-    lpm = {}        # création d'une liste principale, qui contiendra les sous-listes
+    # Creation and filling of data lists
+    voltage = keys_sorted
+    # main dict, containing sub-list per voltage
+    lpm = {}
     tdh = {}
-    courant = {}
+    current = {}
     watts = {}
-    efficacite = {}
+    efficiency = {}
 
     k = 0
-    for V in tension:
-        tdh_temp=[]
-        courant_temp=[]
-        lpm_temp=[]
-        watts_temp=[]
-        efficacite_temp=[]
-        for j in range (0,counter[V]):
+    for V in voltage:
+        tdh_temp = []
+        current_temp = []
+        lpm_temp = []
+        watts_temp = []
+        efficiency_temp = []
+        for j in range(0, counter[V]):
             tdh_temp.append(data[k][1])
-            courant_temp.append(data[k][2])
+            current_temp.append(data[k][2])
             lpm_temp.append(data[k][3])
             watts_temp.append(data[k][4])
-            efficacite_temp.append(data[k][5])
+            efficiency_temp.append(data[k][5])
             k = k+1
-        tdh[V]=tdh_temp
-        courant[V]=courant_temp
-        lpm[V]=lpm_temp
-        watts[V]=watts_temp
-        efficacite[V]=efficacite_temp
 
-    return tension, lpm, tdh, courant, watts, efficacite
+        tdh[V] = tdh_temp
+        current[V] = current_temp
+        lpm[V] = lpm_temp
+        watts[V] = watts_temp
+        efficiency[V] = efficiency_temp
+
+    return voltage, lpm, tdh, current, watts, efficiency
+
 
 if __name__=="__main__":
 #%% pump creation
-    pump1 = Pump(path="fichiers_pompes/SCB_10_150_120_BL.txt",
-                       model='SCB_10')
+    pump1 = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
+                 model='SCB_10')
 
+#%% set-up for following plots
+    vol = []
+    tdh = []
+    cur = []
+    lpm = []
+    power = []
+    for V in pump1.voltage:
+        for i, I in enumerate(pump1.current[V]):
+            vol.append(V)
+            cur.append(I)
+            tdh.append(pump1.tdh[V][i])
+            lpm.append(pump1.lpm[V][i])
+            power.append(pump1.watts[V][i])
+
+#    # alternative way (faster ?): convert in array and flatten it
+#    volflat=np.array(list(vol.values())).flat[:]
+#    tdhflat=np.array(list(tdh.values())).flat[:]
+#    lpmflat=np.array(list(lpm.values())).flat[:]
 
 #%% plot of functVforIH
-
-    vol=[]
-    tdh=[]
-    cur=[]
-    for V in pump1.tension:
-        for i, I in enumerate(pump1.courant[V]):
-            vol.append(V)
-            tdh.append(pump1.tdh[V][i])
-            cur.append(I)
-    f1, stddev, intervals=pump1.functVforIH()
-    vol_check=[]
-    for i,I in enumerate(cur):
+    f1, stddev, intervals = pump1.functVforIH()
+    vol_check = []
+    for i, I in enumerate(cur):
         vol_check.append(f1(I, tdh[i], error_raising=False))
     fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d',title='Voltage as a function of'
+    ax = fig.add_subplot(111, projection='3d', title='Voltage as a function of'
                          ' current (A) and static head (m)')
-    ax.scatter(cur,tdh,vol,label='from data')
-    ax.scatter(cur,tdh,vol_check,label='from curve fitting')
+    ax.scatter(cur, tdh, vol, label='from data')
+    ax.scatter(cur, tdh, vol_check, label='from curve fitting')
     ax.set_xlabel('current')
     ax.set_ylabel('head')
     ax.set_zlabel('voltage V')
@@ -699,15 +653,6 @@ if __name__=="__main__":
     print('V for IH=(4,25): {0:.2f}'.format(f1(4, 25)))
 
 #%% plot of functIforVH
-
-    vol = []
-    tdh = []
-    cur = []
-    for V in pump1.tension:
-        for i, I in enumerate(pump1.courant[V]):
-            vol.append(V)
-            tdh.append(pump1.tdh[V][i])
-            cur.append(I)
     f1, stddev, intervals = pump1.functIforVH()
     cur_check = []
     for i, V in enumerate(vol):
@@ -728,67 +673,39 @@ if __name__=="__main__":
 
 
 #%% plot of functQforVH
-
-    f2,stddev=pump1.functQforVH()
-    vol=[]
-    tdh=[]
-    lpm=[]
-    for V in pump1.tension:
-        for i, Q in enumerate(pump1.lpm[V]):
-            vol.append(V)
-            tdh.append(pump1.tdh[V][i])
-            lpm.append(Q)
-#    # alternative way (faster ?): convert in array and flatten it
-#    volflat=np.array(list(vol.values())).flat[:]
-#    tdhflat=np.array(list(tdh.values())).flat[:]
-#    lpmflat=np.array(list(lpm.values())).flat[:]
-
-    lpm_check=[]
-    for i,v in enumerate(vol):
+    f2, stddev = pump1.functQforVH()
+    lpm_check = []
+    for i, v in enumerate(vol):
         try:
-            Q=f2(v,tdh[i])
+            Q = f2(v, tdh[i])
         except (errors.VoltageError, errors.HeadError):
-            Q=0
+            Q = 0
         lpm_check.append(Q)
     fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d',title='Q (lpm) as a function of'
+    ax = fig.add_subplot(111, projection='3d', title='Q (lpm) as a function of'
                          ' voltage (V) and static head (m)')
-    ax.scatter(vol,tdh,lpm,label='from data')
-    ax.scatter(vol,tdh,lpm_check,label='from curve fitting')
+    ax.scatter(vol, tdh, lpm, label='from data')
+    ax.scatter(vol, tdh, lpm_check, label='from curve fitting')
     ax.set_xlabel('voltage')
     ax.set_ylabel('head')
     ax.set_zlabel('discharge Q')
     ax.legend(loc='lower left')
     plt.show()
-    print('std dev on Q calculated from V:',stddev)
-    print('Q for VH=(74,25): {0:.2f}'.format(f2(74,25)))
+    print('std dev on Q calculated from V:', stddev)
+    print('Q for VH=(74,25): {0:.2f}'.format(f2(74, 25)))
 
 
 #%% plot of functQforPH
-
     f2, stddev = pump1.functQforPH()
-    power = []
-    tdh = []
-    lpm = []
-    for V in pump1.tension:
-        for i, Q in enumerate(pump1.lpm[V]):
-            power.append(pump1.watts[V][i])
-            tdh.append(pump1.tdh[V][i])
-            lpm.append(Q)
-#    # alternative way (faster ?): convert in array and flatten it
-#    powerflat=np.array(list(power.values())).flat[:]
-#    tdhflat=np.array(list(tdh.values())).flat[:]
-#    lpmflat=np.array(list(lpm.values())).flat[:]
-
-    lpm_check=[]
-    for i,po in enumerate(power):
+    lpm_check = []
+    for i, po in enumerate(power):
         try:
-            Q=f2(po, tdh[i])
+            Q = f2(po, tdh[i])
         except (errors.PowerError, errors.HeadError):
-            Q=0
+            Q = 0
         lpm_check.append(Q)
     fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d',title='Q (lpm) as a function of'
+    ax = fig.add_subplot(111, projection='3d', title='Q (lpm) as a function of'
                          ' power (W) and static head (m)')
     ax.scatter(power, tdh, lpm, label='from data')
     ax.scatter(power, tdh, lpm_check, label='from curve fitting')
@@ -800,4 +717,3 @@ if __name__=="__main__":
     print('std dev on Q calculated from P: ', stddev)
     print('Q for PH=(100,25): {0:.2f}'.format(f2(100, 25)))
 
-#

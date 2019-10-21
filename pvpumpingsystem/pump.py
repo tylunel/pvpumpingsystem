@@ -69,26 +69,27 @@ class Pump:
                  model=None, category=None,
                  price=None, power_rating=None,
                  controler=None, diameter_output=None):
-        # use input data to create pump object
+
         if None not in (lpm, tdh, current):
+            # use input data to create pump object
             self.lpm = lpm
             self.tdh = tdh
             self.current = current
             self.voltage = list(self.lpm.keys())
             self.watts = get_watts_from_current(current)
-
-        # retrieve pump data from txt datasheet given by path
-        try:
-            self.voltage, self.lpm, self.tdh, self.current, \
-                self.watts = getdatapump(path)
-        except IOError:
-            print('The mentionned path does not exist, please select another'
-                  ' in the pop-up window.')
-            tk.Tk().withdraw()
-            filepath = tkfile.askopenfilename()
-            self.path = filepath
-            self.voltage, self.lpm, self.tdh, self.current, \
-                self.watts = getdatapump(path)
+        else:
+            # retrieve pump data from txt datasheet given by path
+            try:
+                self.voltage, self.lpm, self.tdh, self.current, \
+                    self.watts = getdatapump(path)
+            except IOError:
+                print('The mentionned path does not exist, please select'
+                      'another in the pop-up window.')
+                tk.Tk().withdraw()
+                filepath = tkfile.askopenfilename()
+                self.path = filepath
+                self.voltage, self.lpm, self.tdh, self.current, \
+                    self.watts = getdatapump(path)
 
         self.model = model
         self.category = category
@@ -277,15 +278,12 @@ class Pump:
             - a dict containing the domains of I and H
                 (Now the control is done inside the function by raising errors)
         """
+        # function fitting
         def funct_mod(input_val, a, c1, c2, h1, h2, t1):
             '''model for linear regression'''
             x, y = input_val[0], input_val[1]
             return a + c1*x + c2*x**2 + h1*y + h2*y**2 + t1*x*y
 
-        def funct_model_intervals(input_val, a, b, c):
-            '''model for linear regression of tdh(V) and V(tdh)'''
-            x = input_val
-            return a + b*x + c*x**2
         # gathering of data
         vol = []
         tdh = []
@@ -305,29 +303,76 @@ class Pump:
                               para[4], para[5])
         ectyp = np.sqrt(sum((dataz-datacheck)**2)/len(dataz))
 
+        # domain computing
+        def funct_model_intervals_order2(input_val, a, b, c):
+            '''2nd degree model for linear regression of tdh(V) and V(tdh)'''
+            x = input_val
+            return a + b*x + c*x**2
+
         # domains of I and tdh depending on each other
         data_i = []
         data_tdh = []
         for key in self.tdh.keys():
             data_i.append(min(self.current[key]))
             data_tdh.append(max(self.tdh[key]))
-        param_tdh, pcov_tdh = opt.curve_fit(funct_model_intervals,
-                                            data_i, data_tdh)
-        param_i, pcov_i = opt.curve_fit(funct_model_intervals,
-                                        data_tdh, data_i)
 
-        def interval_i(tdh):
-            "Interval on i depending on tdh"
-            return [max(funct_model_intervals(tdh, *param_i), min(cur)),
-                    max(cur)]
+        length = len(data_i)
+        variation_i_tdh = (min(data_i) != max(data_i)) and \
+                          (min(data_tdh) != max(data_tdh))
 
-        def interval_tdh(i):
-            "Interval on tdh depending on i"
-            return [0, min(max(funct_model_intervals(i, *param_tdh), 0),
-                           max(tdh))]
-        # domain of I and tdh and gathering in one single variable
-        intervals = {'I': interval_i,
-                     'H': interval_tdh}
+        if length > 2 and variation_i_tdh:
+            param_tdh, pcov_tdh = opt.curve_fit(funct_model_intervals_order2,
+                                                data_i, data_tdh)
+            param_i, pcov_i = opt.curve_fit(funct_model_intervals_order2,
+                                            data_tdh, data_i)
+
+            def interval_i(tdh):
+                "Interval on i depending on tdh"
+                return [max(funct_model_intervals_order2(tdh, *param_i),
+                            min(cur)),
+                        max(cur)]
+
+            def interval_tdh(i):
+                "Interval on tdh depending on i"
+                return [0, min(max(funct_model_intervals_order2(i, *param_tdh),
+                                   0),
+                               max(tdh))]
+            # domain of I and tdh and gathering in one single variable
+            intervals = {'I': interval_i,
+                         'H': interval_tdh}
+
+        elif length == 2 and variation_i_tdh:
+            b_i = (data_i[1]-data_i[0])/(data_tdh[1]-data_tdh[0])
+            a_i = data_i[0] - b_i*data_tdh[0]
+
+            def interval_i(tdh):
+                "Interval on i ,dependent of tdh"
+                return [max(a_i + b_i*tdh, min(cur)),
+                        max(cur)]
+
+            b_tdh = (data_tdh[1]-data_tdh[0])/(data_i[1]-data_i[0])
+            a_tdh = data_tdh[0] - b_tdh*data_i[0]
+
+            def interval_tdh(i):
+                "Interval on tdh, dependent of i"
+                return [max(a_tdh + b_tdh*i, min(tdh)),
+                        max(tdh)]
+
+            # domain of I and tdh and gathering in one single variable
+            intervals = {'I': interval_i,
+                         'H': interval_tdh}
+        else:
+            def interval_i(tdh):
+                "Interval on i, independent of tdh"
+                return [min(cur), max(cur)]
+
+            def interval_tdh(i):
+                "Interval on tdh, independent of i"
+                return [min(tdh), max(tdh)]
+
+            # domain of I and tdh and gathering in one single variable
+            intervals = {'I': interval_i,
+                         'H': interval_tdh}
 
         def functV(I, H, error_raising=True):
             """Function giving voltage V according to current I and tdh H.
@@ -445,7 +490,8 @@ class Pump:
             -the standard deviation on Q between real data points and data
                 computed with this function
         """
-        def funct_mod(inp, a, v1, v2, h1, h2, t1):# model for linear regression
+        def funct_mod(inp, a, v1, v2, h1, h2, t1):
+            # model for linear regression
             x, y = inp[0], inp[1]
             return a + v1*x + v2*x**2 + h1*y + h2*y**2 + t1*x*y
         # gathering of data needed
@@ -572,7 +618,7 @@ def get_watts_from_current(current_dict):
 
     current_df = pd.DataFrame(current_dict)
     watts_df = current_df*current_df.columns
-    watts_dict = wattdf.to_dict('list')
+    watts_dict = watts_df.to_dict('list')
 
     return watts_dict
 
@@ -638,10 +684,23 @@ def getdatapump(path):
     return voltage, lpm, tdh, current, watts
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
 #%% pump creation
-    pump1 = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
+    pump2 = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
                  model='SCB_10')
+
+    pump1 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
+                           136],
+                      24: [443, 432, 413, 401, 390, 382, 375, 371, 352, 345,
+                           310]},
+                 tdh={12: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
+                           54.9, 61.0, 70.1],
+                      24: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
+                           54.9, 61.0, 70.1]},
+                 current={24: [1.5, 1.7, 2.1, 2.4, 2.6, 2.8, 3.1, 3.3, 3.6,
+                               3.8, 4.1],
+                          12: [1.2, 1.5, 1.8, 2.0, 2.1, 2.4, 2.7, 3.0, 3.3,
+                               3.4, 3.9]})
 
 #%% set-up for following plots
     vol = []
@@ -657,10 +716,6 @@ if __name__=="__main__":
             lpm.append(pump1.lpm[V][i])
             power.append(pump1.watts[V][i])
 
-#    # alternative way (faster ?): convert in array and flatten it
-#    volflat=np.array(list(vol.values())).flat[:]
-#    tdhflat=np.array(list(tdh.values())).flat[:]
-#    lpmflat=np.array(list(lpm.values())).flat[:]
 
 #%% plot of functVforIH
     f1, stddev, intervals = pump1.functVforIH()
@@ -680,68 +735,68 @@ if __name__=="__main__":
     print('std dev on V:', stddev)
     print('V for IH=(4,25): {0:.2f}'.format(f1(4, 25)))
 
-#%% plot of functIforVH
-    f1, stddev, intervals = pump1.functIforVH()
-    cur_check = []
-    for i, V in enumerate(vol):
-        cur_check.append(f1(V, tdh[i], error_raising=False))
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d', title='Current as a function of'
-                         ' voltage (V) and static head (m)')
-    ax.scatter(vol, tdh, cur, label='from data')
-    ax.scatter(vol, tdh, cur_check, label='from curve fitting')
-    ax.set_xlabel('voltage')
-    ax.set_ylabel('head')
-    ax.set_zlabel('current I')
-    ax.legend(loc='lower left')
-    plt.show()
-    print('std dev on I: ', stddev)
-    print('I for VH=(89,25): {0:.2f}'.format(f1(89, 25)))
-
-
-#%% plot of functQforVH
-    f2, stddev = pump1.functQforVH()
-    lpm_check = []
-    for i, v in enumerate(vol):
-        try:
-            Q = f2(v, tdh[i])
-        except (errors.VoltageError, errors.HeadError):
-            Q = 0
-        lpm_check.append(Q)
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d', title='Q (lpm) as a function of'
-                         ' voltage (V) and static head (m)')
-    ax.scatter(vol, tdh, lpm, label='from data')
-    ax.scatter(vol, tdh, lpm_check, label='from curve fitting')
-    ax.set_xlabel('voltage')
-    ax.set_ylabel('head')
-    ax.set_zlabel('discharge Q')
-    ax.legend(loc='lower left')
-    plt.show()
-    print('std dev on Q calculated from V:', stddev)
-    print('Q for VH=(74,25): {0:.2f}'.format(f2(74, 25)))
-
-
-#%% plot of functQforPH
-    f2, stddev = pump1.functQforPH()
-    lpm_check = []
-    for i, po in enumerate(power):
-        try:
-            Q = f2(po, tdh[i])
-        except (errors.PowerError, errors.HeadError):
-            Q = 0
-        lpm_check.append(Q)
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d', title='Q (lpm) as a function of'
-                         ' power (W) and static head (m)')
-    ax.scatter(power, tdh, lpm, label='from data')
-    ax.scatter(power, tdh, lpm_check, label='from curve fitting')
-    ax.set_xlabel('power')
-    ax.set_ylabel('head')
-    ax.set_zlabel('discharge Q')
-    ax.legend(loc='lower left')
-    plt.show()
-    print('std dev on Q calculated from P: ', stddev)
-    print('Q for PH=(100,25): {0:.2f}'.format(f2(100, 25)))
+##%% plot of functIforVH
+#    f1, stddev, intervals = pump1.functIforVH()
+#    cur_check = []
+#    for i, V in enumerate(vol):
+#        cur_check.append(f1(V, tdh[i], error_raising=False))
+#
+#    fig = plt.figure()
+#    ax = fig.add_subplot(111, projection='3d', title='Current as a function of'
+#                         ' voltage (V) and static head (m)')
+#    ax.scatter(vol, tdh, cur, label='from data')
+#    ax.scatter(vol, tdh, cur_check, label='from curve fitting')
+#    ax.set_xlabel('voltage')
+#    ax.set_ylabel('head')
+#    ax.set_zlabel('current I')
+#    ax.legend(loc='lower left')
+#    plt.show()
+#    print('std dev on I: ', stddev)
+#    print('I for VH=(89,25): {0:.2f}'.format(f1(89, 25)))
+#
+#
+##%% plot of functQforVH
+#    f2, stddev = pump1.functQforVH()
+#    lpm_check = []
+#    for i, v in enumerate(vol):
+#        try:
+#            Q = f2(v, tdh[i])
+#        except (errors.VoltageError, errors.HeadError):
+#            Q = 0
+#        lpm_check.append(Q)
+#    fig = plt.figure()
+#    ax = fig.add_subplot(111, projection='3d', title='Q (lpm) as a function of'
+#                         ' voltage (V) and static head (m)')
+#    ax.scatter(vol, tdh, lpm, label='from data')
+#    ax.scatter(vol, tdh, lpm_check, label='from curve fitting')
+#    ax.set_xlabel('voltage')
+#    ax.set_ylabel('head')
+#    ax.set_zlabel('discharge Q')
+#    ax.legend(loc='lower left')
+#    plt.show()
+#    print('std dev on Q calculated from V:', stddev)
+#    print('Q for VH=(74,25): {0:.2f}'.format(f2(74, 25)))
+#
+#
+##%% plot of functQforPH
+#    f2, stddev = pump1.functQforPH()
+#    lpm_check = []
+#    for i, po in enumerate(power):
+#        try:
+#            Q = f2(po, tdh[i])
+#        except (errors.PowerError, errors.HeadError):
+#            Q = 0
+#        lpm_check.append(Q)
+#    fig = plt.figure()
+#    ax = fig.add_subplot(111, projection='3d', title='Q (lpm) as a function of'
+#                         ' power (W) and static head (m)')
+#    ax.scatter(power, tdh, lpm, label='from data')
+#    ax.scatter(power, tdh, lpm_check, label='from curve fitting')
+#    ax.set_xlabel('power')
+#    ax.set_ylabel('head')
+#    ax.set_zlabel('discharge Q')
+#    ax.legend(loc='lower left')
+#    plt.show()
+#    print('std dev on Q calculated from P: ', stddev)
+#    print('Q for PH=(100,25): {0:.2f}'.format(f2(100, 25)))
 

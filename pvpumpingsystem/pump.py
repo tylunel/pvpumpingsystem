@@ -304,75 +304,9 @@ class Pump:
         ectyp = np.sqrt(sum((dataz-datacheck)**2)/len(dataz))
 
         # domain computing
-        def funct_model_intervals_order2(input_val, a, b, c):
-            '''2nd degree model for linear regression of tdh(V) and V(tdh)'''
-            x = input_val
-            return a + b*x + c*x**2
-
-        # domains of I and tdh depending on each other
-        data_i = []
-        data_tdh = []
-        for key in self.tdh.keys():
-            data_i.append(min(self.current[key]))
-            data_tdh.append(max(self.tdh[key]))
-
-        length = len(data_i)
-        variation_i_tdh = (min(data_i) != max(data_i)) and \
-                          (min(data_tdh) != max(data_tdh))
-
-        if length > 2 and variation_i_tdh:
-            param_tdh, pcov_tdh = opt.curve_fit(funct_model_intervals_order2,
-                                                data_i, data_tdh)
-            param_i, pcov_i = opt.curve_fit(funct_model_intervals_order2,
-                                            data_tdh, data_i)
-
-            def interval_i(tdh):
-                "Interval on i depending on tdh"
-                return [max(funct_model_intervals_order2(tdh, *param_i),
-                            min(cur)),
-                        max(cur)]
-
-            def interval_tdh(i):
-                "Interval on tdh depending on i"
-                return [0, min(max(funct_model_intervals_order2(i, *param_tdh),
-                                   0),
-                               max(tdh))]
-            # domain of I and tdh and gathering in one single variable
-            intervals = {'I': interval_i,
-                         'H': interval_tdh}
-
-        elif length == 2 and variation_i_tdh:
-            b_i = (data_i[1]-data_i[0])/(data_tdh[1]-data_tdh[0])
-            a_i = data_i[0] - b_i*data_tdh[0]
-
-            def interval_i(tdh):
-                "Interval on i ,dependent of tdh"
-                return [max(a_i + b_i*tdh, min(cur)),
-                        max(cur)]
-
-            b_tdh = (data_tdh[1]-data_tdh[0])/(data_i[1]-data_i[0])
-            a_tdh = data_tdh[0] - b_tdh*data_i[0]
-
-            def interval_tdh(i):
-                "Interval on tdh, dependent of i"
-                return [max(a_tdh + b_tdh*i, min(tdh)),
-                        max(tdh)]
-
-            # domain of I and tdh and gathering in one single variable
-            intervals = {'I': interval_i,
-                         'H': interval_tdh}
-        else:
-            def interval_i(tdh):
-                "Interval on i, independent of tdh"
-                return [min(cur), max(cur)]
-
-            def interval_tdh(i):
-                "Interval on tdh, independent of i"
-                return [min(tdh), max(tdh)]
-
-            # domain of I and tdh and gathering in one single variable
-            intervals = {'I': interval_i,
-                         'H': interval_tdh}
+        dom = domains(self.current, self.tdh)
+        intervals = {'I': dom[0],
+                     'H': dom[1]}
 
         def functV(I, H, error_raising=True):
             """Function giving voltage V according to current I and tdh H.
@@ -382,16 +316,16 @@ class Pump:
             corresponding.
             """
             if error_raising is True:
-                if not interval_i(H)[0] <= I <= interval_i(H)[1]:
+                if not intervals['I'](H)[0] <= I <= intervals['I'](H)[1]:
                     raise errors.CurrentError(
                             'I (={0}) is out of bounds. For this specific '
-                            'head H (={1}), I should be in the interval {2}'
-                            .format(I, H, interval_i(H)))
-                if not interval_tdh(I)[0] <= H <= interval_tdh(I)[1]:
+                            'head H (={1}), current I should be in the '
+                            'interval {2}'.format(I, H, intervals['I'](H)))
+                if not intervals['H'](I)[0] <= H <= intervals['H'](I)[1]:
                     raise errors.HeadError(
                             'H (={0}) is out of bounds. For this specific '
                             'current I (={1}), H should be in the interval {2}'
-                            .format(H, I, interval_tdh(I)))
+                            .format(H, I, intervals['H'](I)))
             return para[0] + para[1]*I + para[2]*I**2 + para[3]*H + \
                 para[4]*H**2 + para[5]*I*H
 
@@ -684,12 +618,97 @@ def getdatapump(path):
     return voltage, lpm, tdh, current, watts
 
 
+def domains(data_x, data_y):
+    """
+    Function giving the domain of data x depending on data y, and vice versa.
+    """
+
+    def funct_model_intervals_order2(input_val, a, b, c):
+        '''2nd degree model for linear regression of data_y(x) and data_y(x)'''
+        x = input_val
+        return a + b*x + c*x**2
+
+    def max_in_values(data):
+        """Finds the maximum in the values of a dict"""
+        data_flat = []
+        for key in data.keys():
+            for elt in data[key]:
+                data_flat.append(elt)
+        return max(data_flat)
+
+    def min_in_values(data):
+        """Finds the minimum in the values of a dict"""
+        data_flat = []
+        for key in data.keys():
+            for elt in data[key]:
+                data_flat.append(elt)
+        return min(data_flat)
+
+    # domains of I and tdh depending on each other
+    x_tips = []
+    y_tips = []
+    for key in data_y.keys():
+        x_tips.append(min(data_x[key]))
+        y_tips.append(max(data_y[key]))
+
+    length = len(x_tips)
+    variation_x_y = (min(x_tips) != max(x_tips)) and \
+                    (min(y_tips) != max(y_tips))
+
+    if length > 2 and variation_x_y:
+
+        param_y, pcov_y = opt.curve_fit(funct_model_intervals_order2,
+                                        x_tips, y_tips)
+        param_x, pcov_x = opt.curve_fit(funct_model_intervals_order2,
+                                        y_tips, x_tips)
+
+        def interval_x(y):
+            "Interval on x depending on y"
+            return [max(funct_model_intervals_order2(y, *param_x),
+                        min_in_values(data_x)),
+                    max_in_values(data_x)]
+
+        def interval_y(x):
+            "Interval on y depending on x"
+            return [0, min(max(funct_model_intervals_order2(x, *param_y),
+                               0),
+                           max_in_values(data_y))]
+
+    elif length == 2 and variation_x_y:
+        b_x = (x_tips[1]-x_tips[0])/(y_tips[1]-y_tips[0])
+        a_x = x_tips[0] - b_x*y_tips[0]
+
+        def interval_x(y):
+            "Interval on x ,dependent of y"
+            return [max(a_x + b_x*y, min(data_x)),
+                    max(data_x)]
+
+        b_y = (y_tips[1]-y_tips[0])/(x_tips[1]-x_tips[0])
+        a_y = y_tips[0] - b_y*x_tips[0]
+
+        def interval_y(x):
+            "Interval on y, dependent of x"
+            return [max(a_y + b_y*x, min(x)),
+                    max(x)]
+
+    else:
+        def interval_x(*args):
+            "Interval on x, independent of y"
+            return [min(data_x), max(data_x)]
+
+        def interval_y(*args):
+            "Interval on y, independent of x"
+            return [min(data_y), max(data_y)]
+
+    return interval_x, interval_y
+
+
 if __name__ == "__main__":
 #%% pump creation
-    pump2 = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
+    pump1 = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
                  model='SCB_10')
 
-    pump1 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
+    pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
                            136],
                       24: [443, 432, 413, 401, 390, 382, 375, 371, 352, 345,
                            310]},

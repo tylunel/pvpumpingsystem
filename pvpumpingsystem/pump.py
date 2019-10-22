@@ -15,10 +15,8 @@ from itertools import count
 from matplotlib.pyplot import plot
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # needed for plotting in 3d
-from matplotlib.collections import PatchCollection
 import scipy.optimize as opt
 import scipy.interpolate as spint
-import pandas as pd
 
 from pvpumpingsystem import errors
 
@@ -122,8 +120,7 @@ class Pump:
                  "\noutput diameter (inches) :" + str(self.diameter_output)
         return affich
 
-
-    def startingVPI(self, tdh, motor_electrical_architecture):
+    def starting_characteristics(self, tdh, motor_electrical_architecture):
         """
         ------------------------- TO CHECK !! -------------------------
         --------- consistant with results from functVforIH ??? --------
@@ -156,8 +153,8 @@ class Pump:
         tdhmax = {}
         powmin = {}
         for V in self.voltage:
-            tdhmax[V] = self.coeff_tdh[V][4]  # y-intercept of tdh vs lpm
-            powmin[V] = self.coeff_pow[V][4]
+            tdhmax[V] = self.coeff_tdh[V][0]  # y-intercept of tdh vs lpm
+            powmin[V] = self.coeff_pow[V][0]
 
         # interpolation:
         # of Vmin vs tdh
@@ -200,11 +197,11 @@ class Pump:
 
             def tdh_funct(x):
                 # function tdh
-                return (coeffs['tdh'][V][0]*x**4
-                        + coeffs['tdh'][V][1]*x**3
+                return (coeffs['tdh'][V][0]
+                        + coeffs['tdh'][V][1]*x
                         + coeffs['tdh'][V][2]*x**2
-                        + coeffs['tdh'][V][3]*x
-                        + coeffs['tdh'][V][4])
+                        + coeffs['tdh'][V][3]*x**3
+                        + coeffs['tdh'][V][4]*x**4)
 
             # vectors of tdh and efficiency with lpm - ready to be printed
             tdh_x[V] = tdh_funct(lpm_x)
@@ -217,8 +214,10 @@ class Pump:
         for i, V in enumerate(self.voltage):  # for each voltage available :
             # get the next color to have the same color by voltage:
             col = next(ax1._get_lines.prop_cycler)['color']
-            plot(lpm_x, tdh_x[V], linestyle='-', linewidth=2, color=col,
-                 label=str(V)+'VDC')
+            plot(lpm_x, tdh_x[V], linestyle='--', linewidth=1.5, color=col,
+                 label=str(V)+'VDC extrapolated')
+            plot(self.lpm[V], self.tdh[V], linestyle='-', linewidth=2,
+                 color=col, label=str(V)+'VDC from specs')
         ax1.set_title(str(self.model) +
                       ' Flow rate curves Vs. Head')
         ax1.set_xlabel('lpm')
@@ -593,7 +592,7 @@ def get_data_pump(path):
 
 
 def specs_completeness(voltage, lpm, tdh, current,
-                           motor_electrical_architecture):
+                       motor_electrical_architecture):
     """
     Evaluates the completeness of the data of a pump.
 
@@ -657,15 +656,18 @@ def _curves_coeffs(lpm, tdh, watts):
     under the name 'self.coeff_tdh', 'self.coeff_pow'
     """
     def func_model(x, a, b, c, d, e):
-        return a*x**4+b*x**3+c*x**2+d*x+e
+        return a + b*x + c*x**2 + d*x**3 + e*x**4
 
     coeff_tdh = {}  # coeff from curve-fitting of tdh vs lpm
     coeff_pow = {}  # coeff from curve-fitting of power vs lpm
 
     for V in lpm:
         # curve-fit of tdh vs lpm
-        coeffs_tdh, matcov = opt.curve_fit(func_model, lpm[V],
-                                           tdh[V])
+        coeffs_tdh, matcov = opt.curve_fit(
+            func_model, lpm[V], tdh[V],
+            p0=[10, -1, -1, 0, 0],
+            bounds=([0, -np.inf, -np.inf, -np.inf, -np.inf],
+                    [np.inf, 0, 0, 0, 0]))
         coeff_tdh[V] = coeffs_tdh
 
         # curve-fit of power vs lpm
@@ -750,33 +752,33 @@ if __name__ == "__main__":
     pump1 = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
                  model='SCB_10')
 
-#    pump1 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
-#                           136],
-#                      24: [443, 432, 413, 401, 390, 382, 375, 371, 352, 345,
-#                           310]},
-#                 tdh={12: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
-#                           54.9, 61.0, 70.1],
-#                      24: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
-#                           54.9, 61.0, 70.1]},
-#                 current={24: [1.5, 1.7, 2.1, 2.4, 2.6, 2.8, 3.1, 3.3, 3.6,
-#                               3.8, 4.1],
-#                          12: [1.2, 1.5, 1.8, 2.0, 2.1, 2.4, 2.7, 3.0, 3.3,
-#                               3.4, 3.9]})
-
-    pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155],
+    pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
+                           136],
                       24: [443, 432, 413, 401, 390, 382, 375, 371, 352, 345,
                            310]},
                  tdh={12: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
-                           54.9, 61.0],
+                           54.9, 61.0, 70.1],
                       24: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
                            54.9, 61.0, 70.1]},
-                 current={12: [1.2, 1.5, 1.8, 2.0, 2.1, 2.4, 2.7, 3.0, 3.3,
-                               3.4],
-                          24: [1.5, 1.7, 2.1, 2.4, 2.6, 2.8, 3.1, 3.3, 3.6,
+                 current={24: [1.5, 1.7, 2.1, 2.4, 2.6, 2.8, 3.1, 3.3, 3.6,
                                3.8, 4.1],
-                          }, model='Shurflo_9325')
+                          12: [1.2, 1.5, 1.8, 2.0, 2.1, 2.4, 2.7, 3.0, 3.3,
+                               3.4, 3.9]}, model='Shurflo_9325')
 
-#    pump1.plot_tdh_Q()
+#    pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155],
+#                      24: [443, 432, 413, 401, 390, 382, 375, 371, 352, 345,
+#                           310]},
+#                 tdh={12: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
+#                           54.9, 61.0],
+#                      24: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
+#                           54.9, 61.0, 70.1]},
+#                 current={12: [1.2, 1.5, 1.8, 2.0, 2.1, 2.4, 2.7, 3.0, 3.3,
+#                               3.4],
+#                          24: [1.5, 1.7, 2.1, 2.4, 2.6, 2.8, 3.1, 3.3, 3.6,
+#                               3.8, 4.1],
+#                          }, model='Shurflo_9325')
+
+    pump1.plot_tdh_Q()
     pump2.plot_tdh_Q()
 
 ##%% set-up for following plots

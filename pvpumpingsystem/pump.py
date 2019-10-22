@@ -27,7 +27,7 @@ class Pump:
     """
     Class representing a pump.
 
-    Attribute:
+    Attributes
     ----------
         path: str,
             The path to the txt file with specifications. Can be given
@@ -45,8 +45,10 @@ class Pump:
         voltage: list
             list of voltage (the keys of preceding dictionaries) [V]
 
-
-        category: str,
+        motor_electrical_architecture: str,
+            'permanent_magnet', 'series_excited', 'shunt_excited',
+            'separately_excited'.
+        pump_category: str,
             centrifugal or positive displacement
         model: str
             name of the pump
@@ -61,12 +63,15 @@ class Pump:
 
         data extracted from datasheet :
             (voltage, lpm, tdh, current, watts, efficiency ).
+
+
     """
     _ids = count(1)
 
     def __init__(self, path='',
                  lpm=None, tdh=None, current=None,
-                 model=None, category=None,
+                 motor_electrical_architecture=None,
+                 pump_category=None, model=None,
                  price=None, power_rating=None,
                  controler=None, diameter_output=None):
 
@@ -81,7 +86,7 @@ class Pump:
             # retrieve pump data from txt datasheet given by path
             try:
                 self.voltage, self.lpm, self.tdh, self.current, \
-                    self.watts = getdatapump(path)
+                    self.watts = get_data_pump(path)
             except IOError:
                 print('The mentionned path does not exist, please select'
                       'another in the pop-up window.')
@@ -89,14 +94,19 @@ class Pump:
                 filepath = tkfile.askopenfilename()
                 self.path = filepath
                 self.voltage, self.lpm, self.tdh, self.current, \
-                    self.watts = getdatapump(path)
+                    self.watts = get_data_pump(path)
 
+        self.motor_electrical_architecture = motor_electrical_architecture
+        self.pump_category = pump_category
         self.model = model
-        self.category = category
         self.price = price
         self.power_rating = power_rating
         self.controler = controler
         self.diameter_output = diameter_output
+
+        self.data_completeness = specs_completeness(
+            self.voltage, self.lpm, self.tdh, self.current,
+            self.motor_electrical_architecture)
 
         self.coeff_pow = None
         self.coeff_tdh = None
@@ -105,48 +115,15 @@ class Pump:
 
     def __repr__(self):
         affich = "model :" + str(self.model) + \
-                 "\ncategory :" + str(self.category) + \
+                 "\npump_category :" + str(self.pump_category) + \
                  "\nprice :" + str(self.price) + \
                  "\npower rating (HP) :" + str(self.power_rating) + \
                  "\ncontroler :" + str(self.controler) + \
                  "\noutput diameter (inches) :" + str(self.diameter_output)
         return affich
 
-    def curves_coeffs(self):
-        """Compute curve-fitting coefficient from data for :
-            - tdh vs lpm
-            - power vs lpm
 
-        returns a dict of sub-dict :
-            -the first dict contains the 2 curves as keys : 'tdh','pow'
-            resp. for total dynamic head and power
-                -the sub-dicts contain the available voltage as keys, typically
-                '60','75','90','105','120'
-        These same 3 dictionnary are saved as attributes in the pump object,
-        under the name 'self.coeff_tdh', 'self.coeff_pow'
-        """
-        def func_model(x, a, b, c, d, e):
-            return a*x**4+b*x**3+c*x**2+d*x+e
-
-        self.coeff_tdh = {}  # coeff from curve-fitting of tdh vs lpm
-        self.coeff_pow = {}  # coeff from curve-fitting of power vs lpm
-
-        for V in self.voltage:
-            # curve-fit of tdh vs lpm
-            coeffs_tdh, matcov = opt.curve_fit(func_model, self.lpm[V],
-                                               self.tdh[V])
-            self.coeff_tdh[V] = coeffs_tdh
-
-            # curve-fit of power vs lpm
-            coeffs_P, matcov = opt.curve_fit(func_model, self.lpm[V],
-                                             self.watts[V])
-            self.coeff_pow[V] = coeffs_P
-
-        return {'tdh': self.coeff_tdh,
-                'pow': self.coeff_pow}
-
-
-    def startingVPI(self, tdh):
+    def startingVPI(self, tdh, motor_electrical_architecture):
         """
         ------------------------- TO CHECK !! -------------------------
         --------- consistant with results from functVforIH ??? --------
@@ -154,17 +131,27 @@ class Pump:
         Returns the required starting voltage, power and current
         for a specified tdh.
 
+        motor_electrical_architecture: str,
+            'permanent_magnet', 'series_excited', 'shunt_excited',
+            'separately_excited'. Names selected according to [1]
+
         returns :
             {'V':vmin,'P':pmin,'I':imin}
             vmin is :
                 None: if tdh out of the range of the pump
                 float: value of minimum starting voltage
 
+        References
+        ----------
+        [1] Singer and Appelbaum,"Starting characteristics of direct
+        current motors powered by solar cells", IEEE transactions on
+        energy conversion, vol8, 1993
+
         """
         raise NotImplementedError
 
         if self.coeff_tdh is None:
-            self.curves_coeffs()
+            self._curves_coeffs()
 
         tdhmax = {}
         powmin = {}
@@ -198,36 +185,29 @@ class Pump:
             imin = pmin/vmin
         return {'V': vmin, 'P': pmin, 'I': imin}
 
-
     def plot_tdh_Q(self):
         """Print the graph of tdh(in m) vs Q(in lpm)
         """
-        if self.coeff_eff is None:
-            self.curves_coeffs()
-            self.opti_zone()
+
+        coeffs = _curves_coeffs(self.lpm, self.tdh, self.watts)
 
         tdh_x = {}
-        eff_x = {}
         # greatest value of lpm encountered in data
         lpm_max = max(self.lpm[max(self.voltage)])
-        self.lpm_x = np.arange(0, lpm_max)  # vector of lpm
+        lpm_x = np.arange(0, lpm_max, step=lpm_max/10)  # vector of lpm
 
         for V in self.voltage:
-            def eff_funct(x):
-                # efficiency function
-                return self.coeff_eff[V][0]*x**4 + self.coeff_eff[V][1]*x**3 +\
-                        self.coeff_eff[V][2]*x**2 + self.coeff_eff[V][3]*x + \
-                        self.coeff_eff[V][4]
 
             def tdh_funct(x):
                 # function tdh
-                return self.coeff_tdh[V][0]*x**4 + self.coeff_tdh[V][1]*x**3 +\
-                        self.coeff_tdh[V][2]*x**2 + self.coeff_tdh[V][3]*x + \
-                        self.coeff_tdh[V][4]
+                return (coeffs['tdh'][V][0]*x**4
+                        + coeffs['tdh'][V][1]*x**3
+                        + coeffs['tdh'][V][2]*x**2
+                        + coeffs['tdh'][V][3]*x
+                        + coeffs['tdh'][V][4])
 
             # vectors of tdh and efficiency with lpm - ready to be printed
-            tdh_x[V] = tdh_funct(self.lpm_x)
-            eff_x[V] = eff_funct(self.lpm_x)
+            tdh_x[V] = tdh_funct(lpm_x)
 
         fig = plt.figure(facecolor='White')
         # add space in height between the subplots:
@@ -237,21 +217,15 @@ class Pump:
         for i, V in enumerate(self.voltage):  # for each voltage available :
             # get the next color to have the same color by voltage:
             col = next(ax1._get_lines.prop_cycler)['color']
-            plot(self.lpm_x, tdh_x[V], linestyle='-', linewidth=2, color=col,
+            plot(lpm_x, tdh_x[V], linestyle='-', linewidth=2, color=col,
                  label=str(V)+'VDC')
-            plot(self.lpm_x, eff_x[V], linestyle='--', linewidth=1, color=col,
-                 label='efficiency')
         ax1.set_title(str(self.model) +
-                      ' Courbes Debit Vs. Hauteur manometrique et efficiency')
+                      ' Flow rate curves Vs. Head')
         ax1.set_xlabel('lpm')
-        ax1.set_ylabel('Hauteur manometrique (m) / (%)')
-        ax1.set_ylim(0, max(tdh_x[max(self.voltage)]))
+        ax1.set_ylabel('Head (m)')
+        ax1.set_ylim(0, max(tdh_x[max(self.voltage)])*1.1)
         ax1.legend(loc='best')
         ax1.grid(True)
-        patches = []
-        patches.append(self.polygon)
-        collection = PatchCollection(patches, alpha=0.5)
-        ax1.add_collection(collection)
 
         ax2 = plt.subplot(2, 1, 2)
         for V in self.voltage:
@@ -260,7 +234,7 @@ class Pump:
         ax2.set_xlabel('lpm')
         ax2.set_ylabel('watts')
         ax2.set_title(str(self.model) +
-                      'Courbes Debit Vs. Puissance electrique')
+                      'Flow rate Vs. electrical power')
         ax2.grid(True)
         ax2.legend(loc='best')
 
@@ -304,7 +278,7 @@ class Pump:
         ectyp = np.sqrt(sum((dataz-datacheck)**2)/len(dataz))
 
         # domain computing
-        dom = domains(self.current, self.tdh)
+        dom = _domains(self.current, self.tdh)
         intervals = {'I': dom[0],
                      'H': dom[1]}
 
@@ -549,15 +523,15 @@ def get_watts_from_current(current_dict):
         as values.
 
     """
+    power_dict = {}
+    for voltage in current_dict:
+        power_list = list(np.array(current_dict[voltage])*voltage)
+        power_dict[voltage] = power_list
 
-    current_df = pd.DataFrame(current_dict)
-    watts_df = current_df*current_df.columns
-    watts_dict = watts_df.to_dict('list')
-
-    return watts_dict
+    return power_dict
 
 
-def getdatapump(path):
+def get_data_pump(path):
     """
     This function is used to load the pump data from the .txt file
     designated by the path. This .txt files has the
@@ -618,7 +592,92 @@ def getdatapump(path):
     return voltage, lpm, tdh, current, watts
 
 
-def domains(data_x, data_y):
+def specs_completeness(voltage, lpm, tdh, current,
+                           motor_electrical_architecture):
+    """
+    Evaluates the completeness of the data of a pump.
+
+    Returns
+    -------
+    ditionary with following keys:
+        * voltage: float
+            number of voltage for which data are given
+        * lpm_min: float
+            Ratio between min flow_rate given and maximum.
+            Should be ideally 0.
+        * head_min:float
+            Ratio between min head given and maximum.
+            Should be ideally 0.
+        * elec_archi: boolean
+            A valid electrical architecture for the motor is given
+    """
+
+    valid_elec_archi = (motor_electrical_architecture in (
+            'permanent_magnet', 'series_excited', 'shunt_excited',
+            'separately_excited'))
+    volt_nb = len(voltage)
+    lpm_ratio = min_in_values(lpm)/max_in_values(lpm)
+    head_ratio = min_in_values(tdh)/max_in_values(tdh)
+
+    return {'voltage': volt_nb,
+            'lpm_min': lpm_ratio,
+            'head_min': head_ratio,
+            'elec_archi': valid_elec_archi}
+
+
+def max_in_values(data):
+    """Finds the maximum in the values of a dict"""
+    data_flat = []
+    for key in data.keys():
+        for elt in data[key]:
+            data_flat.append(elt)
+    return max(data_flat)
+
+
+def min_in_values(data):
+    """Finds the minimum in the values of a dict"""
+    data_flat = []
+    for key in data.keys():
+        for elt in data[key]:
+            data_flat.append(elt)
+    return min(data_flat)
+
+
+def _curves_coeffs(lpm, tdh, watts):
+    """Compute curve-fitting coefficient from data for :
+        - tdh vs lpm
+        - power vs lpm
+
+    returns a dict of sub-dict :
+        -the first dict contains the 2 curves as keys : 'tdh','pow'
+        resp. for total dynamic head and power
+            -the sub-dicts contain the available voltage as keys, typically
+            '60','75','90','105','120'
+    These same 3 dictionnary are saved as attributes in the pump object,
+    under the name 'self.coeff_tdh', 'self.coeff_pow'
+    """
+    def func_model(x, a, b, c, d, e):
+        return a*x**4+b*x**3+c*x**2+d*x+e
+
+    coeff_tdh = {}  # coeff from curve-fitting of tdh vs lpm
+    coeff_pow = {}  # coeff from curve-fitting of power vs lpm
+
+    for V in lpm:
+        # curve-fit of tdh vs lpm
+        coeffs_tdh, matcov = opt.curve_fit(func_model, lpm[V],
+                                           tdh[V])
+        coeff_tdh[V] = coeffs_tdh
+
+        # curve-fit of power vs lpm
+        coeffs_P, matcov = opt.curve_fit(func_model, lpm[V],
+                                         watts[V])
+        coeff_pow[V] = coeffs_P
+
+    return {'tdh': coeff_tdh,
+            'pow': coeff_pow}
+
+
+def _domains(data_x, data_y):
     """
     Function giving the domain of data x depending on data y, and vice versa.
     """
@@ -627,22 +686,6 @@ def domains(data_x, data_y):
         '''2nd degree model for linear regression of data_y(x) and data_y(x)'''
         x = input_val
         return a + b*x + c*x**2
-
-    def max_in_values(data):
-        """Finds the maximum in the values of a dict"""
-        data_flat = []
-        for key in data.keys():
-            for elt in data[key]:
-                data_flat.append(elt)
-        return max(data_flat)
-
-    def min_in_values(data):
-        """Finds the minimum in the values of a dict"""
-        data_flat = []
-        for key in data.keys():
-            for elt in data[key]:
-                data_flat.append(elt)
-        return min(data_flat)
 
     # domains of I and tdh depending on each other
     x_tips = []
@@ -656,7 +699,6 @@ def domains(data_x, data_y):
                     (min(y_tips) != max(y_tips))
 
     if length > 2 and variation_x_y:
-
         param_y, pcov_y = opt.curve_fit(funct_model_intervals_order2,
                                         x_tips, y_tips)
         param_x, pcov_x = opt.curve_fit(funct_model_intervals_order2,
@@ -680,25 +722,25 @@ def domains(data_x, data_y):
 
         def interval_x(y):
             "Interval on x ,dependent of y"
-            return [max(a_x + b_x*y, min(data_x)),
-                    max(data_x)]
+            return [max(a_x + b_x*y, min_in_values(data_x)),
+                    max_in_values(data_x)]
 
         b_y = (y_tips[1]-y_tips[0])/(x_tips[1]-x_tips[0])
         a_y = y_tips[0] - b_y*x_tips[0]
 
         def interval_y(x):
             "Interval on y, dependent of x"
-            return [max(a_y + b_y*x, min(x)),
-                    max(x)]
+            return [max(a_y + b_y*x, min_in_values(data_y)),
+                    max_in_values(data_y)]
 
     else:
         def interval_x(*args):
             "Interval on x, independent of y"
-            return [min(data_x), max(data_x)]
+            return [min_in_values(data_x), max_in_values(data_x)]
 
         def interval_y(*args):
             "Interval on y, independent of x"
-            return [min(data_y), max(data_y)]
+            return [min_in_values(data_y), max_in_values(data_y)]
 
     return interval_x, interval_y
 
@@ -708,51 +750,67 @@ if __name__ == "__main__":
     pump1 = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
                  model='SCB_10')
 
-    pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
-                           136],
+#    pump1 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
+#                           136],
+#                      24: [443, 432, 413, 401, 390, 382, 375, 371, 352, 345,
+#                           310]},
+#                 tdh={12: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
+#                           54.9, 61.0, 70.1],
+#                      24: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
+#                           54.9, 61.0, 70.1]},
+#                 current={24: [1.5, 1.7, 2.1, 2.4, 2.6, 2.8, 3.1, 3.3, 3.6,
+#                               3.8, 4.1],
+#                          12: [1.2, 1.5, 1.8, 2.0, 2.1, 2.4, 2.7, 3.0, 3.3,
+#                               3.4, 3.9]})
+
+    pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155],
                       24: [443, 432, 413, 401, 390, 382, 375, 371, 352, 345,
                            310]},
                  tdh={12: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
-                           54.9, 61.0, 70.1],
+                           54.9, 61.0],
                       24: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
                            54.9, 61.0, 70.1]},
-                 current={24: [1.5, 1.7, 2.1, 2.4, 2.6, 2.8, 3.1, 3.3, 3.6,
+                 current={12: [1.2, 1.5, 1.8, 2.0, 2.1, 2.4, 2.7, 3.0, 3.3,
+                               3.4],
+                          24: [1.5, 1.7, 2.1, 2.4, 2.6, 2.8, 3.1, 3.3, 3.6,
                                3.8, 4.1],
-                          12: [1.2, 1.5, 1.8, 2.0, 2.1, 2.4, 2.7, 3.0, 3.3,
-                               3.4, 3.9]})
+                          }, model='Shurflo_9325')
 
-#%% set-up for following plots
-    vol = []
-    tdh = []
-    cur = []
-    lpm = []
-    power = []
-    for V in pump1.voltage:
-        for i, I in enumerate(pump1.current[V]):
-            vol.append(V)
-            cur.append(I)
-            tdh.append(pump1.tdh[V][i])
-            lpm.append(pump1.lpm[V][i])
-            power.append(pump1.watts[V][i])
+#    pump1.plot_tdh_Q()
+    pump2.plot_tdh_Q()
 
-
-#%% plot of functVforIH
-    f1, stddev, intervals = pump1.functVforIH()
-    vol_check = []
-    for i, I in enumerate(cur):
-        vol_check.append(f1(I, tdh[i], error_raising=False))
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d', title='Voltage as a function of'
-                         ' current (A) and static head (m)')
-    ax.scatter(cur, tdh, vol, label='from data')
-    ax.scatter(cur, tdh, vol_check, label='from curve fitting')
-    ax.set_xlabel('current')
-    ax.set_ylabel('head')
-    ax.set_zlabel('voltage V')
-    ax.legend(loc='lower left')
-    plt.show()
-    print('std dev on V:', stddev)
-    print('V for IH=(4,25): {0:.2f}'.format(f1(4, 25)))
+##%% set-up for following plots
+#    vol = []
+#    tdh = []
+#    cur = []
+#    lpm = []
+#    power = []
+#    for V in pump1.voltage:
+#        for i, I in enumerate(pump1.current[V]):
+#            vol.append(V)
+#            cur.append(I)
+#            tdh.append(pump1.tdh[V][i])
+#            lpm.append(pump1.lpm[V][i])
+#            power.append(pump1.watts[V][i])
+#
+#
+##%% plot of functVforIH
+#    f1, stddev, intervals = pump1.functVforIH()
+#    vol_check = []
+#    for i, I in enumerate(cur):
+#        vol_check.append(f1(I, tdh[i], error_raising=False))
+#    fig = plt.figure()
+#    ax = fig.add_subplot(111, projection='3d', title='Voltage as a function of'
+#                         ' current (A) and static head (m)')
+#    ax.scatter(cur, tdh, vol, label='from data')
+#    ax.scatter(cur, tdh, vol_check, label='from curve fitting')
+#    ax.set_xlabel('current')
+#    ax.set_ylabel('head')
+#    ax.set_zlabel('voltage V')
+#    ax.legend(loc='lower left')
+#    plt.show()
+#    print('std dev on V:', stddev)
+#    print('V for IH=(4,25): {0:.2f}'.format(f1(4, 25)))
 
 ##%% plot of functIforVH
 #    f1, stddev, intervals = pump1.functIforVH()

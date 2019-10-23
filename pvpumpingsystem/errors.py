@@ -38,3 +38,9 @@ class LocationError(Exception):
     """Raised when the location object lacks some informations.
     """
     pass
+
+
+class InsufficientDataError(Exception):
+    """Raised when the pump object lacks some informations.
+    """
+    pass

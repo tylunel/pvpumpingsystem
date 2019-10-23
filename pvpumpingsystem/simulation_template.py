@@ -7,6 +7,7 @@ Created on Wed Oct 16 17:11:38 2019
 
 import matplotlib.pyplot as plt
 import pvlib
+import pandas as pd
 
 import pump as pp
 import pipenetwork as pn
@@ -15,6 +16,36 @@ import consumption as cs
 import pvpumpsystem as pvps
 
 
+# %% def of fixture
+
+weather_denver = ('https://energyplus.net/weather-download/' +
+                  'north_and_central_america_wmo_region_4/USA/CO/' +
+                  'USA_CO_Denver.Intl.AP.725650_TMY3/' +
+                  'USA_CO_Denver.Intl.AP.725650_TMY3.epw')
+
+pump_sunpump = pp.Pump(path="pumps_files/SCB_10_150_120_BL.txt",
+                       model='SCB_10')
+pump_shurflo = pp.Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163,
+                                 155, 136],
+                            24: [443, 432, 413, 401, 390, 382, 375, 371, 352,
+                                 345, 310]},
+                       tdh={12: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
+                                 54.9, 61.0, 70.1],
+                            24: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
+                                 54.9, 61.0, 70.1]},
+                       current={12: [1.2, 1.5, 1.8, 2.0, 2.1, 2.4, 2.7, 3.0,
+                                     3.3, 3.4, 3.9],
+                                24: [1.5, 1.7, 2.1, 2.4, 2.6, 2.8, 3.1, 3.3,
+                                     3.6, 3.8, 4.1]
+                                }, model='Shurflo_9325',
+                       motor_electrical_architecture='permanent_magnet')
+
+M_s = 1
+M_p = 1
+weather_path = weather_denver
+pump1 = pump_shurflo
+
+# %% modeling steps
 CECMOD = pvlib.pvsystem.retrieve_sam('cecmod')
 
 glass_params = {'K': 4, 'L': 0.002, 'n': 1.526}
@@ -24,18 +55,14 @@ pvsys1 = pvlib.pvsystem.PVSystem(
             module=CECMOD.Kyocera_Solar_KU270_6MCA,
             module_parameters={**dict(CECMOD.Kyocera_Solar_KU270_6MCA),
                                **glass_params},
-            modules_per_string=3, strings_per_inverter=1,
+            modules_per_string=M_s, strings_per_inverter=M_p,
             inverter=None, inverter_parameters={'pdc0': 700},
             racking_model='open_rack_cell_glassback',
             losses_parameters=None, name=None
             )
 
 weatherdata1, metadata1 = pvlib.iotools.epw.read_epw(
-    'https://energyplus.net/weather-download/' +
-    'north_and_central_america_wmo_region_4/USA/CO/' +
-    'USA_CO_Denver.Intl.AP.725650_TMY3/' +
-    'USA_CO_Denver.Intl.AP.725650_TMY3.epw',
-    coerce_year=2005)
+    weather_path, coerce_year=2005)
 
 locat1 = pvlib.location.Location.from_epw(metadata1)
 
@@ -52,8 +79,6 @@ chain1 = pvlib.modelchain.ModelChain(
 
 chain1.run_model(times=weatherdata1.index, weather=weatherdata1)
 
-pump1 = pp.Pump(path="pumps_files/SCB_10_150_120_BL.txt",
-                model='SCB_10')
 pipes1 = pn.PipeNetwork(40, 100, 0.08, material='glass', optimism=True)
 consumption1 = cs.Consumption(constant_flow=1)
 reservoir1 = rv.Reservoir(10000, 0)
@@ -61,41 +86,66 @@ reservoir1 = rv.Reservoir(10000, 0)
 pvps1 = pvps.PVPumpSystem(chain1, pump1, coupling='mppt', pipes=pipes1,
                           consumption=consumption1, reservoir=reservoir1)
 
-#iv = pvps1.functioning_point_noiteration(plot=True)
-pvps1.calc_flow()
-pvps1.calc_efficiency()
+# %% comparison mppt direct coupling
+res1 = pvps.calc_flow_directly_coupled(chain1, pump1, pipes1, atol=0.01,
+                                       stop=8760)
+res2 = pvps.calc_flow_mppt_coupled(chain1, pump1, pipes1, atol=0.01,
+                                   stop=8760)
+compare = pd.DataFrame({'direct1': res1.Qlpm,
+                        'mppt': res2.Qlpm})
+eff1 = pvps1.calc_efficiency()
+eff2 = pvps1.calc_efficiency()
+
+# %% figures
+plt.figure()
+plt.plot(pvps1.efficiency.index, pvps1.efficiency.electric_power)
+plt.title('Electric power in vs time')
+
+plt.figure()
+plt.plot(pvps1.efficiency.index, pvps1.modelchain.effective_irradiance)
+plt.title('Effective irradiance vs time')
+
+# %% water volume in tank and flow rate vs time
 pvps1.calc_reservoir()
 
+fig, ax1 = plt.subplots()
 
-#    print(chain1.effective_irradiance.loc[chain1.effective_irradiance<0])
+ax1.set_xlabel('time')
+ax1.set_ylabel('Water volume in tank [L]', color='r')
+ax1.plot(pvps1.water_stored.index, pvps1.water_stored.volume, color='r',
+         linewidth=1)
+ax1.tick_params(axis='y', labelcolor='r')
 
-#    res1 = calc_flow_directly_coupled(chain1, pump1, pipes1, atol=0.01,
-#                                      stop=8760)
-#    res2 = calc_flow_mppt_coupled(chain1, pump1, pipes1, atol=0.01,
-#                                  stop=8760)
-#    compare = pd.DataFrame({'direct1': res1.Qlpm,
-#                            'mppt': res2.Qlpm})
-#    eff1 = calc_efficiency(res1, chain1.effective_irradiance, pv_area)
-#    eff2 = calc_efficiency(res2, chain1.effective_irradiance, pv_area)
+ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
 
-#
-##    plt.plot(pvps1.water_stored.index, pvps1.water_stored.volume)
-##    plt.plot(pvps1.efficiency.index, pvps1.efficiency.electric_power)
-##    plt.plot(pvps1.efficiency.index, pvps1.flow.Qlpm)
-##    plt.plot(pvps1.efficiency.index, pvps1.modelchain.effective_irradiance)
-#
-#    fig, ax1 = plt.subplots()
-#
-#    ax1.set_xlabel('time')
-#    ax1.set_ylabel('Water volume in tank [L]', color='r')
-#    ax1.plot(pvps1.water_stored.index, pvps1.water_stored.volume, color='r')
-#    ax1.tick_params(axis='y', labelcolor='r')
-#
-#    ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
-#
-#    ax2.set_ylabel('Pump output flow-rate [L/min]', color='b')
-#    ax2.plot(pvps1.efficiency.index, pvps1.flow.Qlpm, color='b')
-#    ax2.tick_params(axis='y', labelcolor='b')
-#
-#    fig.tight_layout()  # otherwise the right y-label is slightly clipped
-#    plt.show()
+ax2.set_ylabel('Pump output flow-rate [L/min]', color='b')
+ax2.plot(pvps1.efficiency.index, pvps1.flow.Qlpm, color='b',
+         linewidth=1)
+ax2.tick_params(axis='y', labelcolor='b')
+
+fig.tight_layout()  # otherwise the right y-label is slightly clipped
+plt.show()
+
+# %% find unused electricity
+electric_power = pvps1.efficiency.electric_power
+flowrate = pvps1.flow.Qlpm
+unused_power = electric_power.loc[electric_power > 0].loc[flowrate == 0]
+used_power = electric_power.loc[electric_power > 0].loc[flowrate != 0]
+total_unused_power_Wh = sum(unused_power)
+total_used_power_Wh = sum(used_power)
+
+total_pumped_water_L = sum(flowrate*60)
+
+# potabilization of freshwater polluted from pathogen us bacteria can
+# be obtained with MF-UF that requires low energy consumption: 1.2 kWh/m3
+# or 1.2 Wh/L according to :
+# 'Water Purification-Desalination with membrane technology supplied
+# with renewable energy', Massimo Pizzichini, Claudio Russo
+ratio_that_can_be_potabilized = ((total_unused_power_Wh / 1.2) /
+                                 total_pumped_water_L)
+# creuser avec ajout de cette machine sur installation:
+# https://lacentrale-eco.com/fr/traitement-eau-fr/eau-domestique/traitement-uv-maison/platine-uv/platine-dom-de-traitement-uv-kit-complet-30w-ou-55w-jusqua-2-55-m-h.html
+
+# with 4.2kJ/kg/K, water temperature can be increased of 50K with 58.5 Wh/L
+ratio_that_can_be_heated_to_50K = ((total_unused_power_Wh / 58.5) /
+                                   total_pumped_water_L)

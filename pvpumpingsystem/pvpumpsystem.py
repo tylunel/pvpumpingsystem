@@ -35,11 +35,12 @@ class PVPumpSystem(object):
             - consumption: class Consumption
 
     """
-    def __init__(self, modelchain, motorpump, coupling='mppt',
+    def __init__(self, modelchain, motorpump, coupling='mppt', mppt=None,
                  pipes=None, reservoir=None, consumption=None, idname=None):
         self.modelchain = modelchain  # instance of PVArray
         self.motorpump = motorpump  # instance of Pump
         self.coupling = coupling
+        self.mppt = mppt
 
         if pipes is None:
             self.pipes = pn.PipeNetwork(0, 0, 0.1)  # system with null length
@@ -209,6 +210,9 @@ class PVPumpSystem(object):
         M_p = self.modelchain.system.strings_per_inverter
         pv_area = module_area * M_s * M_p
 
+        if self.flow is None:
+            self.calc_flow()
+
         self.efficiency = calc_efficiency(self.flow,
                                           self.modelchain.effective_irradiance,
                                           pv_area)
@@ -218,6 +222,7 @@ class PVPumpSystem(object):
         """
         if self.flow is None:
             self.calc_flow()
+
         self.water_stored = calc_reservoir(self.reservoir, self.flow.Qlpm,
                                            self.consumption.flow_rate.Qlpm)
 
@@ -551,7 +556,7 @@ def calc_flow_directly_coupled(modelchain, motorpump, pipes,
     return pdresult
 
 
-def calc_flow_mppt_coupled(modelchain, motorpump, pipes,
+def calc_flow_mppt_coupled(modelchain, motorpump, pipes, mppt=None,
                            atol=0.1,
                            stop=8760):
     """Function computing the flow at the output of the PVPS.
@@ -594,8 +599,8 @@ def calc_flow_mppt_coupled(modelchain, motorpump, pipes,
 
     for i, power in tqdm.tqdm(enumerate(
             modelchain.dc.p_mp[0:stop]),
-                                      desc='Computing of Q',
-                                      total=stop):
+                              desc='Computing of Q',
+                              total=stop):
 
         Qlpm = 1
         Qlpmnew = 0

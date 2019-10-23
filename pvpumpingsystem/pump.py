@@ -19,6 +19,7 @@ import scipy.optimize as opt
 import scipy.interpolate as spint
 
 from pvpumpingsystem import errors
+from pvpumpingsystem import function_models
 
 
 class Pump:
@@ -106,8 +107,10 @@ class Pump:
             self.voltage, self.lpm, self.tdh, self.current,
             self.motor_electrical_architecture)
 
-        self.coeff_pow = None
-        self.coeff_tdh = None
+        coeffs = _curves_coeffs(self.lpm, self.tdh, self.watts)
+        self.coeff_pow_with_lpm = coeffs['pow_with_lpm']
+        self.coeff_pow_with_tdh = coeffs['pow_with_tdh']
+        self.coeff_tdh_with_lpm = coeffs['tdh_with_lpm']
 
         self.id = next(self._ids)
 
@@ -147,40 +150,40 @@ class Pump:
         """
         raise NotImplementedError
 
-        if self.coeff_tdh is None:
-            self._curves_coeffs()
-
-        tdhmax = {}
-        powmin = {}
-        for V in self.voltage:
-            tdhmax[V] = self.coeff_tdh[V][0]  # y-intercept of tdh vs lpm
-            powmin[V] = self.coeff_pow[V][0]
-
-        # interpolation:
-        # of Vmin vs tdh
-        newf_t = spint.interp1d(list(tdhmax.values()), list(tdhmax.keys()),
-                                kind='cubic')
-        # of power vs V
-        newf_p = spint.interp1d(list(powmin.keys()), list(powmin.values()),
-                                kind='cubic')
-
-        if tdh < min(tdhmax.values()):
-            print('The resqueted tdh is out of the range for the pump,'
-                  'it is below the minimum tdh.')
-            vmin = 'below'
-            pmin = None
-            imin = None
-        elif tdh > max(tdhmax.values()):
-            print('The resqueted tdh is out of the range for the pump,'
-                  'it is above the maximum tdh delivered by the pump.')
-            vmin = 'above'
-            pmin = None
-            imin = None
-        else:
-            vmin = newf_t(tdh)
-            pmin = newf_p(vmin)
-            imin = pmin/vmin
-        return {'V': vmin, 'P': pmin, 'I': imin}
+#        if self.coeff_tdh is None:
+#            self._curves_coeffs()
+#
+#        tdhmax = {}
+#        powmin = {}
+#        for V in self.voltage:
+#            tdhmax[V] = self.coeff_tdh[V][0]  # y-intercept of tdh vs lpm
+#            powmin[V] = self.coeff_pow[V][0]
+#
+#        # interpolation:
+#        # of Vmin vs tdh
+#        newf_t = spint.interp1d(list(tdhmax.values()), list(tdhmax.keys()),
+#                                kind='cubic')
+#        # of power vs V
+#        newf_p = spint.interp1d(list(powmin.keys()), list(powmin.values()),
+#                                kind='cubic')
+#
+#        if tdh < min(tdhmax.values()):
+#            print('The resqueted tdh is out of the range for the pump,'
+#                  'it is below the minimum tdh.')
+#            vmin = 'below'
+#            pmin = None
+#            imin = None
+#        elif tdh > max(tdhmax.values()):
+#            print('The resqueted tdh is out of the range for the pump,'
+#                  'it is above the maximum tdh delivered by the pump.')
+#            vmin = 'above'
+#            pmin = None
+#            imin = None
+#        else:
+#            vmin = newf_t(tdh)
+#            pmin = newf_p(vmin)
+#            imin = pmin/vmin
+#        return {'V': vmin, 'P': pmin, 'I': imin}
 
     def plot_tdh_Q(self):
         """Print the graph of tdh(in m) vs Q(in lpm)
@@ -277,7 +280,7 @@ class Pump:
         ectyp = np.sqrt(sum((dataz-datacheck)**2)/len(dataz))
 
         # domain computing
-        dom = _domains(self.current, self.tdh)
+        dom = _domain_I_H(self.current, self.tdh, self.data_completeness)
         intervals = {'I': dom[0],
                      'H': dom[1]}
 
@@ -319,11 +322,6 @@ class Pump:
             return a + v1*x + v2*x**2 + v3*x**3 + \
                 h1*y + h2*y**2 + h3*y**3 + t1*x*y
 
-        def funct_model_intervals(input_val, a, b, c):
-            '''model for linear regression of tdh(V)'''
-            x = input_val
-            return a + b*x + c*x**2
-
         # loading of data
         vol = []  # voltage
         tdh = []  # total dynamic head
@@ -343,29 +341,10 @@ class Pump:
                                 para[4], para[5], para[6], para[7])
         ectyp = np.sqrt(sum((dataz-datacheck)**2)/len(dataz))
 
-        # domains of I and tdh depending on each other
-        data_v = []
-        data_tdh = []
-        for key in self.tdh.keys():
-            data_v.append(key)
-            data_tdh.append(max(self.tdh[key]))
-        param_tdh, pcov_tdh = opt.curve_fit(funct_model_intervals,
-                                            data_v, data_tdh)
-        param_v, pcov_v = opt.curve_fit(funct_model_intervals,
-                                        data_tdh, data_v)
-
-        def interval_v(tdh):
-            "Interval on v depending on tdh"
-            return [max(funct_model_intervals(tdh, *param_v), min(vol)),
-                    max(vol)]
-
-        def interval_tdh(v):
-            "Interval on tdh depending on v"
-            return [0, min(max(funct_model_intervals(v, *param_tdh), 0),
-                           max(tdh))]
         # domain of V and tdh and gathering in one single variable
-        intervals = {'V': interval_v,
-                     'H': interval_tdh}
+        dom = _domain_V_H(self.tdh, self.data_completeness)
+        intervals = {'V': dom[0],
+                     'H': dom[1]}
 
         def functI(V, H, error_raising=True):
             """Function giving voltage V according to current I and tdh H.
@@ -375,16 +354,16 @@ class Pump:
             corresponding.
             """
             if error_raising is True:
-                if not interval_v(H)[0] <= V <= interval_v(H)[1]:
+                if not intervals['V'](H)[0] <= V <= intervals['V'](H)[1]:
                     raise errors.VoltageError(
                             'V (={0}) is out of bounds. For this specific '
                             'head H (={1}), V should be in the interval {2}'
-                            .format(V, H, interval_v(H)))
-                if not interval_tdh(V)[0] <= H <= interval_tdh(V)[1]:
+                            .format(V, H, intervals['V'](H)))
+                if not intervals['H'](V)[0] <= H <= intervals['H'](V)[1]:
                     raise errors.HeadError(
                             'H (={0}) is out of bounds. For this specific '
                             'voltage V (={1}), H should be in the interval {2}'
-                            .format(H, V, interval_tdh(V)))
+                            .format(H, V, intervals['H'](V)))
             return para[0] + para[1]*V + para[2]*V**2 + para[3]*V**3 + \
                 para[4]*H + para[5]*H**2 + para[6]*H**3 + para[7]*V*H
 
@@ -615,11 +594,16 @@ def specs_completeness(voltage, lpm, tdh, current,
             'permanent_magnet', 'series_excited', 'shunt_excited',
             'separately_excited'))
     volt_nb = len(voltage)
-    lpm_ratio = min_in_values(lpm)/max_in_values(lpm)
+    # computing of mean lpm completeness
+    lpm_ratio = []
+    for v in lpm:
+        lpm_ratio.append(min(lpm[v])/max(lpm[v]))
+    mean_lpm_ratio = np.mean(lpm_ratio)
+
     head_ratio = min_in_values(tdh)/max_in_values(tdh)
 
     return {'voltage': volt_nb,
-            'lpm_min': lpm_ratio,
+            'lpm_min': mean_lpm_ratio,
             'head_min': head_ratio,
             'elec_archi': valid_elec_archi}
 
@@ -658,8 +642,9 @@ def _curves_coeffs(lpm, tdh, watts):
     def func_model(x, a, b, c, d, e):
         return a + b*x + c*x**2 + d*x**3 + e*x**4
 
-    coeff_tdh = {}  # coeff from curve-fitting of tdh vs lpm
-    coeff_pow = {}  # coeff from curve-fitting of power vs lpm
+    coeff_tdh_with_lpm = {}  # coeff from curve-fitting of tdh vs lpm
+    coeff_pow_with_lpm = {}  # coeff from curve-fitting of power vs lpm
+    coeff_pow_with_tdh = {}  # coeff from curve-fitting of power vs tdh
 
     for V in lpm:
         # curve-fit of tdh vs lpm
@@ -668,91 +653,123 @@ def _curves_coeffs(lpm, tdh, watts):
             p0=[10, -1, -1, 0, 0],
             bounds=([0, -np.inf, -np.inf, -np.inf, -np.inf],
                     [np.inf, 0, 0, 0, 0]))
-        coeff_tdh[V] = coeffs_tdh
+        coeff_tdh_with_lpm[V] = coeffs_tdh
 
         # curve-fit of power vs lpm
-        coeffs_P, matcov = opt.curve_fit(func_model, lpm[V],
-                                         watts[V])
-        coeff_pow[V] = coeffs_P
+        coeffs_P, matcov = opt.curve_fit(func_model, lpm[V], watts[V])
+        coeff_pow_with_lpm[V] = coeffs_P
 
-    return {'tdh': coeff_tdh,
-            'pow': coeff_pow}
+        # curve-fit of power vs lpm
+        coeffs_P, matcov = opt.curve_fit(func_model, tdh[V], watts[V])
+        coeff_pow_with_tdh[V] = coeffs_P
+
+    return {'tdh_with_lpm': coeff_tdh_with_lpm,
+            'pow_with_lpm': coeff_pow_with_lpm,
+            'pow_with_tdh': coeff_pow_with_tdh}
 
 
-def _domains(data_x, data_y):
+def _domain_I_H(data_cur, data_tdh, data_completeness):
     """
-    Function giving the domain of data x depending on data y, and vice versa.
+    Function giving the domain of cur depending on tdh, and vice versa.
+
     """
 
-    def funct_model_intervals_order2(input_val, a, b, c):
-        '''2nd degree model for linear regression of data_y(x) and data_y(x)'''
+    def funct_model_intervals(input_val, a, b, c):
+        '''2nd degree model for linear regression of data_tdh(x)
+        and data_tdh(x)'''
         x = input_val
         return a + b*x + c*x**2
 
     # domains of I and tdh depending on each other
     x_tips = []
     y_tips = []
-    for key in data_y.keys():
-        x_tips.append(min(data_x[key]))
-        y_tips.append(max(data_y[key]))
+    for v in data_tdh:
+        x_tips.append(min(data_cur[v]))
+        y_tips.append(max(data_tdh[v]))
 
-    length = len(x_tips)
-    variation_x_y = (min(x_tips) != max(x_tips)) and \
-                    (min(y_tips) != max(y_tips))
-
-    if length > 2 and variation_x_y:
-        param_y, pcov_y = opt.curve_fit(funct_model_intervals_order2,
+    if data_completeness['voltage'] > 2 and data_completeness['lpm_min'] == 0:
+        # case working fine for SunPumps - not sure about complete data from
+        # other manufacturer
+        param_y, pcov_y = opt.curve_fit(funct_model_intervals,
                                         x_tips, y_tips)
-        param_x, pcov_x = opt.curve_fit(funct_model_intervals_order2,
+        param_x, pcov_x = opt.curve_fit(funct_model_intervals,
                                         y_tips, x_tips)
 
         def interval_x(y):
             "Interval on x depending on y"
-            return [max(funct_model_intervals_order2(y, *param_x),
-                        min_in_values(data_x)),
-                    max_in_values(data_x)]
+            return [max(funct_model_intervals(y, *param_x),
+                        min_in_values(data_cur)),
+                    max_in_values(data_cur)]
 
         def interval_y(x):
             "Interval on y depending on x"
-            return [0, min(max(funct_model_intervals_order2(x, *param_y),
+            return [0, min(max(funct_model_intervals(x, *param_y),
                                0),
-                           max_in_values(data_y))]
-
-    elif length == 2 and variation_x_y:
-        b_x = (x_tips[1]-x_tips[0])/(y_tips[1]-y_tips[0])
-        a_x = x_tips[0] - b_x*y_tips[0]
-
-        def interval_x(y):
-            "Interval on x ,dependent of y"
-            return [max(a_x + b_x*y, min_in_values(data_x)),
-                    max_in_values(data_x)]
-
-        b_y = (y_tips[1]-y_tips[0])/(x_tips[1]-x_tips[0])
-        a_y = y_tips[0] - b_y*x_tips[0]
-
-        def interval_y(x):
-            "Interval on y, dependent of x"
-            return [max(a_y + b_y*x, min_in_values(data_y)),
-                    max_in_values(data_y)]
+                           max_in_values(data_tdh))]
 
     else:
-        def interval_x(*args):
+        # Would need deeper work to fully understand what are the limits
+        # on I and V depending on tdh, and how it affects lpm
+        def interval_cur(*args):
             "Interval on x, independent of y"
-            return [min_in_values(data_x), max_in_values(data_x)]
+            return [min_in_values(data_cur), max_in_values(data_cur)]
 
-        def interval_y(*args):
+        def interval_tdh(*args):
             "Interval on y, independent of x"
-            return [min_in_values(data_y), max_in_values(data_y)]
+            return [min_in_values(data_tdh), max_in_values(data_tdh)]
 
-    return interval_x, interval_y
+    return interval_cur, interval_tdh
+
+
+def _domain_V_H(data_tdh, data_completeness):
+    """
+    Function
+    """
+
+    data_v = []
+    tdh_tips = []
+    for v in data_tdh:
+        data_v.append(v)
+        tdh_tips.append(max(data_tdh[v]))
+
+    if data_completeness['voltage'] > 2 and data_completeness['lpm_min'] == 0:
+        # case working fine for SunPumps - not sure about comlpete data from
+        # other manufacturer
+        param_tdh, pcov_tdh = opt.curve_fit(function_models.polynomial_2,
+                                            data_v, tdh_tips)
+        param_v, pcov_v = opt.curve_fit(function_models.polynomial_2,
+                                        tdh_tips, data_v)
+
+        def interval_vol(tdh):
+            "Interval on v depending on tdh"
+            return [max(function_models.polynomial_2(tdh, *param_v), min(vol)),
+                    max(vol)]
+
+        def interval_tdh(v):
+            "Interval on tdh depending on v"
+            return [0, min(max(function_models.polynomial_2(v, *param_tdh), 0),
+                           max(tdh))]
+
+    else:
+        # Would need deeper work to fully understand what are the limits
+        # on I and V depending on tdh, and how it affects lpm
+        def interval_vol(*args):
+            "Interval on vol, independent of tdh"
+            return [min(data_v), max(data_v)]
+
+        def interval_tdh(*args):
+            "Interval on tdh, independent of vol"
+            return [min_in_values(data_tdh), max_in_values(data_tdh)]
+
+    return interval_vol, interval_tdh
 
 
 if __name__ == "__main__":
 #%% pump creation
-    pump1 = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
+    pump = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
                  model='SCB_10')
 
-    pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
+    pump1 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
                            136],
                       24: [443, 432, 413, 401, 390, 382, 375, 371, 352, 345,
                            310]},
@@ -760,10 +777,11 @@ if __name__ == "__main__":
                            54.9, 61.0, 70.1],
                       24: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
                            54.9, 61.0, 70.1]},
-                 current={24: [1.5, 1.7, 2.1, 2.4, 2.6, 2.8, 3.1, 3.3, 3.6,
-                               3.8, 4.1],
-                          12: [1.2, 1.5, 1.8, 2.0, 2.1, 2.4, 2.7, 3.0, 3.3,
-                               3.4, 3.9]}, model='Shurflo_9325')
+                 current={12: [1.2, 1.5, 1.8, 2.0, 2.1, 2.4, 2.7, 3.0, 3.3,
+                               3.4, 3.9],
+                          24: [1.5, 1.7, 2.1, 2.4, 2.6, 2.8, 3.1, 3.3, 3.6,
+                               3.8, 4.1]
+                          }, model='Shurflo_9325')
 
 #    pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155],
 #                      24: [443, 432, 413, 401, 390, 382, 375, 371, 352, 345,
@@ -778,60 +796,60 @@ if __name__ == "__main__":
 #                               3.8, 4.1],
 #                          }, model='Shurflo_9325')
 
-    pump1.plot_tdh_Q()
-    pump2.plot_tdh_Q()
+#    pump1.plot_tdh_Q()
+#    pump2.plot_tdh_Q()
 
-##%% set-up for following plots
-#    vol = []
-#    tdh = []
-#    cur = []
-#    lpm = []
-#    power = []
-#    for V in pump1.voltage:
-#        for i, I in enumerate(pump1.current[V]):
-#            vol.append(V)
-#            cur.append(I)
-#            tdh.append(pump1.tdh[V][i])
-#            lpm.append(pump1.lpm[V][i])
-#            power.append(pump1.watts[V][i])
-#
-#
-##%% plot of functVforIH
-#    f1, stddev, intervals = pump1.functVforIH()
-#    vol_check = []
-#    for i, I in enumerate(cur):
-#        vol_check.append(f1(I, tdh[i], error_raising=False))
-#    fig = plt.figure()
-#    ax = fig.add_subplot(111, projection='3d', title='Voltage as a function of'
-#                         ' current (A) and static head (m)')
-#    ax.scatter(cur, tdh, vol, label='from data')
-#    ax.scatter(cur, tdh, vol_check, label='from curve fitting')
-#    ax.set_xlabel('current')
-#    ax.set_ylabel('head')
-#    ax.set_zlabel('voltage V')
-#    ax.legend(loc='lower left')
-#    plt.show()
-#    print('std dev on V:', stddev)
-#    print('V for IH=(4,25): {0:.2f}'.format(f1(4, 25)))
+#%% set-up for following plots
+    vol = []
+    tdh = []
+    cur = []
+    lpm = []
+    power = []
+    for V in pump1.voltage:
+        for i, I in enumerate(pump1.current[V]):
+            vol.append(V)
+            cur.append(I)
+            tdh.append(pump1.tdh[V][i])
+            lpm.append(pump1.lpm[V][i])
+            power.append(pump1.watts[V][i])
 
-##%% plot of functIforVH
-#    f1, stddev, intervals = pump1.functIforVH()
-#    cur_check = []
-#    for i, V in enumerate(vol):
-#        cur_check.append(f1(V, tdh[i], error_raising=False))
-#
-#    fig = plt.figure()
-#    ax = fig.add_subplot(111, projection='3d', title='Current as a function of'
-#                         ' voltage (V) and static head (m)')
-#    ax.scatter(vol, tdh, cur, label='from data')
-#    ax.scatter(vol, tdh, cur_check, label='from curve fitting')
-#    ax.set_xlabel('voltage')
-#    ax.set_ylabel('head')
-#    ax.set_zlabel('current I')
-#    ax.legend(loc='lower left')
-#    plt.show()
-#    print('std dev on I: ', stddev)
-#    print('I for VH=(89,25): {0:.2f}'.format(f1(89, 25)))
+
+#%% plot of functVforIH
+    f1, stddev, intervals = pump1.functVforIH()
+    vol_check = []
+    for i, I in enumerate(cur):
+        vol_check.append(f1(I, tdh[i], error_raising=False))
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d', title='Voltage as a function of'
+                         ' current (A) and static head (m)')
+    ax.scatter(cur, tdh, vol, label='from data')
+    ax.scatter(cur, tdh, vol_check, label='from curve fitting')
+    ax.set_xlabel('current')
+    ax.set_ylabel('head')
+    ax.set_zlabel('voltage V')
+    ax.legend(loc='lower left')
+    plt.show()
+    print('std dev on V:', stddev)
+    print('V for IH=(4,25): {0:.2f}'.format(f1(4, 25)))
+
+#%% plot of functIforVH
+    f1, stddev, intervals = pump1.functIforVH()
+    cur_check = []
+    for i, V in enumerate(vol):
+        cur_check.append(f1(V, tdh[i], error_raising=False))
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d', title='Current as a function of'
+                         ' voltage (V) and static head (m)')
+    ax.scatter(vol, tdh, cur, label='from data')
+    ax.scatter(vol, tdh, cur_check, label='from curve fitting')
+    ax.set_xlabel('voltage')
+    ax.set_ylabel('head')
+    ax.set_zlabel('current I')
+    ax.legend(loc='lower left')
+    plt.show()
+    print('std dev on I: ', stddev)
+    print('I for VH=(20, 25): {0:.2f}'.format(f1(20, 25)))
 #
 #
 ##%% plot of functQforVH

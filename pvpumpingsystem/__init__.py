@@ -5,3 +5,4 @@ from pvpumpingsystem import pump
 from pvpumpingsystem import pvpumpsystem
 from pvpumpingsystem import reservoir
 from pvpumpingsystem import waterproperties
+from pvpumpingsystem import function_models

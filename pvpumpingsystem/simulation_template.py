@@ -74,7 +74,7 @@ chain1 = pvlib.modelchain.ModelChain(
             solar_position_method='nrel_numpy',
             airmass_model='kastenyoung1989',
             dc_model='desoto', ac_model='pvwatts', aoi_model='physical',
-            spectral_model='first_solar', temp_model='sapm',
+            spectral_model='first_solar', temperature_model='sapm',
             losses_model='pvwatts', name=None)
 
 chain1.run_model(times=weatherdata1.index, weather=weatherdata1)
@@ -141,11 +141,14 @@ total_pumped_water_L = sum(flowrate*60)
 # or 1.2 Wh/L according to :
 # 'Water Purification-Desalination with membrane technology supplied
 # with renewable energy', Massimo Pizzichini, Claudio Russo
-ratio_that_can_be_potabilized = ((total_unused_power_Wh / 1.2) /
+ratio_potabilized = ((total_unused_power_Wh / 1.2) /
                                  total_pumped_water_L)
 # creuser avec ajout de cette machine sur installation:
 # https://lacentrale-eco.com/fr/traitement-eau-fr/eau-domestique/traitement-uv-maison/platine-uv/platine-dom-de-traitement-uv-kit-complet-30w-ou-55w-jusqua-2-55-m-h.html
 
 # with 4.2kJ/kg/K, water temperature can be increased of 50K with 58.5 Wh/L
-ratio_that_can_be_heated_to_50K = ((total_unused_power_Wh / 58.5) /
+ratio_heated_50K = ((total_unused_power_Wh / 58.5) /
                                    total_pumped_water_L)
+
+print('ratio potabilized: ', ratio_potabilized,
+      '\nratio heated +50C:', ratio_heated_50K)

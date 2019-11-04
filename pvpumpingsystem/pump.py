@@ -9,6 +9,7 @@ module defining class and functions for modeling the pump.
 """
 import collections
 import numpy as np
+import pandas as pd
 import tkinter as tk
 import tkinter.filedialog as tkfile
 from itertools import count
@@ -73,6 +74,7 @@ class Pump:
                  pump_category=None, model=None,
                  price=None, power_rating=None,
                  controler=None, diameter_output=None):
+        # TODO: improve dataset readibility by putting it as DataFrame
 
         if None not in (lpm, tdh, current):
             # use input data to create pump object
@@ -107,10 +109,17 @@ class Pump:
             self.voltage, self.lpm, self.tdh, self.current,
             self.motor_electrical_architecture)
 
-        coeffs = _curves_coeffs(self.lpm, self.tdh, self.watts)
+        # coeffs not really directly used previously, changed for new ones
+        coeffs = _curves_coeffs_old(self.lpm, self.tdh, self.watts)
         self.coeff_pow_with_lpm = coeffs['pow_with_lpm']
         self.coeff_pow_with_tdh = coeffs['pow_with_tdh']
         self.coeff_tdh_with_lpm = coeffs['tdh_with_lpm']
+
+        # new ones
+#        coeffs = _curves_coeffs(self.lpm, self.tdh, self.watts)
+#        self.coeff_pow_with_lpm = coeffs[1]
+#        self.coeff_pow_with_tdh = coeffs['pow_with_tdh']
+#        self.coeff_tdh_with_lpm = coeffs['tdh_with_lpm']
 
         self.id = next(self._ids)
 
@@ -151,7 +160,7 @@ class Pump:
         raise NotImplementedError
 
 #        if self.coeff_tdh is None:
-#            self._curves_coeffs()
+#            self._curves_coeffs_old()
 #
 #        tdhmax = {}
 #        powmin = {}
@@ -189,7 +198,7 @@ class Pump:
         """Print the graph of tdh(in m) vs Q(in lpm)
         """
 
-        coeffs = _curves_coeffs(self.lpm, self.tdh, self.watts)
+        coeffs = _curves_coeffs_old(self.lpm, self.tdh, self.watts)
 
         tdh_x = {}
         # greatest value of lpm encountered in data
@@ -471,7 +480,8 @@ class Pump:
         """Function returning the data needed for plotting the IV curve at
         a given head.
 
-        returns:
+        Return
+        ------
             -dict with keys I and V, and the corresponding list of values
         """
 
@@ -584,9 +594,12 @@ def specs_completeness(voltage, lpm, tdh, current,
 
     Returns
     -------
-    ditionary with following keys:
+    dictionary with following keys:
         * voltage: float
             number of voltage for which data are given
+        * data_number: float
+            number of points for which lpm, current, voltage and head are
+            given
         * lpm_min: float
             Ratio between min flow_rate given and maximum.
             Should be ideally 0.
@@ -600,7 +613,9 @@ def specs_completeness(voltage, lpm, tdh, current,
     valid_elec_archi = (motor_electrical_architecture in (
             'permanent_magnet', 'series_excited', 'shunt_excited',
             'separately_excited'))
+
     volt_nb = len(voltage)
+
     # computing of mean lpm completeness
     lpm_ratio = []
     for v in lpm:
@@ -609,10 +624,19 @@ def specs_completeness(voltage, lpm, tdh, current,
 
     head_ratio = min_in_values(tdh)/max_in_values(tdh)
 
+    data_number = 0
+    for volt in lpm:
+        for i in lpm[volt]:
+            data_number += 1
+    # TODO: should add some lines to check that current and tdh have same shape
+    # than lpm
+
+
     return {'voltage': volt_nb,
             'lpm_min': mean_lpm_ratio,
             'head_min': head_ratio,
-            'elec_archi': valid_elec_archi}
+            'elec_archi': valid_elec_archi,
+            'data_number': data_number}
 
 
 def max_in_values(data):
@@ -633,8 +657,106 @@ def min_in_values(data):
     return min(data_flat)
 
 
-def _curves_coeffs(lpm, tdh, watts):
-    """Compute curve-fitting coefficient from data for :
+def _curves_coeffs(lpm, tdh, watts, method):
+    """Compute curve-fitting coefficient with different methods : Kou,
+    Hadj Arab or theoretical.
+
+    """
+    return None
+
+
+def _curves_coeffs_Kou98(lpm, tdh, current, data_number):
+    """Compute curve-fitting coefficient with method of Kou [1]
+
+    Parameters
+    ----------
+    lpm: dict
+        Dictionary of flow rates
+    tdh: dict
+        Dictionary of total dynamic head
+    current: dict
+        Dictionary of current
+
+
+    Reference
+    ---------
+    [1] Kou Q, Klein S.A. & Beckman W.A., "A method for estimating the
+    long-term performance of direct-coupled PV pumping systems", 1998,
+    Solar Energy
+
+    """
+
+#    coeff_tdh_with_lpm = {}  # coeff from curve-fitting of tdh vs lpm
+#    coeff_pow_with_lpm = {}  # coeff from curve-fitting of power vs lpm
+#    coeff_pow_with_tdh = {}  # coeff from curve-fitting of power vs tdh
+
+    if data_number >= 10:
+        funct_mod = function_models.polynomial_multivar_3_3_4
+    else:
+        raise errors.InsufficientDataError('Lack of information on lpm, '
+                                           'current or tdh for pump.')
+
+    # gathering of data
+    vol = []
+    head = []
+    cur = []
+    flow = []
+    for V in current:
+        for i, Idata in enumerate(current[V]):
+            vol.append(V)
+            head.append(tdh[V][i])
+            cur.append(Idata)
+            flow.append(lpm[V][i])
+
+    df = pd.DataFrame({'voltage': vol,
+                       'tdh': head,
+                       'current': cur,
+                       'flow': flow})
+
+    datax_df = df['current']
+    datay_df = df['tdh']
+    dataz_df = df['voltage']
+
+
+    dataxy_ar = [np.array(datax_df),
+                 np.array(datay_df)]
+    dataz_ar = np.array(dataz_df)
+
+    param, covmat = opt.curve_fit(funct_mod, dataxy_ar,
+                                  dataz_ar)
+
+    # comparison between linear reg and actual data : computing of RMSE
+    datacheck = funct_mod(dataxy_ar, *param)
+    rmse = np.sqrt(sum((dataz_ar-datacheck)**2)/len(dataz_ar))
+
+    return {'coeffs': param,
+            'rmse': rmse}
+
+#    for V in lpm:
+#        # curve-fit of tdh vs lpm
+#        coeffs_tdh, matcov = opt.curve_fit(
+#            func_model, lpm[V], tdh[V],
+#            p0=[10, -1, -1, 0, 0],
+#            bounds=([0, -np.inf, -np.inf, -np.inf, -np.inf],
+#                    [np.inf, 0, 0, 0, 0]))
+#        coeff_tdh_with_lpm[V] = coeffs_tdh
+#
+#        # curve-fit of power vs lpm
+#        coeffs_P, matcov = opt.curve_fit(func_model, lpm[V], watts[V])
+#        coeff_pow_with_lpm[V] = coeffs_P
+#
+#        # curve-fit of power vs lpm
+#        coeffs_P, matcov = opt.curve_fit(func_model, tdh[V], watts[V])
+#        coeff_pow_with_tdh[V] = coeffs_P
+#
+#    return {'tdh_with_lpm': coeff_tdh_with_lpm,
+#            'pow_with_lpm': coeff_pow_with_lpm,
+#            'pow_with_tdh': coeff_pow_with_tdh}
+
+
+def _curves_coeffs_old(lpm, tdh, watts):
+    """
+    Compute curve-fitting coefficient from data for :
         - tdh vs lpm
         - power vs lpm
 
@@ -772,7 +894,7 @@ if __name__ == "__main__":
     pump1 = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
                  model='SCB_10')
 
-    pump = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
+    pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
                           136],
                      24: [443, 432, 413, 401, 390, 382, 375, 371, 352, 345,
                           310]},
@@ -802,99 +924,102 @@ if __name__ == "__main__":
 
 #    pump1.plot_tdh_Q()
 #    pump2.plot_tdh_Q()
+    coeff = _curves_coeffs_Kou98(pump2.lpm, pump2.tdh, pump2.current,
+                                 pump2.data_completeness['data_number'])
+    print(coeff)
 
-# %% set-up for following plots
-    vol = []
-    tdh = []
-    cur = []
-    lpm = []
-    power = []
-    for V in pump1.voltage:
-        for i, I in enumerate(pump1.current[V]):
-            vol.append(V)
-            cur.append(I)
-            tdh.append(pump1.tdh[V][i])
-            lpm.append(pump1.lpm[V][i])
-            power.append(pump1.watts[V][i])
-
-
-# %% plot of functVforIH
-    f1, stddev, intervals = pump1.functVforIH()
-    vol_check = []
-    for i, I in enumerate(cur):
-        vol_check.append(f1(I, tdh[i], error_raising=False))
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d', title='Voltage as a function of'
-                         ' current (A) and static head (m)')
-    ax.scatter(cur, tdh, vol, label='from data')
-    ax.scatter(cur, tdh, vol_check, label='from curve fitting')
-    ax.set_xlabel('current')
-    ax.set_ylabel('head')
-    ax.set_zlabel('voltage V')
-    ax.legend(loc='lower left')
-    plt.show()
-    print('std dev on V:', stddev)
-#    print('V for IH=(4,25): {0:.2f}'.format(f1(4, 25)))
-
-# %% plot of functIforVH
-    f2, stddev, intervals = pump1.functIforVH()
-    cur_check = []
-    for i, V in enumerate(vol):
-        cur_check.append(f2(V, tdh[i], error_raising=False))
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d', title='Current as a function of'
-                         ' voltage (V) and static head (m)')
-    ax.scatter(vol, tdh, cur, label='from data')
-    ax.scatter(vol, tdh, cur_check, label='from curve fitting')
-    ax.set_xlabel('voltage')
-    ax.set_ylabel('head')
-    ax.set_zlabel('current I')
-    ax.legend(loc='lower left')
-    plt.show()
-    print('std dev on I: ', stddev)
-#    print('I for VH=(20, 25): {0:.2f}'.format(f2(20, 25)))
-
-
-# %% plot of functQforVH
-    f3, stddev = pump1.functQforVH()
-    lpm_check = []
-    for i, v in enumerate(vol):
-        try:
-            Q = f3(v, tdh[i])
-        except (errors.VoltageError, errors.HeadError):
-            Q = 0
-        lpm_check.append(Q)
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d', title='Q (lpm) as a function of'
-                         ' voltage (V) and static head (m)')
-    ax.scatter(vol, tdh, lpm, label='from data')
-    ax.scatter(vol, tdh, lpm_check, label='from curve fitting')
-    ax.set_xlabel('voltage')
-    ax.set_ylabel('head')
-    ax.set_zlabel('discharge Q')
-    ax.legend(loc='lower left')
-    plt.show()
-    print('std dev on Q calculated from V:', stddev)
-
-
-# %% plot of functQforPH
-    f4, stddev = pump1.functQforPH()
-    lpm_check = []
-    for i, po in enumerate(power):
-        try:
-            Q = f4(po, tdh[i])
-        except (errors.PowerError, errors.HeadError):
-            Q = 0
-        lpm_check.append(Q)
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d', title='Q (lpm) as a function of'
-                         ' power (W) and static head (m)')
-    ax.scatter(power, tdh, lpm, label='from data')
-    ax.scatter(power, tdh, lpm_check, label='from curve fitting')
-    ax.set_xlabel('power')
-    ax.set_ylabel('head')
-    ax.set_zlabel('discharge Q')
-    ax.legend(loc='lower left')
-    plt.show()
-    print('std dev on Q calculated from P: ', stddev)
+## %% set-up for following plots
+#    vol = []
+#    tdh = []
+#    cur = []
+#    lpm = []
+#    power = []
+#    for V in pump1.voltage:
+#        for i, I in enumerate(pump1.current[V]):
+#            vol.append(V)
+#            cur.append(I)
+#            tdh.append(pump1.tdh[V][i])
+#            lpm.append(pump1.lpm[V][i])
+#            power.append(pump1.watts[V][i])
+#
+#
+## %% plot of functVforIH
+#    f1, stddev, intervals = pump1.functVforIH()
+#    vol_check = []
+#    for i, I in enumerate(cur):
+#        vol_check.append(f1(I, tdh[i], error_raising=False))
+#    fig = plt.figure()
+#    ax = fig.add_subplot(111, projection='3d', title='Voltage as a function of'
+#                         ' current (A) and static head (m)')
+#    ax.scatter(cur, tdh, vol, label='from data')
+#    ax.scatter(cur, tdh, vol_check, label='from curve fitting')
+#    ax.set_xlabel('current')
+#    ax.set_ylabel('head')
+#    ax.set_zlabel('voltage V')
+#    ax.legend(loc='lower left')
+#    plt.show()
+#    print('std dev on V:', stddev)
+##    print('V for IH=(4,25): {0:.2f}'.format(f1(4, 25)))
+#
+## %% plot of functIforVH
+#    f2, stddev, intervals = pump1.functIforVH()
+#    cur_check = []
+#    for i, V in enumerate(vol):
+#        cur_check.append(f2(V, tdh[i], error_raising=False))
+#
+#    fig = plt.figure()
+#    ax = fig.add_subplot(111, projection='3d', title='Current as a function of'
+#                         ' voltage (V) and static head (m)')
+#    ax.scatter(vol, tdh, cur, label='from data')
+#    ax.scatter(vol, tdh, cur_check, label='from curve fitting')
+#    ax.set_xlabel('voltage')
+#    ax.set_ylabel('head')
+#    ax.set_zlabel('current I')
+#    ax.legend(loc='lower left')
+#    plt.show()
+#    print('std dev on I: ', stddev)
+##    print('I for VH=(20, 25): {0:.2f}'.format(f2(20, 25)))
+#
+#
+## %% plot of functQforVH
+#    f3, stddev = pump1.functQforVH()
+#    lpm_check = []
+#    for i, v in enumerate(vol):
+#        try:
+#            Q = f3(v, tdh[i])
+#        except (errors.VoltageError, errors.HeadError):
+#            Q = 0
+#        lpm_check.append(Q)
+#    fig = plt.figure()
+#    ax = fig.add_subplot(111, projection='3d', title='Q (lpm) as a function of'
+#                         ' voltage (V) and static head (m)')
+#    ax.scatter(vol, tdh, lpm, label='from data')
+#    ax.scatter(vol, tdh, lpm_check, label='from curve fitting')
+#    ax.set_xlabel('voltage')
+#    ax.set_ylabel('head')
+#    ax.set_zlabel('discharge Q')
+#    ax.legend(loc='lower left')
+#    plt.show()
+#    print('std dev on Q calculated from V:', stddev)
+#
+#
+## %% plot of functQforPH
+#    f4, stddev = pump1.functQforPH()
+#    lpm_check = []
+#    for i, po in enumerate(power):
+#        try:
+#            Q = f4(po, tdh[i])
+#        except (errors.PowerError, errors.HeadError):
+#            Q = 0
+#        lpm_check.append(Q)
+#    fig = plt.figure()
+#    ax = fig.add_subplot(111, projection='3d', title='Q (lpm) as a function of'
+#                         ' power (W) and static head (m)')
+#    ax.scatter(power, tdh, lpm, label='from data')
+#    ax.scatter(power, tdh, lpm_check, label='from curve fitting')
+#    ax.set_xlabel('power')
+#    ax.set_ylabel('head')
+#    ax.set_zlabel('discharge Q')
+#    ax.legend(loc='lower left')
+#    plt.show()
+#    print('std dev on Q calculated from P: ', stddev)

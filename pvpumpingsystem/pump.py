@@ -109,6 +109,22 @@ class Pump:
             self.voltage, self.lpm, self.tdh, self.current,
             self.motor_electrical_architecture)
 
+        # data in the form of DataFrame
+        vol = []
+        head = []
+        cur = []
+        flow = []
+        for V in self.current:
+            for i, Idata in enumerate(self.current[V]):
+                vol.append(V)
+                head.append(self.tdh[V][i])
+                cur.append(Idata)
+                flow.append(self.lpm[V][i])
+        self.specs_df = pd.DataFrame({'voltage': vol,
+                                      'tdh': head,
+                                      'current': cur,
+                                      'flow': flow})
+
         # coeffs not really directly used previously, changed for new ones
         coeffs = _curves_coeffs_old(self.lpm, self.tdh, self.watts)
         self.coeff_pow_with_lpm = coeffs['pow_with_lpm']
@@ -665,18 +681,13 @@ def _curves_coeffs(lpm, tdh, watts, method):
     return None
 
 
-def _curves_coeffs_Kou98(lpm, tdh, current, data_number):
+def _curves_coeffs_Kou98(specs_df, data_number):
     """Compute curve-fitting coefficient with method of Kou [1]
 
     Parameters
     ----------
-    lpm: dict
-        Dictionary of flow rates
-    tdh: dict
-        Dictionary of total dynamic head
-    current: dict
-        Dictionary of current
-
+    specs_df: pd.DataFrame
+        DataFrame with specs.
 
     Reference
     ---------
@@ -686,37 +697,15 @@ def _curves_coeffs_Kou98(lpm, tdh, current, data_number):
 
     """
 
-#    coeff_tdh_with_lpm = {}  # coeff from curve-fitting of tdh vs lpm
-#    coeff_pow_with_lpm = {}  # coeff from curve-fitting of power vs lpm
-#    coeff_pow_with_tdh = {}  # coeff from curve-fitting of power vs tdh
-
     if data_number >= 10:
         funct_mod = function_models.polynomial_multivar_3_3_4
     else:
         raise errors.InsufficientDataError('Lack of information on lpm, '
                                            'current or tdh for pump.')
 
-    # gathering of data
-    vol = []
-    head = []
-    cur = []
-    flow = []
-    for V in current:
-        for i, Idata in enumerate(current[V]):
-            vol.append(V)
-            head.append(tdh[V][i])
-            cur.append(Idata)
-            flow.append(lpm[V][i])
-
-    df = pd.DataFrame({'voltage': vol,
-                       'tdh': head,
-                       'current': cur,
-                       'flow': flow})
-
-    datax_df = df['current']
-    datay_df = df['tdh']
-    dataz_df = df['voltage']
-
+    datax_df = specs_df['current']
+    datay_df = specs_df['tdh']
+    dataz_df = specs_df['voltage']
 
     dataxy_ar = [np.array(datax_df),
                  np.array(datay_df)]
@@ -725,33 +714,12 @@ def _curves_coeffs_Kou98(lpm, tdh, current, data_number):
     param, covmat = opt.curve_fit(funct_mod, dataxy_ar,
                                   dataz_ar)
 
-    # comparison between linear reg and actual data : computing of RMSE
+    # computing of RMSE
     datacheck = funct_mod(dataxy_ar, *param)
     rmse = np.sqrt(sum((dataz_ar-datacheck)**2)/len(dataz_ar))
 
     return {'coeffs': param,
             'rmse': rmse}
-
-#    for V in lpm:
-#        # curve-fit of tdh vs lpm
-#        coeffs_tdh, matcov = opt.curve_fit(
-#            func_model, lpm[V], tdh[V],
-#            p0=[10, -1, -1, 0, 0],
-#            bounds=([0, -np.inf, -np.inf, -np.inf, -np.inf],
-#                    [np.inf, 0, 0, 0, 0]))
-#        coeff_tdh_with_lpm[V] = coeffs_tdh
-#
-#        # curve-fit of power vs lpm
-#        coeffs_P, matcov = opt.curve_fit(func_model, lpm[V], watts[V])
-#        coeff_pow_with_lpm[V] = coeffs_P
-#
-#        # curve-fit of power vs lpm
-#        coeffs_P, matcov = opt.curve_fit(func_model, tdh[V], watts[V])
-#        coeff_pow_with_tdh[V] = coeffs_P
-#
-#    return {'tdh_with_lpm': coeff_tdh_with_lpm,
-#            'pow_with_lpm': coeff_pow_with_lpm,
-#            'pow_with_tdh': coeff_pow_with_tdh}
 
 
 def _curves_coeffs_old(lpm, tdh, watts):
@@ -924,7 +892,7 @@ if __name__ == "__main__":
 
 #    pump1.plot_tdh_Q()
 #    pump2.plot_tdh_Q()
-    coeff = _curves_coeffs_Kou98(pump2.lpm, pump2.tdh, pump2.current,
+    coeff = _curves_coeffs_Kou98(pump2.specs_df,
                                  pump2.data_completeness['data_number'])
     print(coeff)
 

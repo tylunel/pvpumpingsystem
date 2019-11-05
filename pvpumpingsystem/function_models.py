@@ -84,3 +84,10 @@ def polynomial_2(x, y_intercept, a, b):
     Model of a polynomial function of second order.
     """
     return y_intercept + a*x + b*x**2
+
+
+def polynomial_1(x, y_intercept, a):
+    """
+    Model of a polynomial function of first order, i.e. a linear function.
+    """
+    return y_intercept + a*x

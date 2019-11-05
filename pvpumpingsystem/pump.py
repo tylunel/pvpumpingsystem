@@ -139,6 +139,8 @@ class Pump:
             self.coeffs = _curves_coeffs_Kou98(
                     self.specs_df, self.data_completeness['data_number'],
                     self.data_completeness['voltage_number'])
+        else:
+            self.coeffs = None
 #        self.coeff_pow_with_lpm = coeffs[1]
 #        self.coeff_pow_with_tdh = coeffs['pow_with_tdh']
 #        self.coeff_tdh_with_lpm = coeffs['tdh_with_lpm']
@@ -412,9 +414,10 @@ class Pump:
                 (Now the control is done inside the function by raising errors)
         """
 
-        coeffs = self.coeffs['coeffs_f1']
-        if self.coeffs['model'] == 'kou':
-            funct_mod = function_models.polynomial_multivar_3_3_4
+        if self.coeffs is not None:
+            coeffs = self.coeffs['coeffs_f1']
+            if self.coeffs['model'] == 'kou':
+                funct_mod = function_models.polynomial_multivar_3_3_4
 
         # domain of V and tdh and gathering in one single variable
         dom = _domain_V_H(self.tdh, self.data_completeness)
@@ -536,6 +539,37 @@ class Pump:
             return funct_mod([P, H], *param)
 
         return functQ, ectyp
+
+    def functQforPH_Kou(self):
+        """Returns a tuple containing :
+            -the function giving Q according to P and H static for the pump :
+                Q = f2(P,H)
+            -the standard deviation on Q between real data points and data
+                computed with this function
+        """
+
+        if self.coeffs is not None:
+            coeffs = self.coeffs['coeffs_f2']
+            if self.coeffs['model'] == 'kou':
+                funct_mod = function_models.polynomial_multivar_3_3_4
+
+        # domain of V and tdh and gathering in one single variable
+        dom = _domain_P_H(self.tdh, self.data_completeness)
+        intervals = {'P': dom[0],
+                     'H': dom[1]}
+
+        def functQ(P, H):
+            if not intervals['P'](H)[0] <= P <= intervals['P'](H)[1]:
+                raise errors.PowerError('P (={0}) is out of bounds. It '
+                                        'should be in the interval {1}'
+                                        .format(P, intervals['P'](H)))
+            if not intervals['H'](P)[0] <= H <= intervals['H'](P)[1]:
+                raise errors.HeadError('H (={0}) is out of bounds. It should'
+                                       ' be in the interval {1}'
+                                       .format(H, intervals['H'](P)))
+            return funct_mod([P, H], *coeffs)
+
+        return functQ, intervals
 
     def IVcurvedata(self, head, nbpoint=40):
         """Function returning the data needed for plotting the IV curve at
@@ -881,7 +915,8 @@ def _domain_I_H(data_cur, data_tdh, data_completeness):
 
 def _domain_V_H(data_tdh, data_completeness):
     """
-    Function
+    Function giving the range of voltage and head in which the pump will
+    work.
     """
     funct_mod = function_models.polynomial_2
 
@@ -924,6 +959,83 @@ def _domain_V_H(data_tdh, data_completeness):
     return interval_vol, interval_tdh
 
 
+def _domain_P_H(specs_df, data_completeness):
+    """
+    Function giving the range of power and head in which the pump will
+    work.
+    """
+    funct_mod = function_models.polynomial_1
+
+    if data_completeness['voltage_number'] >= 2 \
+            and data_completeness['lpm_min'] == 0:
+        # case working fine for SunPumps - not sure about complete data from
+        # other manufacturer
+        df_flow_null = specs_df[specs_df.flow == 0]
+
+        datapower_df = df_flow_null['power']
+        datatdh_df = df_flow_null['tdh']
+
+        datapower_ar = np.array(datapower_df)
+        datatdh_ar = np.array(datatdh_df)
+
+        param_tdh, pcov_tdh = opt.curve_fit(funct_mod,
+                                            datapower_ar, datatdh_ar)
+        param_pow, pcov_pow = opt.curve_fit(funct_mod,
+                                            datatdh_ar, datapower_ar)
+
+        def interval_power(tdh):
+            "Interval on power depending on tdh"
+            return [max(funct_mod(tdh, *param_pow), min(datapower_ar)),
+                    np.inf]
+
+        def interval_tdh(power):
+            "Interval on tdh depending on v"
+            return [0, min(max(funct_mod(power, *param_tdh), 0),
+                           max(datatdh_ar))]
+
+    elif data_completeness['voltage_number'] >= 2:
+        tdhmax_df = specs_df[specs_df.tdh == max(specs_df.tdh)]
+        power_min_tdhmax = min(tdhmax_df.power)
+        tdhmin_df = specs_df[specs_df.tdh == min(specs_df.tdh)]
+        power_min_tdhmin = min(tdhmin_df.power)
+
+        datapower_ar = np.array([power_min_tdhmin, power_min_tdhmax])
+        datatdh_ar = np.array(
+            [float(specs_df[specs_df.power == power_min_tdhmin].tdh),
+             float(specs_df[specs_df.power == power_min_tdhmax].tdh)])
+        param_tdh, pcov_tdh = opt.curve_fit(funct_mod,
+                                            datapower_ar, datatdh_ar)
+        param_pow, pcov_pow = opt.curve_fit(funct_mod,
+                                            datatdh_ar, datapower_ar)
+
+        def interval_power(tdh):
+            "Interval on power depending on tdh"
+            return [max(funct_mod(tdh, *param_pow), min(datapower_ar)),
+                    np.inf]
+
+        def interval_tdh(power):
+            "Interval on tdh depending on v"
+            return [0, min(max(funct_mod(power, *param_tdh), 0),
+                           max(datatdh_ar))]
+
+    else:
+        # Would need deeper work to fully understand what are the limits
+        # on I and V depending on tdh, and how it affects lpm
+
+        datax_ar = np.array(specs_df.power)
+        datay_ar = np.array(specs_df.tdh)
+
+        def interval_power(*args):
+            "Interval on power, independent of tdh"
+            return [min(datax_ar), max(datax_ar)]
+
+        def interval_tdh(*args):
+            "Interval on tdh, independent of power"
+            return [min(datay_ar), max(datay_ar)]
+
+    return interval_power, interval_tdh
+
+
 if __name__ == "__main__":
     # %% pump creation
     pump1 = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
@@ -959,11 +1071,10 @@ if __name__ == "__main__":
 
 #    pump1.plot_tdh_Q()
 #    pump2.plot_tdh_Q()
-    coeff = _curves_coeffs_Kou98(pump1.specs_df,
-                                 pump1.data_completeness['data_number'],
-                                 pump1.data_completeness['voltage_number'])
-    print(coeff)
-    res_f1 = pump1.functIforVH_Kou()
+
+    print(pump2.coeffs)
+    domains = _domain_P_H(pump2.specs_df, pump2.data_completeness)
+    res_f1 = pump2.functIforVH_Kou()
     print(res_f1)
 
 ## %% set-up for following plots

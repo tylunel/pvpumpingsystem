@@ -43,7 +43,7 @@ pump_shurflo = pp.Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163,
 M_s = 1
 M_p = 1
 weather_path = weather_denver
-pump1 = pump_shurflo
+pump1 = pump_sunpump
 
 # %% modeling steps
 CECMOD = pvlib.pvsystem.retrieve_sam('cecmod')

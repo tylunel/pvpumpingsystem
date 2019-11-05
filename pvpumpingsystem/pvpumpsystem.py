@@ -500,8 +500,8 @@ def calc_flow_directly_coupled(modelchain, motorpump, pipes,
     M_s = modelchain.system.modules_per_string
     M_p = modelchain.system.strings_per_inverter
 
-    load_fctI, ectypI, intervalsVH = motorpump.functIforVH()
-    load_fctV, ectypV, intervalsIH = motorpump.functVforIH()
+    load_fctI, intervalsVH = motorpump.functIforVH()
+    load_fctV, intervalsIH = motorpump.functVforIH()
     fctQwithPH, sigma2 = motorpump.functQforPH()
 
     for i, row in tqdm.tqdm(enumerate(
@@ -593,8 +593,8 @@ def calc_flow_mppt_coupled(modelchain, motorpump, pipes, mppt=None,
     """
     result = []
 
-    load_fctI, ectypI, intervalsVH = motorpump.functIforVH()
-    load_fctV, ectypV, intervalsIH = motorpump.functVforIH()
+    load_fctI, intervalsVH = motorpump.functIforVH()
+    load_fctV, intervalsIH = motorpump.functVforIH()
     fctQwithPH, sigma2 = motorpump.functQforPH()
 
     for i, power in tqdm.tqdm(enumerate(

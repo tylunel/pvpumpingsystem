@@ -73,8 +73,8 @@ class Pump:
                  motor_electrical_architecture=None,
                  pump_category=None, model=None,
                  price=None, power_rating=None,
-                 controler=None, diameter_output=None):
-        # TODO: improve dataset readibility by putting it as DataFrame
+                 controler=None, diameter_output=None,
+                 modeling_method='arab'):
 
         if None not in (lpm, tdh, current):
             # use input data to create pump object
@@ -83,6 +83,8 @@ class Pump:
             self.current = current
             self.voltage = list(self.lpm.keys())
             self.watts = get_watts_from_current(current)
+            # TODO: Delete use of dict and put everything as DataFrame
+            # especially self.watts which is the same than specs_df.power
         else:
             # retrieve pump data from txt datasheet given by path
             try:
@@ -104,6 +106,7 @@ class Pump:
         self.power_rating = power_rating
         self.controler = controler
         self.diameter_output = diameter_output
+        self.modeling_method = modeling_method
 
         self.data_completeness = specs_completeness(
             self.voltage, self.lpm, self.tdh, self.current,
@@ -135,10 +138,12 @@ class Pump:
         self.coeff_tdh_with_lpm = coeffs['tdh_with_lpm']
 
         # new ones
-        if self.data_completeness['voltage_number'] >4:
+        if self.modeling_method.lower() == 'kou':
             self.coeffs = _curves_coeffs_Kou98(
-                    self.specs_df, self.data_completeness['data_number'],
-                    self.data_completeness['voltage_number'])
+                    self.specs_df, self.data_completeness)
+        elif self.modeling_method.lower() == 'arab':
+            self.coeffs = _curves_coeffs_Arab06(
+                    self.specs_df, self.data_completeness)
         else:
             self.coeffs = None
 #        self.coeff_pow_with_lpm = coeffs[1]
@@ -308,9 +313,6 @@ class Pump:
         dataz = np.array(np.array(vol))
         # computing of linear regression
         param, covmat = opt.curve_fit(funct_mod, dataxy, dataz)
-        # comparison between linear reg and actual data
-        datacheck = funct_mod(dataxy, *param)
-        ectyp = np.sqrt(sum((dataz-datacheck)**2)/len(dataz))
 
         # domain computing
         dom = _domain_I_H(self.current, self.tdh, self.data_completeness)
@@ -330,14 +332,14 @@ class Pump:
                             'I (={0}) is out of bounds. For this specific '
                             'head H (={1}), current I should be in the '
                             'interval {2}'.format(i, H, intervals['I'](H)))
-                if not intervals['H'](I)[0] <= H <= intervals['H'](I)[1]:
+                if not intervals['H'](i)[0] <= H <= intervals['H'](i)[1]:
                     raise errors.HeadError(
                             'H (={0}) is out of bounds. For this specific '
                             'current I (={1}), H should be in the interval {2}'
-                            .format(H, i, intervals['H'](I)))
+                            .format(H, i, intervals['H'](i)))
             return funct_mod([i, H], *param)
 
-        return functV, ectyp, intervals
+        return functV, intervals
 
     def functIforVH(self):
         """Returns a tuple containing :
@@ -349,62 +351,12 @@ class Pump:
                 (Now the control is done inside the function by raising errors)
         """
 
-        if self.data_completeness['voltage'] >= 4:
-            funct_mod = function_models.polynomial_multivar_3_3_1
-        elif self.data_completeness['voltage'] == 3:
-            funct_mod = function_models.polynomial_multivar_2_2_0
-        elif self.data_completeness['voltage'] == 2:
-            funct_mod = function_models.polynomial_multivar_1_1_0
-        elif self.data_completeness['voltage'] == 1:
-            funct_mod = function_models.polynomial_multivar_0_1_0
+        if self.coeffs['model'] == 'kou':
+            return self.functIforVH_Kou()
         else:
-            raise errors.InsufficientDataError('Information on accepted '
-                                               'voltage for pump lacks.')
-
-        # loading of data
-        vol = []  # voltage
-        tdh = []  # total dynamic head
-        cur = []  # current
-        for V in self.voltage:
-            for i, I in enumerate(self.current[V]):
-                vol.append(V)
-                cur.append(I)
-                tdh.append(self.tdh[V][i])
-
-        dataxy = [np.array(vol), np.array(tdh)]
-        dataz = np.array(np.array(cur))
-
-        # curve-fitting of linear regression
-        param, covmat = opt.curve_fit(funct_mod, dataxy, dataz)
-        datacheck = funct_mod(dataxy, *param)
-        ectyp = np.sqrt(sum((dataz-datacheck)**2)/len(dataz))
-
-        # domain of V and tdh and gathering in one single variable
-        dom = _domain_V_H(self.tdh, self.data_completeness)
-        intervals = {'V': dom[0],
-                     'H': dom[1]}
-
-        def functI(V, H, error_raising=True):
-            """Function giving voltage V according to current I and tdh H.
-
-            Error_raising parameter allows to check the given values
-            according to the possible intervals and to raise errors if not
-            corresponding.
-            """
-            if error_raising is True:
-                if not intervals['V'](H)[0] <= V <= intervals['V'](H)[1]:
-                    raise errors.VoltageError(
-                            'V (={0}) is out of bounds. For this specific '
-                            'head H (={1}), V should be in the interval {2}'
-                            .format(V, H, intervals['V'](H)))
-                if not intervals['H'](V)[0] <= H <= intervals['H'](V)[1]:
-                    raise errors.HeadError(
-                            'H (={0}) is out of bounds. For this specific '
-                            'voltage V (={1}), H should be in the interval {2}'
-                            .format(H, V, intervals['H'](V)))
-            return funct_mod([V, H], *param)
-
-        return functI, ectyp, intervals
+            raise NotImplementedError(
+                "Kou's model is not available for this pump, need to "
+                "implemented another valid method.")
 
     def functIforVH_Kou(self):
         """Returns a tuple containing :
@@ -414,10 +366,8 @@ class Pump:
                 (Now the control is done inside the function by raising errors)
         """
 
-        if self.coeffs is not None:
-            coeffs = self.coeffs['coeffs_f1']
-            if self.coeffs['model'] == 'kou':
-                funct_mod = function_models.polynomial_multivar_3_3_4
+        coeffs = self.coeffs['coeffs_f1']
+        funct_mod = function_models.polynomial_multivar_3_3_4
 
         # domain of V and tdh and gathering in one single variable
         dom = _domain_V_H(self.tdh, self.data_completeness)
@@ -503,42 +453,12 @@ class Pump:
                 computed with this function
         """
 
-        if (len(self.watts[self.voltage[0]]) >= 4
-                and len(self.tdh[self.voltage[0]]) >= 4):
-            funct_mod = function_models.polynomial_multivar_3_3_1
+        if self.coeffs['model'] == 'kou':
+            return self.functQforPH_Kou()
         else:
-            raise errors.InsufficientDataError('Information on power '
-                                               'for pump lacks.')
-        # gathering of data needed
-        power = []
-        tdh = []
-        lpm = []
-        for V in self.voltage:
-            for i, Q in enumerate(self.lpm[V]):
-                power.append(self.watts[V][i])
-                tdh.append(self.tdh[V][i])
-                lpm.append(Q)
-
-        dataxy = [np.array(power), np.array(tdh)]
-        dataz = np.array(np.array(lpm))
-        # computing of linear regression
-        param, covmat = opt.curve_fit(funct_mod, dataxy, dataz)
-
-        datacheck = funct_mod(dataxy, *param)
-        ectyp = np.sqrt(sum((dataz-datacheck)**2)/len(dataz))
-
-        def functQ(P, H):
-            if not min(power) <= P <= max(power):
-                raise errors.PowerError('P (={0}) is out of bounds. It '
-                                        'should be in the interval {1}'
-                                        .format(P, [min(power), max(power)]))
-            if not min(tdh) <= H <= max(tdh):
-                raise errors.HeadError('H (={0}) is out of bounds. It should'
-                                       ' be in the interval {1}'
-                                       .format(H, [min(tdh), max(tdh)]))
-            return funct_mod([P, H], *param)
-
-        return functQ, ectyp
+            raise NotImplementedError(
+                "Kou's model is not available for this pump, need to "
+                "implemented another valid method.")
 
     def functQforPH_Kou(self):
         """Returns a tuple containing :
@@ -554,7 +474,7 @@ class Pump:
                 funct_mod = function_models.polynomial_multivar_3_3_4
 
         # domain of V and tdh and gathering in one single variable
-        dom = _domain_P_H(self.tdh, self.data_completeness)
+        dom = _domain_P_H(self.specs_df, self.data_completeness)
         intervals = {'P': dom[0],
                      'H': dom[1]}
 
@@ -726,7 +646,6 @@ def specs_completeness(voltage, lpm, tdh, current,
     # TODO: should add some lines to check that current and tdh have same shape
     # than lpm
 
-
     return {'voltage_number': volt_nb,
             'lpm_min': mean_lpm_ratio,
             'head_min': head_ratio,
@@ -752,15 +671,83 @@ def min_in_values(data):
     return min(data_flat)
 
 
-def _curves_coeffs(lpm, tdh, watts, method):
-    """Compute curve-fitting coefficient with different methods : Kou,
-    Hadj Arab or theoretical.
+def _curves_coeffs_Arab06(specs_df, data_completeness):
+    """Compute curve-fitting coefficient with method of Hadj Arab [1] and
+    Djoudi Gherbi [2].
+
+    Parameters
+    ----------
+    specs_df: pd.DataFrame
+        DataFrame with specs.
+
+    Reference
+    ---------
+    [1] Hadj Arab A., Benghanem M. & Chenlo F.,
+    "Motor-pump system modelization", 2006, Renewable Energy
+    [2] Djoudi Gherbi et al., 2017
 
     """
-    return None
+    funct_mod_I = function_models.polynomial_1
+    funct_mod_coeffs = function_models.polynomial_3
+
+    # TODO: add check on number of head available (for lin. reg. of coeffs)
+    if data_completeness['data_number'] >= 10 \
+            and data_completeness['voltage_number'] >= 3:
+        funct_mod_Q = function_models.polynomial_2
+    elif data_completeness['data_number'] >= 10 \
+            and data_completeness['voltage_number'] >= 2:
+        funct_mod_Q = function_models.polynomial_1
+    else:
+        raise errors.InsufficientDataError('Lack of information on lpm, '
+                                           'current or tdh for pump.')
+
+    # linear equation I = a + b*V
+    a_ls = []
+    b_ls = []
+    tdh = []
+    for H in specs_df.tdh:
+        if H not in tdh:
+            sub_df = specs_df[specs_df.tdh == H]
+            if len(sub_df) >= 2:
+                params_a_b, _ = opt.curve_fit(
+                    funct_mod_I, sub_df.voltage, sub_df.current)
+                a_ls.append(params_a_b[0])
+                b_ls.append(params_a_b[1])
+                if len(tdh) == 13:
+                    truc = 5
+                tdh.append(H)
+
+    # quadratic equation Q = c + d*V + e*V**2
+    c_ls = []
+    d_ls = []
+    e_ls = []
+    tdh = []
+    for H in specs_df.tdh:
+        if H not in tdh:
+            sub_df = specs_df[specs_df.tdh == H]
+            if len(sub_df) >= 3:
+                params_c_d_e, _ = opt.curve_fit(
+                    funct_mod_Q, sub_df.voltage, sub_df.flow)
+                c_ls.append(params_c_d_e[0])
+                d_ls.append(params_c_d_e[1])
+                tdh.append(H)
+                if data_completeness['voltage_number'] >= 3:
+                    e_ls.append(params_c_d_e[2])
+                else:
+                    e_ls.append(0)
+
+    print(a_ls,b_ls,c_ls,d_ls,e_ls)
+    # dependance of a, b, c, d, e on H
+    coeffs_dict = {}
+    for coeff in ['a', 'b', 'c', 'd', 'e']:
+        params, _ = opt.curve_fit(
+            funct_mod_coeffs, tdh, eval(coeff + '_ls'))
+        coeffs_dict[coeff] = params
+
+    return coeffs_dict
 
 
-def _curves_coeffs_Kou98(specs_df, data_number, voltage_number):
+def _curves_coeffs_Kou98(specs_df, data_completeness):
     """Compute curve-fitting coefficient with method of Kou [1]
 
     Parameters
@@ -776,7 +763,8 @@ def _curves_coeffs_Kou98(specs_df, data_number, voltage_number):
 
     """
 
-    if data_number >= 10 and voltage_number > 3:
+    if data_completeness['data_number'] >= 10 \
+            and data_completeness['voltage_number'] > 3:
         funct_mod = function_models.polynomial_multivar_3_3_4
     else:
         raise errors.InsufficientDataError('Lack of information on lpm, '
@@ -879,7 +867,8 @@ def _domain_I_H(data_cur, data_tdh, data_completeness):
         x_tips.append(min(data_cur[v]))
         y_tips.append(max(data_tdh[v]))
 
-    if data_completeness['voltage'] > 2 and data_completeness['lpm_min'] == 0:
+    if data_completeness['voltage_number'] > 2 \
+            and data_completeness['lpm_min'] == 0:
         # case working fine for SunPumps - not sure about complete data from
         # other manufacturer
         param_y, pcov_y = opt.curve_fit(funct_mod,
@@ -954,7 +943,7 @@ def _domain_V_H(data_tdh, data_completeness):
 
         def interval_tdh(*args):
             "Interval on tdh, independent of vol"
-            return [min_in_values(data_tdh), max_in_values(data_tdh)]
+            return [0, max_in_values(data_tdh)]
 
     return interval_vol, interval_tdh
 
@@ -1031,7 +1020,7 @@ def _domain_P_H(specs_df, data_completeness):
 
         def interval_tdh(*args):
             "Interval on tdh, independent of power"
-            return [min(datay_ar), max(datay_ar)]
+            return [0, max(datay_ar)]
 
     return interval_power, interval_tdh
 
@@ -1072,11 +1061,12 @@ if __name__ == "__main__":
 #    pump1.plot_tdh_Q()
 #    pump2.plot_tdh_Q()
 
-    print(pump2.coeffs)
-    domains = _domain_P_H(pump2.specs_df, pump2.data_completeness)
-    res_f1 = pump2.functIforVH_Kou()
-    print(res_f1)
-
+    print(pump1.coeffs)
+    f1, _ = pump1.functIforVH_Kou()
+    f2, _ = pump1.functQforPH_Kou()
+    print(f1(70, 0))
+    res = _curves_coeffs_Arab06(pump2.specs_df, pump2.data_completeness)
+    print(res)
 ## %% set-up for following plots
 #    vol = []
 #    tdh = []

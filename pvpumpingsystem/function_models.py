@@ -6,6 +6,32 @@ Created on Wed Oct 23 15:50:19 2019
 """
 
 
+def compound_polynomial_1_3(input_val, a1, a2, a3, a4, b1, b2, b3, b4):
+    """
+    Model of a compound polynomial function made of a global equation of
+    first order on x, for which each coefficient follows a third order
+    equation on y.
+    """
+    x, y = input_val[0], input_val[1]
+    a = polynomial_3(y, a1, a2, a3, a4)
+    b = polynomial_3(y, b1, b2, b3, b4)
+    return a + b*x
+
+
+def compound_polynomial_2_3(input_val, a1, a2, a3, a4, b1, b2, b3, b4,
+                            c1, c2, c3, c4):
+    """
+    Model of a compound polynomial function made of a global equation of
+    second order on x, for which each coefficient follows a third order
+    equation on y.
+    """
+    x, y = input_val[0], input_val[1]
+    a = polynomial_3(y, a1, a2, a3, a4)
+    b = polynomial_3(y, b1, b2, b3, b4)
+    c = polynomial_3(y, c1, c2, c3, c4)
+    return a + b*x + c*x**2
+
+
 def polynomial_multivar_3_3_4(input_val, y_intercept, a1, a2, a3, b1, b2, b3,
                               c1, c2, c3, c4):
     """

@@ -535,6 +535,29 @@ class Pump:
                 "modeling method is not available yet, need to "
                 "implemented another valid method.")
 
+    def functQforPH_Gualteros(P, coeffs_P, pompe_intersection):
+        """
+        H considered as fixed and coeffs_p were calculated knowing that.
+        """
+        P = P*0.8  # eff convertisseur et pertes poussière et connexions
+        Q_theorique = np.zeros(P.size)
+        P_excess = np.zeros(P.size)
+        P_min = pompe_intersection.data[:, 2]  # renvoie les P pour chaque tension
+        P_min = min(P_min[np.nonzero(P_min)])  # récupère la plus petite
+        P_max = pompe_intersection.data[:, 2].max()
+        for i in range(0, P.size):
+            if P[i] < P_min:
+                Q_theorique[i] = 0
+                P_excess[i] = P[i]
+            elif P[i] > P_max:
+                Q_theorique[i]= pompe_intersection.data[:, 0].max()
+                P_excess[i] = P[i]-P_max  # power unused for pumping
+            else:  # P is a power suitable for the pump
+                for j in range(0, coeffs_P.size):
+                    Q_theorique[i] = Q_theorique[i] \
+                        + (coeffs_P[j]*P[i]**(coeffs_P.size-(j+1)))
+        return Q_theorique, sum(P_excess)
+
     def functQforPH_Arab(self):
         """
         Function using [1] and [2] for output flow rate modeling.
@@ -926,11 +949,19 @@ def _curves_coeffs_Kou98(specs_df, data_completeness):
             'nrmse_f2': nrmse_f2}
 
 
-def _curves_coeffs_Gualteros17(lpm, tdh, watts):
+def _curves_coeffs_Gualteros17(lpm, tdh, watts,
+                               static_head, hydraulic_circuit):
     """
+    Sergio Gualteros method. In his method the pump is modeled only for the
+    static head of the hydraulic circuit.
+
+    Based on Hamidat & Benyoucef, 2008 ->
+    Model with polynomial_3rd_order P(Q) and then uses Newton-Raphson method
+
     Compute curve-fitting coefficient from data for :
         - tdh vs lpm
         - power vs lpm
+        - power vs tdh
 
     returns a dict of sub-dict :
         -the first dict contains the 2 curves as keys : 'tdh','pow'
@@ -942,9 +973,13 @@ def _curves_coeffs_Gualteros17(lpm, tdh, watts):
     """
     func_model = function_models.polynomial_4
 
+    # this function allows to simplify the next equation
+    coeff_pow_with_tdh = coeff_pow_with_tdh_at_static_head(static_head,
+                                                           hydraulic_circuit)
+    # coeff from curve-fitting of power vs tdh
+
     coeff_tdh_with_lpm = {}  # coeff from curve-fitting of tdh vs lpm
     coeff_pow_with_lpm = {}  # coeff from curve-fitting of power vs lpm
-    coeff_pow_with_tdh = {}  # coeff from curve-fitting of power vs tdh
 
     for V in lpm:
         # curve-fit of tdh vs lpm

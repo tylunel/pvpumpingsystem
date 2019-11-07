@@ -144,6 +144,9 @@ class Pump:
         elif self.modeling_method.lower() == 'arab':
             self.coeffs = _curves_coeffs_Arab06(
                     self.specs_df, self.data_completeness)
+        elif self.modeling_method.lower() == 'hamidat':
+            self.coeffs = _curves_coeffs_Hamidat08(
+                    self.specs_df, self.data_completeness)
         else:
             self.coeffs = None
 #        self.coeff_pow_with_lpm = coeffs[1]
@@ -359,6 +362,11 @@ class Pump:
             return self.functIforVH_Kou()
         if self.modeling_method == 'arab':
             return self.functIforVH_Arab()
+        if self.modeling_method == 'hamidat':
+            raise NotImplementedError(
+                "Hamidat method does not provide model for functIforVH, "
+                "it is made to model only mppt coupled systems, which "
+                "don't need this function.")
         else:
             raise NotImplementedError(
                 "The function functIforVH corresponding to the requested "
@@ -529,34 +537,48 @@ class Pump:
             return self.functQforPH_Kou()
         if self.modeling_method == 'arab':
             return self.functQforPH_Arab()
+        if self.modeling_method == 'hamidat':
+            return self.functQforPH_Arab()
         else:
             raise NotImplementedError(
                 "The function functQforPH corresponding to the requested "
                 "modeling method is not available yet, need to "
                 "implemented another valid method.")
 
-    def functQforPH_Gualteros(P, coeffs_P, pompe_intersection):
+    def functQforPH_Hamidat(self):
         """
-        H considered as fixed and coeffs_p were calculated knowing that.
+
         """
-        P = P*0.8  # eff convertisseur et pertes poussière et connexions
-        Q_theorique = np.zeros(P.size)
-        P_excess = np.zeros(P.size)
-        P_min = pompe_intersection.data[:, 2]  # renvoie les P pour chaque tension
-        P_min = min(P_min[np.nonzero(P_min)])  # récupère la plus petite
-        P_max = pompe_intersection.data[:, 2].max()
-        for i in range(0, P.size):
-            if P[i] < P_min:
-                Q_theorique[i] = 0
-                P_excess[i] = P[i]
-            elif P[i] > P_max:
-                Q_theorique[i]= pompe_intersection.data[:, 0].max()
-                P_excess[i] = P[i]-P_max  # power unused for pumping
-            else:  # P is a power suitable for the pump
-                for j in range(0, coeffs_P.size):
-                    Q_theorique[i] = Q_theorique[i] \
-                        + (coeffs_P[j]*P[i]**(coeffs_P.size-(j+1)))
-        return Q_theorique, sum(P_excess)
+        coeffs_a = self.coeffs['a']
+        coeffs_b = self.coeffs['b']
+        coeffs_c = self.coeffs['c']
+        coeffs_d = self.coeffs['d']
+        funct_mod_P = function_models.compound_polynomial_3_3
+
+        def funct_P(Q, power, head):
+            return funct_mod_P([Q, head], *coeffs_a, *coeffs_b, *coeffs_c,
+                               *coeffs_d) - power
+
+        dom = _domain_P_H(self.specs_df, self.data_completeness)
+        intervals = {'P': dom[0],
+                     'H': dom[1]}
+
+        def functQ(P, H):
+            if P < intervals['P'](H)[0]:
+                Q = 0
+                P_excess = P
+            elif intervals['P'](H)[0] < P < intervals['P'](H)[1]:
+                # Newton-Raphson numeraical method:
+                # actually fprime should be given for using Newton-Raphson
+                Q = opt.newton(funct_P, 5, args=(P, H))
+                P_excess = 0  # power unused for pumping
+            else:  # P is higher than maximum
+                P = intervals['P'](H)[1]
+                Q = opt.newton(funct_P, 5, args=(P, H))
+                P_excess = P - intervals['P'](H)[1]
+            return Q
+
+        return functQ
 
     def functQforPH_Arab(self):
         """
@@ -807,7 +829,8 @@ def min_in_values(data):
 
 
 def _curves_coeffs_Arab06(specs_df, data_completeness):
-    """Compute curve-fitting coefficient with method of Hadj Arab [1] and
+    """
+    Compute curve-fitting coefficient with method of Hadj Arab [1] and
     Djoudi Gherbi [2].
 
     Parameters
@@ -868,7 +891,7 @@ def _curves_coeffs_Arab06(specs_df, data_completeness):
                 c_ls.append(params_c_d_e[0])
                 d_ls.append(params_c_d_e[1])
                 tdh_2.append(H)
-                if data_completeness['voltage_number'] >= 3:
+                if data_completeness['voltage_number'] >= 3:  # useless ?
                     e_ls.append(params_c_d_e[2])
                 else:
                     e_ls.append(0)
@@ -949,8 +972,59 @@ def _curves_coeffs_Kou98(specs_df, data_completeness):
             'nrmse_f2': nrmse_f2}
 
 
-def _curves_coeffs_Gualteros17(lpm, tdh, watts,
-                               static_head, hydraulic_circuit):
+def _curves_coeffs_Hamidat08(specs_df, data_completeness):
+    """
+    Compute curve-fitting coefficient with method of Hamidat [1].
+
+    Parameters
+    ----------
+    specs_df: pd.DataFrame
+        DataFrame with specs.
+
+    Reference
+    ---------
+    [1] Hamidat A., ..., 2008, Renewable Energy
+
+    """
+
+    if data_completeness['data_number'] >= 10 \
+            and data_completeness['voltage_number'] > 3:
+        funct_mod_Q = function_models.polynomial_3
+        funct_mod_Q_order = 3
+        funct_mod_coeffs = function_models.polynomial_3
+    else:
+        raise errors.InsufficientDataError('Lack of information on lpm, '
+                                           'current or tdh for pump.')
+
+    # cubic equation P = a + b*Q + c*Q**2 + d*Q**3
+    a_ls = []
+    b_ls = []
+    c_ls = []
+    d_ls = []
+    tdh = []
+    for H in specs_df.tdh:
+        if H not in tdh:
+            sub_df = specs_df[specs_df.tdh == H]
+            if len(sub_df) > funct_mod_Q_order:
+                params, _ = opt.curve_fit(
+                    funct_mod_Q, sub_df.flow, sub_df.power)
+                a_ls.append(params[0])
+                b_ls.append(params[1])
+                c_ls.append(params[2])
+                d_ls.append(params[3])
+                tdh.append(H)
+
+    # dependance of a, b, c, d, e on H
+    coeffs_dict = {}
+    for coeff in ['a', 'b', 'c', 'd']:
+        params, _ = opt.curve_fit(
+            funct_mod_coeffs, tdh, eval(coeff + '_ls'))
+        coeffs_dict[coeff] = params
+
+    return coeffs_dict
+
+
+def _curves_coeffs_Gualteros17(lpm, tdh, watts):
     """
     Sergio Gualteros method. In his method the pump is modeled only for the
     static head of the hydraulic circuit.
@@ -971,12 +1045,15 @@ def _curves_coeffs_Gualteros17(lpm, tdh, watts,
     These same 3 dictionnary are saved as attributes in the pump object,
     under the name 'self.coeff_tdh', 'self.coeff_pow'
     """
+#    raise NotImplementedError('Even though this function exists, it '
+#                              'cannot be used in later process')
+
     func_model = function_models.polynomial_4
 
     # this function allows to simplify the next equation
-    coeff_pow_with_tdh = coeff_pow_with_tdh_at_static_head(static_head,
-                                                           hydraulic_circuit)
-    # coeff from curve-fitting of power vs tdh
+#    coeff_pow_with_tdh = coeff_pow_with_tdh_at_static_head(static_head,
+#                                                           hydraulic_circuit)
+    coeff_pow_with_tdh = {}  # coeff from curve-fitting of power vs tdh
 
     coeff_tdh_with_lpm = {}  # coeff from curve-fitting of tdh vs lpm
     coeff_pow_with_lpm = {}  # coeff from curve-fitting of power vs lpm
@@ -1125,8 +1202,9 @@ def _domain_P_H(specs_df, data_completeness):
 
         def interval_power(tdh):
             "Interval on power depending on tdh"
+            power_max_for_tdh = max(specs_df[specs_df.tdh <= tdh].power)
             return [max(funct_mod(tdh, *param_pow), min(datapower_ar)),
-                    np.inf]
+                    power_max_for_tdh]
 
         def interval_tdh(power):
             "Interval on tdh depending on v"
@@ -1150,8 +1228,9 @@ def _domain_P_H(specs_df, data_completeness):
 
         def interval_power(tdh):
             "Interval on power depending on tdh"
+            power_max_for_tdh = max(specs_df[specs_df.tdh <= tdh].power)
             return [max(funct_mod(tdh, *param_pow), min(datapower_ar)),
-                    np.inf]
+                    power_max_for_tdh]
 
         def interval_tdh(power):
             "Interval on tdh depending on v"
@@ -1179,7 +1258,7 @@ def _domain_P_H(specs_df, data_completeness):
 if __name__ == "__main__":
     # %% pump creation
     pump1 = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
-                 model='SCB_10', modeling_method='kou')
+                 model='SCB_10', modeling_method='hamidat')
 
     pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
                            136],
@@ -1210,8 +1289,9 @@ if __name__ == "__main__":
 #                               3.8, 4.1],
 #                          }, model='Shurflo_9325')
 
-    coeffs = _curves_coeffs_Gualteros17(pump1.lpm, pump1.tdh, pump1.watts)
-    print(coeffs)
+    coeffs = _curves_coeffs_Hamidat08(pump1.specs_df, pump1.data_completeness)
+    f2 = pump1.functQforPH_Hamidat()
+    print(f2(500, 10))
 
 #    print(pump1.coeffs)
 #    print(pump2.coeffs)

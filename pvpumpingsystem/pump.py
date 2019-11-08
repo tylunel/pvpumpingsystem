@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # needed for plotting in 3d
 import scipy.optimize as opt
 import scipy.interpolate as spint
+from sklearn.metrics import r2_score
 
 from pvpumpingsystem import errors
 from pvpumpingsystem import function_models
@@ -949,6 +950,7 @@ def _curves_coeffs_Kou98(specs_df, data_completeness):
     datacheck = funct_mod(dataxy_ar, *param_f1)
     rmse_f1 = np.sqrt(sum((dataz_ar-datacheck)**2)/len(dataz_ar))
     nrmse_f1 = rmse_f1/np.mean(datacheck)
+    r_squared_f1 = r2_score(dataz_ar, datacheck)
 
     # f2: Q(P, H)
     datax_df = specs_df['power']
@@ -963,13 +965,16 @@ def _curves_coeffs_Kou98(specs_df, data_completeness):
     datacheck = funct_mod(dataxy_ar, *param_f2)
     rmse_f2 = np.sqrt(sum((dataz_ar-datacheck)**2)/len(dataz_ar))
     nrmse_f2 = rmse_f2/np.mean(datacheck)
+    r_squared_f2 = r2_score(dataz_ar, datacheck)
 
     return {'coeffs_f1': param_f1,
             'rmse_f1': rmse_f1,
             'nrmse_f1': nrmse_f1,
+            'r_squared_f1': r_squared_f1,
             'coeffs_f2': param_f2,
             'rmse_f2': rmse_f2,
-            'nrmse_f2': nrmse_f2}
+            'nrmse_f2': nrmse_f2,
+            'r_squared_f2': r_squared_f2}
 
 
 def _curves_coeffs_Hamidat08(specs_df, data_completeness):
@@ -1258,7 +1263,7 @@ def _domain_P_H(specs_df, data_completeness):
 if __name__ == "__main__":
     # %% pump creation
     pump1 = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
-                 model='SCB_10', modeling_method='hamidat')
+                 model='SCB_10', modeling_method='kou')
 
     pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
                            136],
@@ -1290,8 +1295,8 @@ if __name__ == "__main__":
 #                          }, model='Shurflo_9325')
 
     coeffs = _curves_coeffs_Hamidat08(pump1.specs_df, pump1.data_completeness)
-    f2 = pump1.functQforPH_Hamidat()
-    print(f2(500, 10))
+#    f2 = pump1.functQforPH_Hamidat()
+    print(pump1.coeffs)
 
 #    print(pump1.coeffs)
 #    print(pump2.coeffs)

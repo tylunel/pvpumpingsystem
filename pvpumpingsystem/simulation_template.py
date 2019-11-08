@@ -40,8 +40,8 @@ pump_shurflo = pp.Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163,
                                 }, model='Shurflo_9325',
                        motor_electrical_architecture='permanent_magnet')
 
-M_s = 1
-M_p = 1
+M_s = 2
+M_p = 2
 weather_path = weather_denver
 pump1 = pump_sunpump
 

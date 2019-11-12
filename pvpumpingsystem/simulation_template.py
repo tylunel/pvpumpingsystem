@@ -18,10 +18,17 @@ import pvpumpsystem as pvps
 
 # %% def of fixture
 
-weather_denver = ('https://energyplus.net/weather-download/' +
-                  'north_and_central_america_wmo_region_4/USA/CO/' +
-                  'USA_CO_Denver.Intl.AP.725650_TMY3/' +
-                  'USA_CO_Denver.Intl.AP.725650_TMY3.epw')
+# Do not use this data, because precipitable water data is incorrect, and
+# will result in wrongly null output
+#weather_denver = ('https://energyplus.net/weather-download/' +
+#                  'north_and_central_america_wmo_region_4/USA/CO/' +
+#                  'USA_CO_Denver.Intl.AP.725650_TMY3/' +
+#                  'USA_CO_Denver.Intl.AP.725650_TMY3.epw')
+
+weather_montreal = ('https://energyplus.net/weather-download/' +
+                    'north_and_central_america_wmo_region_4/CAN/PQ/' +
+                    'CAN_PQ_Montreal.Intl.AP.716270_CWEC/' +
+                    'CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw')
 
 pump_sunpump = pp.Pump(path="pumps_files/SCB_10_150_120_BL.txt",
                        model='SCB_10')
@@ -42,7 +49,7 @@ pump_shurflo = pp.Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163,
 
 M_s = 2
 M_p = 2
-weather_path = weather_denver
+weather_path = weather_montreal
 pump1 = pump_sunpump
 
 # %% modeling steps

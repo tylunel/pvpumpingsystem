@@ -539,7 +539,7 @@ class Pump:
         if self.modeling_method == 'arab':
             return self.functQforPH_Arab()
         if self.modeling_method == 'hamidat':
-            return self.functQforPH_Arab()
+            return self.functQforPH_Hamidat()
         else:
             raise NotImplementedError(
                 "The function functQforPH corresponding to the requested "
@@ -564,22 +564,23 @@ class Pump:
         intervals = {'P': dom[0],
                      'H': dom[1]}
 
+        # TODO: Generalize this control of output for other functions
         def functQ(P, H):
             if P < intervals['P'](H)[0]:
                 Q = 0
-                P_excess = P
+#                P_excess = P
             elif intervals['P'](H)[0] < P < intervals['P'](H)[1]:
                 # Newton-Raphson numeraical method:
                 # actually fprime should be given for using Newton-Raphson
                 Q = opt.newton(funct_P, 5, args=(P, H))
-                P_excess = 0  # power unused for pumping
+#                P_excess = 0  # power unused for pumping
             else:  # P is higher than maximum
                 P = intervals['P'](H)[1]
                 Q = opt.newton(funct_P, 5, args=(P, H))
-                P_excess = P - intervals['P'](H)[1]
+#                P_excess = P - intervals['P'](H)[1]
             return Q
 
-        return functQ
+        return functQ, intervals
 
     def functQforPH_Arab(self):
         """
@@ -834,6 +835,10 @@ def _curves_coeffs_Arab06(specs_df, data_completeness):
     Compute curve-fitting coefficient with method of Hadj Arab [1] and
     Djoudi Gherbi [2].
 
+    It uses a 3rd order polynomial to model Q(P) and
+    a 1st order polynomial to model V(I). Each corresponding
+    coefficient depends on TDH through a 3rd order polynomial.
+
     Parameters
     ----------
     specs_df: pd.DataFrame
@@ -912,7 +917,10 @@ def _curves_coeffs_Arab06(specs_df, data_completeness):
 
 
 def _curves_coeffs_Kou98(specs_df, data_completeness):
-    """Compute curve-fitting coefficient with method of Kou [1]
+    """Compute curve-fitting coefficient with method of Kou [1].
+
+    It uses a 3rd order multivariate polynomial with cross terms to model
+    V(I, TDH) and Q(V, TDH) from the data.
 
     Parameters
     ----------
@@ -942,10 +950,9 @@ def _curves_coeffs_Kou98(specs_df, data_completeness):
     dataz_ar = np.array(dataz_df)
 
     param_f1, covmat_f1 = opt.curve_fit(
-            funct_mod, dataxy_ar, dataz_ar
+            funct_mod, dataxy_ar, dataz_ar)
 #            , bounds=([0, 0, -np.inf, -np.inf, -np.inf],
-#                    [np.inf, np.inf, 0, 0, 0])
-            )
+#                    [np.inf, np.inf, 0, 0, 0]))
     # computing of RMSE and of normalized RMSE for f1
     datacheck = funct_mod(dataxy_ar, *param_f1)
     rmse_f1 = np.sqrt(sum((dataz_ar-datacheck)**2)/len(dataz_ar))
@@ -980,6 +987,8 @@ def _curves_coeffs_Kou98(specs_df, data_completeness):
 def _curves_coeffs_Hamidat08(specs_df, data_completeness):
     """
     Compute curve-fitting coefficient with method of Hamidat [1].
+    It uses a 3rd order polynomial to model Q(P) and each corresponding
+    coefficient depends on TDH through a 3rd order polynomial as well.
 
     Parameters
     ----------
@@ -1134,6 +1143,7 @@ def _domain_I_H(data_cur, data_tdh, data_completeness):
 
     return interval_cur, interval_tdh
 
+
 # TODO: below change input tdh by specs_df for consistency with _domain_P_H
 def _domain_V_H(data_tdh, data_completeness):
     """
@@ -1263,7 +1273,7 @@ def _domain_P_H(specs_df, data_completeness):
 if __name__ == "__main__":
     # %% pump creation
     pump1 = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
-                 model='SCB_10', modeling_method='kou')
+                 model='SCB_10', modeling_method='arab')
 
     pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
                            136],
@@ -1294,9 +1304,11 @@ if __name__ == "__main__":
 #                               3.8, 4.1],
 #                          }, model='Shurflo_9325')
 
-    coeffs = _curves_coeffs_Hamidat08(pump1.specs_df, pump1.data_completeness)
-#    f2 = pump1.functQforPH_Hamidat()
+#    coeffs = _curves_coeffs_Hamidat08(pump1.specs_df, pump1.data_completeness)
     print(pump1.coeffs)
+    f2, _ = pump1.functQforPH()
+    print(f2(400, 10))
+
 
 #    print(pump1.coeffs)
 #    print(pump2.coeffs)

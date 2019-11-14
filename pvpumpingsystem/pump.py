@@ -83,7 +83,6 @@ class Pump:
             self.tdh = tdh
             self.current = current
             self.voltage = list(self.lpm.keys())
-            self.watts = get_watts_from_current(current)
             # TODO: Delete use of dict and put everything as DataFrame
             # especially self.watts which is the same than specs_df.power
         else:
@@ -677,29 +676,6 @@ class Pump:
         return {'I': Itab, 'V': Vtab}
 
 
-def get_watts_from_current(current_dict):
-    """Compute electric power.
-
-    Parameter
-    ---------
-    current_dict: dict
-        Dictionary containing list of currents (values) drawn by the pump
-        according to the voltages (keys).
-
-    Return
-    ------
-    * dictionary with voltage as keys and with power drawn by the pump
-        as values.
-
-    """
-    power_dict = {}
-    for voltage in current_dict:
-        power_list = list(np.array(current_dict[voltage])*voltage)
-        power_dict[voltage] = power_list
-
-    return power_dict
-
-
 def get_data_pump(path):
     """
     This function is used to load the pump data from the .txt file
@@ -804,8 +780,6 @@ def specs_completeness(specs_df,
     for v in voltages:
         for i in specs_df[specs_df.voltage == v].flow:
             data_number += 1
-    # TODO: should add some lines to check that current and tdh have same shape
-    # than lpm
 
     return {'voltage_number': volt_nb,
             'lpm_min': mean_lpm_ratio,
@@ -1117,7 +1091,7 @@ def _domain_I_H(specs_df, data_completeness):
 
     else:
         # Would need deeper work to fully understand what are the limits
-        # on I and V depending on tdh, and how it affects lpm
+        # on I and V depending on tdh, and how it affects the flow rate
         def interval_cur(*args):
             "Interval on current, independent of tdh"
             return [min(specs_df.current), max(specs_df.current)]

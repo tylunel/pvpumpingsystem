@@ -392,7 +392,7 @@ class Pump:
         funct_mod = function_models.compound_polynomial_1_3
 
         # domain of V and tdh and gathering in one single variable
-        dom = _domain_V_H(self.tdh, self.data_completeness)
+        dom = _domain_V_H(self.specs_df, self.data_completeness)
         intervals = {'V': dom[0],
                      'H': dom[1]}
 
@@ -433,7 +433,7 @@ class Pump:
         funct_mod = function_models.polynomial_multivar_3_3_4
 
         # domain of V and tdh and gathering in one single variable
-        dom = _domain_V_H(self.tdh, self.data_completeness)
+        dom = _domain_V_H(self.specs_df, self.data_completeness)
         intervals = {'V': dom[0],
                      'H': dom[1]}
 
@@ -761,7 +761,7 @@ def get_data_pump(path):
     return voltage, lpm, tdh, current, watts
 
 
-def specs_completeness(voltage, lpm, tdh, current,
+def specs_completeness(specs_df,
                        motor_electrical_architecture):
     """
     Evaluates the completeness of the data of a pump.
@@ -788,19 +788,21 @@ def specs_completeness(voltage, lpm, tdh, current,
             'permanent_magnet', 'series_excited', 'shunt_excited',
             'separately_excited'))
 
-    volt_nb = len(voltage)
+    voltages = specs_df.voltage.drop_duplicates()
+    volt_nb = len(voltages)
 
     # computing of mean lpm completeness
     lpm_ratio = []
-    for v in lpm:
-        lpm_ratio.append(min(lpm[v])/max(lpm[v]))
+    for v in voltages:
+        lpm_ratio.append(min(specs_df[specs_df.voltage == v].flow)
+                         / max(specs_df[specs_df.voltage == v].flow))
     mean_lpm_ratio = np.mean(lpm_ratio)
 
-    head_ratio = min_in_values(tdh)/max_in_values(tdh)
+    head_ratio = min(specs_df.tdh)/max(specs_df.tdh)
 
     data_number = 0
-    for volt in lpm:
-        for i in lpm[volt]:
+    for v in voltages:
+        for i in specs_df[specs_df.voltage == v].flow:
             data_number += 1
     # TODO: should add some lines to check that current and tdh have same shape
     # than lpm
@@ -810,24 +812,6 @@ def specs_completeness(voltage, lpm, tdh, current,
             'head_min': head_ratio,
             'elec_archi': valid_elec_archi,
             'data_number': data_number}
-
-
-def max_in_values(data):
-    """Finds the maximum in the values of a dict"""
-    data_flat = []
-    for key in data.keys():
-        for elt in data[key]:
-            data_flat.append(elt)
-    return max(data_flat)
-
-
-def min_in_values(data):
-    """Finds the minimum in the values of a dict"""
-    data_flat = []
-    for key in data.keys():
-        for elt in data[key]:
-            data_flat.append(elt)
-    return min(data_flat)
 
 
 def _curves_coeffs_Arab06(specs_df, data_completeness):
@@ -1094,7 +1078,7 @@ def _curves_coeffs_Gualteros17(lpm, tdh, watts):
             'pow_with_tdh': coeff_pow_with_tdh}
 
 
-def _domain_I_H(data_cur, data_tdh, data_completeness):
+def _domain_I_H(specs_df, data_completeness):
     """
     Function giving the domain of cur depending on tdh, and vice versa.
 
@@ -1103,60 +1087,59 @@ def _domain_I_H(data_cur, data_tdh, data_completeness):
     funct_mod = function_models.polynomial_2
 
     # domains of I and tdh depending on each other
-    x_tips = []
-    y_tips = []
-    for v in data_tdh:
-        x_tips.append(min(data_cur[v]))
-        y_tips.append(max(data_tdh[v]))
+    data_v = specs_df.voltage.drop_duplicates()
+
+    cur_tips = []
+    tdh_tips = []
+    for v in data_v:
+        cur_tips.append(min(specs_df[specs_df.voltage == v].current))
+        tdh_tips.append(max(specs_df[specs_df.voltage == v].tdh))
 
     if data_completeness['voltage_number'] > 2 \
             and data_completeness['lpm_min'] == 0:
         # case working fine for SunPumps - not sure about complete data from
         # other manufacturer
-        param_y, pcov_y = opt.curve_fit(funct_mod,
-                                        x_tips, y_tips)
-        param_x, pcov_x = opt.curve_fit(funct_mod,
-                                        y_tips, x_tips)
+        param_tdh, pcov_tdh = opt.curve_fit(funct_mod,
+                                            cur_tips, tdh_tips)
+        param_cur, pcov_cur = opt.curve_fit(funct_mod,
+                                            tdh_tips, cur_tips)
 
         def interval_cur(y):
             "Interval on x depending on y"
-            return [max(funct_mod(y, *param_x),
-                        min_in_values(data_cur)),
-                    max_in_values(data_cur)]
+            return [max(funct_mod(y, *param_cur), min(specs_df.current)),
+                    max(specs_df.current)]
 
         def interval_tdh(x):
             "Interval on y depending on x"
-            return [0, min(max(funct_mod(x, *param_y),
+            return [0, min(max(funct_mod(x, *param_tdh),
                                0),
-                           max_in_values(data_tdh))]
+                           max(specs_df.tdh))]
 
     else:
         # Would need deeper work to fully understand what are the limits
         # on I and V depending on tdh, and how it affects lpm
         def interval_cur(*args):
             "Interval on current, independent of tdh"
-            return [min_in_values(data_cur), max_in_values(data_cur)]
+            return [min(specs_df.current), max(specs_df.current)]
 
         def interval_tdh(*args):
             "Interval on tdh, independent of current"
-            return [min_in_values(data_tdh), max_in_values(data_tdh)]
+            return [min(specs_df.tdh), max(specs_df.tdh)]
 
     return interval_cur, interval_tdh
 
 
-# TODO: below change input tdh by specs_df for consistency with _domain_P_H
-def _domain_V_H(data_tdh, data_completeness):
+def _domain_V_H(specs_df, data_completeness):
     """
     Function giving the range of voltage and head in which the pump will
     work.
     """
     funct_mod = function_models.polynomial_2
 
-    data_v = []
+    data_v = specs_df.voltage.drop_duplicates()
     tdh_tips = []
-    for v in data_tdh:
-        data_v.append(v)
-        tdh_tips.append(max(data_tdh[v]))
+    for v in data_v:
+        tdh_tips.append(max(specs_df[specs_df.voltage == v].tdh))
 
     if data_completeness['voltage_number'] > 2 \
             and data_completeness['lpm_min'] == 0:
@@ -1175,7 +1158,7 @@ def _domain_V_H(data_tdh, data_completeness):
         def interval_tdh(v):
             "Interval on tdh depending on v"
             return [0, min(max(funct_mod(v, *param_tdh), 0),
-                           max(data_tdh))]
+                           max(specs_df.tdh))]
 
     else:
         # Would need deeper work to fully understand what are the limits
@@ -1186,7 +1169,7 @@ def _domain_V_H(data_tdh, data_completeness):
 
         def interval_tdh(*args):
             "Interval on tdh, independent of vol"
-            return [0, max_in_values(data_tdh)]
+            return [0, max(specs_df.tdh)]
 
     return interval_vol, interval_tdh
 
@@ -1305,9 +1288,11 @@ if __name__ == "__main__":
 #                          }, model='Shurflo_9325')
 
 #    coeffs = _curves_coeffs_Hamidat08(pump1.specs_df, pump1.data_completeness)
-    print(pump1.coeffs)
+#    print(pump1.coeffs)
     f2, _ = pump1.functQforPH()
     print(f2(400, 10))
+    intervals = _domain_I_H(pump1.specs_df, pump1.data_completeness)
+    print(intervals)
 
 
 #    print(pump1.coeffs)

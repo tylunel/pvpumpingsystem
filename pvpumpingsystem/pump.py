@@ -77,6 +77,8 @@ class Pump:
                  controler=None, diameter_output=None,
                  modeling_method='arab'):
 
+        self.id = next(self._ids)
+
         if None not in (lpm, tdh, current):
             # use input data to create pump object
             self.lpm = lpm
@@ -84,7 +86,6 @@ class Pump:
             self.current = current
             self.voltage = list(self.lpm.keys())
             # TODO: Delete use of dict and put everything as DataFrame
-            # especially self.watts which is the same than specs_df.power
         else:
             # retrieve pump data from txt datasheet given by path
             try:
@@ -108,10 +109,6 @@ class Pump:
         self.diameter_output = diameter_output
         self.modeling_method = modeling_method
 
-        self.data_completeness = specs_completeness(
-            self.voltage, self.lpm, self.tdh, self.current,
-            self.motor_electrical_architecture)
-
         # data in the form of DataFrame
         vol = []
         head = []
@@ -131,11 +128,8 @@ class Pump:
                                       'flow': flow,
                                       'power': power})
 
-        # coeffs not really directly used previously, changed for new ones
-        coeffs = _curves_coeffs_Gualteros17(self.lpm, self.tdh, self.watts)
-        self.coeff_pow_with_lpm = coeffs['pow_with_lpm']
-        self.coeff_pow_with_tdh = coeffs['pow_with_tdh']
-        self.coeff_tdh_with_lpm = coeffs['tdh_with_lpm']
+        self.data_completeness = specs_completeness(self.specs_df,
+            self.motor_electrical_architecture)
 
         # new ones
         if self.modeling_method.lower() == 'kou':
@@ -153,7 +147,11 @@ class Pump:
 #        self.coeff_pow_with_tdh = coeffs['pow_with_tdh']
 #        self.coeff_tdh_with_lpm = coeffs['tdh_with_lpm']
 
-        self.id = next(self._ids)
+        # coeffs not really directly used previously, changed for new ones
+#        coeffs = _curves_coeffs_Gualteros17(self.lpm, self.tdh, self.watts)
+#        self.coeff_pow_with_lpm = coeffs['pow_with_lpm']
+#        self.coeff_pow_with_tdh = coeffs['pow_with_tdh']
+#        self.coeff_tdh_with_lpm = coeffs['tdh_with_lpm']
 
     def __repr__(self):
         affich = "model :" + str(self.model) + \
@@ -290,8 +288,6 @@ class Pump:
         * Tuple containing :
             - the function giving V according to I and H static for the pump :
                 V = f1(I, H)
-            - the standard deviation on V between real data points and data
-                computed with this function
             - a dict containing the domains of I and H
                 (Now the control is done inside the function by raising errors)
         """
@@ -318,7 +314,7 @@ class Pump:
         param, covmat = opt.curve_fit(funct_mod, dataxy, dataz)
 
         # domain computing
-        dom = _domain_I_H(self.current, self.tdh, self.data_completeness)
+        dom = _domain_I_H(self.specs_df, self.data_completeness)
         intervals = {'I': dom[0],
                      'H': dom[1]}
 
@@ -518,7 +514,11 @@ class Pump:
             cur = f1(V, H)
             return f2(V*cur, H)
 
-        return functQ
+        dom = _domain_V_H(self.specs_df, self.data_completeness)
+        intervals = {'V': dom[0],
+                     'H': dom[1]}
+
+        return functQ, intervals
 
     def functQforPH(self):
         """
@@ -952,6 +952,10 @@ def _curves_coeffs_Hamidat08(specs_df, data_completeness):
     ----------
     specs_df: pd.DataFrame
         DataFrame with specs.
+
+    Returns
+    -------
+    * dict with coefficients of the curve fit (a1, a2, a3, a4, b1, ..., d4)
 
     Reference
     ---------

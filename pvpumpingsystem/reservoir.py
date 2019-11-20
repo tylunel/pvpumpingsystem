@@ -43,7 +43,7 @@ class Reservoir(object):
                 (water_volume, extra (+) or lacking water(-))
         """
 
-        self.water_volume += quantity
+        self.water_volume = np.nansum([self.water_volume, quantity])
 
         if self.water_volume > self.size:
             extra_water = self.water_volume-self.size

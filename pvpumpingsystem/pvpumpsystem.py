@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import tqdm
 import time
 import pvlib
+import warnings
 from warnings import warn
 
 import pvpumpingsystem.pump as pp
@@ -427,7 +428,8 @@ def calc_flow_noiteration(fct_Q_from_inputs, input_1, static_head):
         Should preferentially come from 'Pump.fct_Q_from_inputs()'
 
     input_1: numeric
-        Voltage or Power at the functioning point.
+        Voltage or Power at the functioning point. Can only be Power if
+        mppt coupled.
 
     static_head: numeric
         Static head of the hydraulic network
@@ -499,8 +501,8 @@ def calc_flow_directly_coupled(modelchain, motorpump, pipes,
     # retrieve specific functions of motorpump V(I,H) and Q(V,H)
     M_s = modelchain.system.modules_per_string
     M_p = modelchain.system.strings_per_inverter
-
-    load_fctI, intervalsVH = motorpump.functIforVH()
+# useless !?:
+#    load_fctI, intervalsVH = motorpump.functIforVH()
     load_fctV, intervalsIH = motorpump.functVforIH()
     fctQwithPH, sigma2 = motorpump.functQforPH()
 
@@ -543,7 +545,7 @@ def calc_flow_directly_coupled(modelchain, motorpump, pipes,
             if time.time()-t_init > 1:
                 print('\niv:', iv_data)
                 print('Q:', mem)
-                raise ValueError('Loop too long to execute')
+                raise RuntimeError('Loop too long to execute')
         result.append({'Qlpm': Qlpmnew,
                        'I': float(iv_data.I),
                        'V': float(iv_data.V),
@@ -592,9 +594,9 @@ def calc_flow_mppt_coupled(modelchain, motorpump, pipes, mppt=None,
     - takes ~15 sec for computing 8760 iterations with atol=0.1lpm
     """
     result = []
-
-    load_fctI, intervalsVH = motorpump.functIforVH()
-    load_fctV, intervalsIH = motorpump.functVforIH()
+# useless !?:
+#    load_fctI, intervalsVH = motorpump.functIforVH()
+#    load_fctV, intervalsIH = motorpump.functVforIH()
     fctQwithPH, sigma2 = motorpump.functQforPH()
 
     for i, power in tqdm.tqdm(enumerate(
@@ -621,12 +623,14 @@ def calc_flow_mppt_coupled(modelchain, motorpump, pipes, mppt=None,
                                             power,
                                             h_tot)
 
-            # code for exiting while loop if problem
+            # code for exiting while loop if problem happens
             mem.append(Qlpmnew)
-            if time.time() - t_init > 1:
-                print('\nP:', power)
-                print('Q:', mem)
-                raise ValueError('Loop too long to execute.')
+            if time.time() - t_init > 0.1:
+#                print('\nP:', power)
+#                print('Q:', mem)
+                warnings.warn('Loop too long to execute. NaN returned.')
+                Qlpmnew = np.nan
+                break
 
         result.append({'Qlpm': Qlpmnew,
                        'P': float(power),
@@ -705,8 +709,8 @@ def calc_reservoir(reservoir, Q_pumped, Q_consumption):
         Dataframe with water_volume in tank, and extra or lacking water.
     """
     level = []
-    # timestep of in flowrate dataframe Q_lpm_df
-    timestep = Q_pumped.index[1]-Q_pumped.index[0]
+    # timestep of flowrate dataframe Q_lpm_df
+    timestep = Q_pumped.index[1] - Q_pumped.index[0]
     timestep_minute = timestep.seconds/60
 
     # TODO: temporary: should be replaced by process in Consumption class

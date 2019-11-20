@@ -31,7 +31,8 @@ weather_montreal = ('https://energyplus.net/weather-download/' +
                     'CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw')
 
 pump_sunpump = pp.Pump(path="../pumps_files/SCB_10_150_120_BL.txt",
-                       model='SCB_10')
+                       model='SCB_10',
+                       modeling_method='hamidat')
 pump_shurflo = pp.Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163,
                                  155, 136],
                             24: [443, 432, 413, 401, 390, 382, 375, 371, 352,
@@ -44,8 +45,10 @@ pump_shurflo = pp.Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163,
                                      3.3, 3.4, 3.9],
                                 24: [1.5, 1.7, 2.1, 2.4, 2.6, 2.8, 3.1, 3.3,
                                      3.6, 3.8, 4.1]
-                                }, model='Shurflo_9325',
-                       motor_electrical_architecture='permanent_magnet')
+                                },
+                       model='Shurflo_9325',
+                       motor_electrical_architecture='permanent_magnet',
+                       modeling_method='arab')
 
 M_s = 2
 M_p = 2
@@ -94,24 +97,24 @@ pvps1 = pvps.PVPumpSystem(chain1, pump1, coupling='mppt', pipes=pipes1,
                           consumption=consumption1, reservoir=reservoir1)
 
 # %% comparison mppt direct coupling
-res1 = pvps.calc_flow_directly_coupled(chain1, pump1, pipes1, atol=0.01,
-                                       stop=8760)
-res2 = pvps.calc_flow_mppt_coupled(chain1, pump1, pipes1, atol=0.01,
-                                   stop=8760)
-compare = pd.DataFrame({'direct1': res1.Qlpm,
-                        'mppt': res2.Qlpm})
-eff1 = pvps1.calc_efficiency()
+#res1 = pvps.calc_flow_directly_coupled(chain1, pump1, pipes1, atol=0.01,
+#                                       stop=8760)
+#res2 = pvps.calc_flow_mppt_coupled(chain1, pump1, pipes1, atol=0.01,
+#                                   stop=8760)
+#compare = pd.DataFrame({'direct1': res1.Qlpm,
+#                        'mppt': res2.Qlpm})
+#eff1 = pvps1.calc_efficiency()
 eff2 = pvps1.calc_efficiency()
 
 # %% figures
-plt.figure()
-plt.plot(pvps1.efficiency.index, pvps1.efficiency.electric_power)
-plt.title('Electric power in vs time')
-
-plt.figure()
-plt.plot(pvps1.efficiency.index, pvps1.modelchain.effective_irradiance)
-plt.title('Effective irradiance vs time')
-
+#plt.figure()
+#plt.plot(pvps1.efficiency.index, pvps1.efficiency.electric_power)
+#plt.title('Electric power in vs time')
+#
+#plt.figure()
+#plt.plot(pvps1.efficiency.index, pvps1.modelchain.effective_irradiance)
+#plt.title('Effective irradiance vs time')
+#
 # %% water volume in tank and flow rate vs time
 pvps1.calc_reservoir()
 
@@ -141,7 +144,7 @@ used_power = electric_power.loc[electric_power > 0].loc[flowrate != 0]
 total_unused_power_Wh = sum(unused_power)
 total_used_power_Wh = sum(used_power)
 
-total_pumped_water_L = sum(flowrate*60)
+total_pumped_water_L = (flowrate*60).sum()
 
 # potabilization of freshwater polluted from pathogen us bacteria can
 # be obtained with MF-UF that requires low energy consumption: 1.2 kWh/m3

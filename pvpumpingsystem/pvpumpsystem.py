@@ -317,8 +317,7 @@ def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
 
 def functioning_point_noiteration(params, modules_per_string,
                                   strings_per_inverter,
-                                  load_fctV, load_fctI=None,
-                                  load_intervalV=None,
+                                  load_fctV=None, load_fctI=None,
                                   tdh=0):
     """Finds the IV functioning point(s) of the PV array and the load.
 
@@ -339,10 +338,6 @@ def functioning_point_noiteration(params, modules_per_string,
 
     load_fctI: function
         The function I=f(V) of the load directly coupled with the array.
-        Only useful if plot = True.
-
-    load_intervalV: array-like
-        Domain of V in load_fctI. Only useful if plot = True.
 
     tdh: numeric
         Total dynamic head
@@ -381,6 +376,12 @@ def functioning_point_noiteration(params, modules_per_string,
             R_s = (M_s/M_p) * R_s
             R_sh = (M_s/M_p) * R_sh
 
+# TODO: is it possible to use only load_fctI here? would be great!
+#        def pv_fctI(V):  # does not work
+#            return I_L - I_o*(np.exp((V + I*R_s)/nNsVth) -1) - \
+#                (V + I*R_s)/R_sh
+#        Vm = opt.fsolve(lambda v : pv_fctI(v) - load_fctI(v), 10)
+
         if np.isnan(I_L):
             result.append({'I': 0, 'V': 0})
         else:
@@ -402,11 +403,11 @@ def functioning_point_noiteration(params, modules_per_string,
                 Im = max(Im, 0)
                 Vm = load_fctV(Im, tdh, error_raising=True)
             except ValueError:
-                Im = float('nan')
-                Vm = float('nan')
+                Im = np.nan
+                Vm = np.nan
             except (errors.CurrentError, errors.HeadError):
-                Im = float('nan')
-                Vm = float('nan')
+                Im = np.nan
+                Vm = np.nan
 
             result.append({'I': Im,
                            'V': Vm})
@@ -478,26 +479,28 @@ def calc_flow_directly_coupled(modelchain, motorpump, pipes,
 
         while abs(Qlpm-Qlpmnew) > atol:  # loop to make Qlpm converge
             Qlpm = Qlpmnew
-            # water temperature (random...)
+            # water temperature (arbitrary, should vary in future work)
             temp_water = 10
             # compute total head h_tot
             h_tot = pipes.h_stat + \
                 pipes.dynamichead(Qlpm, T=temp_water)
             # compute functioning point
             iv_data = functioning_point_noiteration(params, M_s, M_p,
-                                                    load_fctV, None, None,
+                                                    load_fctV,
                                                     h_tot)
             # consider losses
             if modelchain.losses != 1:
                 power = iv_data.V*iv_data.I * modelchain.losses
             else:
                 power = iv_data.V*iv_data.I
+            # type casting
+            power = float(power)
             # compute flow
             Qlpmnew = fctQwithPH(power, h_tot)['Q']
 
             # code for exiting while loop if problem
             mem.append(Qlpmnew)
-            if time.time()-t_init > 1:
+            if time.time()-t_init > 1000:
                 print('\niv:', iv_data)
                 print('Q:', mem)
                 raise RuntimeError('Loop too long to execute')
@@ -507,7 +510,7 @@ def calc_flow_directly_coupled(modelchain, motorpump, pipes,
         result.append({'Qlpm': Qlpmnew,
                        'I': float(iv_data.I),
                        'V': float(iv_data.V),
-                       'P': float(power),
+                       'P': power,
                        'P_unused': P_unused,
                        'tdh': h_tot
                        })

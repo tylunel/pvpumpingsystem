@@ -281,7 +281,7 @@ class Pump:
 
         plt.show()
 
-    def functVforIH(self):
+    def functVforIH_old(self):
         """
         Returns:
         --------
@@ -339,6 +339,17 @@ class Pump:
             return funct_mod([i, H], *param)
 
         return functV, intervals
+
+    def functVforIH(self):
+        """
+        Function whose goal is to inverse functIforVH.
+        """
+        functI, intervalI = self.functIforVH()
+
+        def functV(i, H):
+
+
+        return functV, intervalsV
 
     def functIforVH(self):
         """
@@ -573,10 +584,13 @@ class Pump:
                 # actually fprime should be given for using Newton-Raphson
                 Q = opt.newton(funct_P, 5, args=(P, H))
                 P_unused = 0  # power unused for pumping
-            else:  # P is higher than maximum
+            elif intervals['P'](H)[1] < P:
                 Pmax = intervals['P'](H)[1]
                 Q = opt.newton(funct_P, 5, args=(Pmax, H))
                 P_unused = P - Pmax
+            else:  # for example P is NaN
+                Q = np.nan
+                P_unused = np.nan
             return {'Q': Q, 'P_unused': P_unused}
 
         return functQ, intervals
@@ -611,10 +625,13 @@ class Pump:
             elif intervals['P'](H)[0] < P < intervals['P'](H)[1]:
                 Q = funct_mod([P, H], *coeffs_c, *coeffs_d, *coeffs_e)
                 P_unused = 0
-            else:  # P is higher than maximum
+            elif intervals['P'](H)[1] < P:
                 Pmax = intervals['P'](H)[1]
                 Q = funct_mod([Pmax, H], *coeffs_c, *coeffs_d, *coeffs_e)
                 P_unused = P - Pmax
+            else:  # for example P is NaN
+                Q = np.nan
+                P_unused = np.nan
             return {'Q': Q, 'P_unused': P_unused}
 
         return functQ, intervals
@@ -645,10 +662,13 @@ class Pump:
             elif intervals['P'](H)[0] < P < intervals['P'](H)[1]:
                 Q = funct_mod([P, H], *coeffs)
                 P_unused = 0
-            else:  # P is higher than maximum
+            elif intervals['P'](H)[1] < P:
                 Pmax = intervals['P'](H)[1]
                 Q = funct_mod([P, H], *coeffs)
                 P_unused = P - Pmax
+            else:  # for example P is NaN
+                Q = np.nan
+                P_unused = np.nan
             return {'Q': Q, 'P_unused': P_unused}
 
         return functQ, intervals

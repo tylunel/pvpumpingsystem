@@ -54,6 +54,7 @@ M_s = 2
 M_p = 2
 weather_path = weather_montreal
 pump1 = pump_sunpump
+coupling_method = 'direct'
 
 # %% modeling steps
 CECMOD = pvlib.pvsystem.retrieve_sam('cecmod')
@@ -93,8 +94,10 @@ pipes1 = pn.PipeNetwork(40, 100, 0.08, material='glass', optimism=True)
 consumption1 = cs.Consumption(constant_flow=1)
 reservoir1 = rv.Reservoir(10000, 0)
 
-pvps1 = pvps.PVPumpSystem(chain1, pump1, coupling='mppt', pipes=pipes1,
-                          consumption=consumption1, reservoir=reservoir1)
+pvps1 = pvps.PVPumpSystem(chain1, pump1, coupling=coupling_method,
+                          pipes=pipes1,
+                          consumption=consumption1,
+                          reservoir=reservoir1)
 
 # %% comparison mppt direct coupling
 #res1 = pvps.calc_flow_directly_coupled(chain1, pump1, pipes1, atol=0.01,
@@ -104,8 +107,10 @@ pvps1 = pvps.PVPumpSystem(chain1, pump1, coupling='mppt', pipes=pipes1,
 #compare = pd.DataFrame({'direct1': res1.Qlpm,
 #                        'mppt': res2.Qlpm})
 #eff1 = pvps1.calc_efficiency()
-eff2 = pvps1.calc_efficiency()
 
+flow = pvps1.calc_flow()
+
+eff2 = pvps1.calc_efficiency()
 # %% figures
 #plt.figure()
 #plt.plot(pvps1.efficiency.index, pvps1.efficiency.electric_power)

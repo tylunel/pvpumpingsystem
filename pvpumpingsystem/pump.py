@@ -565,19 +565,23 @@ class Pump:
 
         # TODO: Generalize this control of output for other functions
         def functQ(P, H):
+#            if not intervals['H'](P)[0] <= H <= intervals['H'](P)[1]:
+#                raise errors.HeadError('H (={0}) is out of bounds. It should'
+#                                       ' be in the interval {1}'
+#                                       .format(H, intervals['H'](P)))
             if P < intervals['P'](H)[0]:
                 Q = 0
-#                P_excess = P
+                P_excess = P
             elif intervals['P'](H)[0] < P < intervals['P'](H)[1]:
                 # Newton-Raphson numeraical method:
                 # actually fprime should be given for using Newton-Raphson
                 Q = opt.newton(funct_P, 5, args=(P, H))
-#                P_excess = 0  # power unused for pumping
+                P_excess = 0  # power unused for pumping
             else:  # P is higher than maximum
                 P = intervals['P'](H)[1]
                 Q = opt.newton(funct_P, 5, args=(P, H))
-#                P_excess = P - intervals['P'](H)[1]
-            return Q
+                P_excess = P - intervals['P'](H)[1]
+            return {'Q': Q, 'P_excess': P_excess}
 
         return functQ, intervals
 

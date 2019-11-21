@@ -417,52 +417,6 @@ def functioning_point_noiteration(params, modules_per_string,
     return pdresult
 
 
-# TODO: remove this function, seems useless since not working on domains
-# anymore
-def calc_flow_noiteration(fct_Q_from_inputs, input_1, static_head):
-    """Function computing the flow at the output of the PVPS according
-    to the input_1 at functioning point.
-
-    Parameters
-    ----------
-    fct_Q_from_inputs: function
-        Function computing flow rate of the pump in liter/minute.
-        Should preferentially come from 'Pump.fct_Q_from_inputs()'
-
-    input_1: numeric
-        Voltage or Power at the functioning point. Can only be Power if
-        mppt coupled.
-
-    static_head: numeric
-        Static head of the hydraulic network
-
-    Returns
-    ---------
-    Q: water discharge in liter/timestep of input_1 data (typically
-                                                           hours)
-    """
-    if not type(input_1) is float:
-        input_1 = float(input_1)
-
-    if input_1 == 0:  # useless since not working on domains anymore?
-        Qlpm = 0
-    else:
-        # compute total head h_tot
-        h_tot = static_head
-        # compute discharge Q
-        try:
-            Qlpm = fct_Q_from_inputs(input_1, h_tot)['Q']
-        # useless since not working on domains anymore?
-        except (errors.VoltageError, errors.PowerError):
-            Qlpm = 0
-    if Qlpm < 0:  # useless since not working on domains anymore?
-        Qlpm = 0
-
-    discharge = Qlpm  # temp: 60 should be replaced by timestep
-
-    return discharge
-
-
 def calc_flow_directly_coupled(modelchain, motorpump, pipes,
                                atol=0.1,
                                stop=8760):
@@ -539,9 +493,7 @@ def calc_flow_directly_coupled(modelchain, motorpump, pipes,
             else:
                 power = iv_data.V*iv_data.I
             # compute flow
-            Qlpmnew = calc_flow_noiteration(fctQwithPH,
-                                            power,
-                                            h_tot)
+            Qlpmnew = fctQwithPH(power, h_tot)['Q']
 
             # code for exiting while loop if problem
             mem.append(Qlpmnew)
@@ -549,10 +501,14 @@ def calc_flow_directly_coupled(modelchain, motorpump, pipes,
                 print('\niv:', iv_data)
                 print('Q:', mem)
                 raise RuntimeError('Loop too long to execute')
+
+        P_unused = fctQwithPH(power, h_tot)['P_unused']
+
         result.append({'Qlpm': Qlpmnew,
                        'I': float(iv_data.I),
                        'V': float(iv_data.V),
                        'P': float(power),
+                       'P_unused': P_unused,
                        'tdh': h_tot
                        })
 
@@ -621,9 +577,7 @@ def calc_flow_mppt_coupled(modelchain, motorpump, pipes, mppt=None,
             h_tot = pipes.h_stat + \
                 pipes.dynamichead(Qlpm, T=temp_water)
             # compute flow
-            Qlpmnew = calc_flow_noiteration(fctQwithPH,
-                                            power,
-                                            h_tot)
+            Qlpmnew = fctQwithPH(power, h_tot)['Q']
 
             # code for exiting while loop if problem happens
             mem.append(Qlpmnew)
@@ -634,8 +588,11 @@ def calc_flow_mppt_coupled(modelchain, motorpump, pipes, mppt=None,
                 Qlpmnew = np.nan
                 break
 
+        P_unused = fctQwithPH(power, h_tot)['P_unused']
+
         result.append({'Qlpm': Qlpmnew,
                        'P': float(power),
+                       'P_unused': P_unused,
                        'tdh': h_tot
                        })
 

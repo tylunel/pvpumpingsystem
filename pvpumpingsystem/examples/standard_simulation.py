@@ -139,6 +139,7 @@ plt.show()
 # %% find unused electricity
 electric_power = pvps1.efficiency.electric_power
 flowrate = pvps1.flow.Qlpm
+# unused power only because power is too low, check pvps.flow.P_unused instead
 unused_power = electric_power.loc[electric_power > 0].loc[flowrate == 0]
 used_power = electric_power.loc[electric_power > 0].loc[flowrate != 0]
 total_unused_power_Wh = sum(unused_power)

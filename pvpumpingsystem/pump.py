@@ -565,23 +565,19 @@ class Pump:
 
         # TODO: Generalize this control of output for other functions
         def functQ(P, H):
-#            if not intervals['H'](P)[0] <= H <= intervals['H'](P)[1]:
-#                raise errors.HeadError('H (={0}) is out of bounds. It should'
-#                                       ' be in the interval {1}'
-#                                       .format(H, intervals['H'](P)))
             if P < intervals['P'](H)[0]:
                 Q = 0
-                P_excess = P
+                P_unused = P
             elif intervals['P'](H)[0] < P < intervals['P'](H)[1]:
                 # Newton-Raphson numeraical method:
                 # actually fprime should be given for using Newton-Raphson
                 Q = opt.newton(funct_P, 5, args=(P, H))
-                P_excess = 0  # power unused for pumping
+                P_unused = 0  # power unused for pumping
             else:  # P is higher than maximum
-                P = intervals['P'](H)[1]
-                Q = opt.newton(funct_P, 5, args=(P, H))
-                P_excess = P - intervals['P'](H)[1]
-            return {'Q': Q, 'P_excess': P_excess}
+                Pmax = intervals['P'](H)[1]
+                Q = opt.newton(funct_P, 5, args=(Pmax, H))
+                P_unused = P - Pmax
+            return {'Q': Q, 'P_unused': P_unused}
 
         return functQ, intervals
 
@@ -609,15 +605,17 @@ class Pump:
                      'H': dom[1]}
 
         def functQ(P, H):
-            if not intervals['P'](H)[0] <= P <= intervals['P'](H)[1]:
-                raise errors.PowerError('P (={0}) is out of bounds. It '
-                                        'should be in the interval {1}'
-                                        .format(P, intervals['P'](H)))
-            if not intervals['H'](P)[0] <= H <= intervals['H'](P)[1]:
-                raise errors.HeadError('H (={0}) is out of bounds. It should'
-                                       ' be in the interval {1}'
-                                       .format(H, intervals['H'](P)))
-            return funct_mod([P, H], *coeffs_c, *coeffs_d, *coeffs_e)
+            if P < intervals['P'](H)[0]:
+                Q = 0
+                P_unused = P
+            elif intervals['P'](H)[0] < P < intervals['P'](H)[1]:
+                Q = funct_mod([P, H], *coeffs_c, *coeffs_d, *coeffs_e)
+                P_unused = 0
+            else:  # P is higher than maximum
+                Pmax = intervals['P'](H)[1]
+                Q = funct_mod([Pmax, H], *coeffs_c, *coeffs_d, *coeffs_e)
+                P_unused = P - Pmax
+            return {'Q': Q, 'P_unused': P_unused}
 
         return functQ, intervals
 
@@ -641,15 +639,17 @@ class Pump:
                      'H': dom[1]}
 
         def functQ(P, H):
-            if not intervals['P'](H)[0] <= P <= intervals['P'](H)[1]:
-                raise errors.PowerError('P (={0}) is out of bounds. It '
-                                        'should be in the interval {1}'
-                                        .format(P, intervals['P'](H)))
-            if not intervals['H'](P)[0] <= H <= intervals['H'](P)[1]:
-                raise errors.HeadError('H (={0}) is out of bounds. It should'
-                                       ' be in the interval {1}'
-                                       .format(H, intervals['H'](P)))
-            return funct_mod([P, H], *coeffs)
+            if P < intervals['P'](H)[0]:
+                Q = 0
+                P_unused = P
+            elif intervals['P'](H)[0] < P < intervals['P'](H)[1]:
+                Q = funct_mod([P, H], *coeffs)
+                P_unused = 0
+            else:  # P is higher than maximum
+                Pmax = intervals['P'](H)[1]
+                Q = funct_mod([P, H], *coeffs)
+                P_unused = P - Pmax
+            return {'Q': Q, 'P_unused': P_unused}
 
         return functQ, intervals
 

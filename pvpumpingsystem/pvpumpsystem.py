@@ -417,6 +417,8 @@ def functioning_point_noiteration(params, modules_per_string,
     return pdresult
 
 
+# TODO: remove this function, seems useless since not working on domains
+# anymore
 def calc_flow_noiteration(fct_Q_from_inputs, input_1, static_head):
     """Function computing the flow at the output of the PVPS according
     to the input_1 at functioning point.
@@ -442,17 +444,18 @@ def calc_flow_noiteration(fct_Q_from_inputs, input_1, static_head):
     if not type(input_1) is float:
         input_1 = float(input_1)
 
-    if input_1 == 0:
+    if input_1 == 0:  # useless since not working on domains anymore?
         Qlpm = 0
     else:
         # compute total head h_tot
         h_tot = static_head
         # compute discharge Q
         try:
-            Qlpm = fct_Q_from_inputs(input_1, h_tot)
+            Qlpm = fct_Q_from_inputs(input_1, h_tot)['Q']
+        # useless since not working on domains anymore?
         except (errors.VoltageError, errors.PowerError):
             Qlpm = 0
-    if Qlpm < 0:
+    if Qlpm < 0:  # useless since not working on domains anymore?
         Qlpm = 0
 
     discharge = Qlpm  # temp: 60 should be replaced by timestep
@@ -594,9 +597,8 @@ def calc_flow_mppt_coupled(modelchain, motorpump, pipes, mppt=None,
     - takes ~15 sec for computing 8760 iterations with atol=0.1lpm
     """
     result = []
-# useless !?:
-#    load_fctI, intervalsVH = motorpump.functIforVH()
-#    load_fctV, intervalsIH = motorpump.functVforIH()
+
+#    fctQnPwithPH, sigma2 = motorpump.functQforPH()
     fctQwithPH, sigma2 = motorpump.functQforPH()
 
     for i, power in tqdm.tqdm(enumerate(

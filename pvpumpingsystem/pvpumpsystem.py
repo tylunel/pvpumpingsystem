@@ -75,9 +75,10 @@ class PVPumpSystem(object):
 
     def functioning_point_noiteration(self,
                                       plot=False, nb_pts=50, stop=8760):
-        """Finds the IV functioning point(s) of the PV array and the load.
+        """Finds the IV functioning point(s) of the PV array and the pump
+        (load).
 
-        cf pvlib_pvpumpsystem.functioning_point_noiteration for more details
+        cf pvlib_pvpumpsystem.functioning_point_noiteration for more details.
 
         Parameters
         ----------
@@ -100,20 +101,21 @@ class PVPumpSystem(object):
 
         Note / Issues
         -------------
-        - takes ~5sec for computing 8760 iterations
+        - takes ~10sec for computing 8760 iterations
         """
         params = self.modelchain.diode_params[0:stop]
         M_s = self.modelchain.system.modules_per_string
         M_p = self.modelchain.system.strings_per_inverter
 
-        load_fctI, ectyp, intervalsVH = self.motorpump.functIforVH()
-        load_fctV, ectyp, intervalsIH = self.motorpump.functVforIH()
+        load_fctI, intervalsVH = self.motorpump.functIforVH()
+#        load_fctV, intervalsIH = self.motorpump.functVforIH()
         fctQwithVH, sigma2 = self.motorpump.functQforVH()
 
         tdh = self.pipes.h_stat
 
         pdresult = functioning_point_noiteration(
-                params, M_s, M_p, load_fctV, load_fctI, intervalsVH['V'], tdh)
+                params, M_s, M_p, load_fctIfromVH=load_fctI,
+                tdh=tdh)
 
         if plot:
             plt.figure()
@@ -174,7 +176,10 @@ class PVPumpSystem(object):
 
         Note / Issues
         ---------
-        - takes ~15 sec for computing 8760 iterations with atol=0.1lpm
+        - takes ~20 sec for computing 8760 iterations with mppt coupling and
+        atol=0.1lpm
+        - takes ~60 sec for computing 8760 iterations with direct coupling and
+        atol=0.1lpm
         """
         if self.coupling == 'mppt':
             self.flow = calc_flow_mppt_coupled(self.modelchain,
@@ -317,7 +322,7 @@ def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
 
 def functioning_point_noiteration(params, modules_per_string,
                                   strings_per_inverter,
-                                  load_fctV=None, load_fctI=None,
+                                  load_fctIfromVH=None,
                                   tdh=0):
     """Finds the IV functioning point(s) of the PV array and the load.
 
@@ -333,11 +338,8 @@ def functioning_point_noiteration(params, modules_per_string,
     strings_per_inverter: numeric
         Number of strings in parallel
 
-    load_fctV: function
-        The function V=f(I) of the load directly coupled with the array.
-
-    load_fctI: function
-        The function I=f(V) of the load directly coupled with the array.
+    load_fctIfromVH: function
+        The function I=f(V, H) of the load directly coupled with the array.
 
     tdh: numeric
         Total dynamic head
@@ -350,7 +352,7 @@ def functioning_point_noiteration(params, modules_per_string,
 
     Note / Issues
     ---------
-    - takes ~5sec for computing 8760 iterations
+    - takes ~10sec for computing 8760 iterations
     """
     result = []
 
@@ -376,41 +378,32 @@ def functioning_point_noiteration(params, modules_per_string,
             R_s = (M_s/M_p) * R_s
             R_sh = (M_s/M_p) * R_sh
 
-# TODO: is it possible to use only load_fctI here? would be great!
-#        def pv_fctI(V):  # does not work
-#            return I_L - I_o*(np.exp((V + I*R_s)/nNsVth) -1) - \
-#                (V + I*R_s)/R_sh
-#        Vm = opt.fsolve(lambda v : pv_fctI(v) - load_fctI(v), 10)
-
         if np.isnan(I_L):
-            result.append({'I': 0, 'V': 0})
+            Vm = 0
+            Im = 0
         else:
-            # def of equation of Single Diode Model with previous params:
-            def I_pv_fct(I):
-                """Returns the electrical equation of single-diode model in
-                a way that it returns 0 when the equation is respected
-                (i.e. the I is the good one)
-                """
-                V = load_fctV(I, tdh, error_raising=False)
-                In = I_L - I_o*(np.exp((V + I*R_s)/nNsVth) - 1) - \
-                    (V + I*R_s)/R_sh
-                y = In - I
-                return y
+            # attempt to use only load_fctI here
+            def pv_fctI(V):  # does not work
+                return pvlib.pvsystem.i_from_v(R_sh, R_s, nNsVth, V,
+                                               I_o, I_L, method='lambertw')
 
-            # solver
+            def load_fctI(V):
+                return load_fctIfromVH(V, tdh, error_raising=False)
+
+            # finds intersection. 10 is starting estimate, could be improved
+            Vm = opt.fsolve(lambda v: pv_fctI(v) - load_fctI(v), 10)
             try:
-                Im = opt.brentq(I_pv_fct, 0, I_L)
-                Im = max(Im, 0)
-                Vm = load_fctV(Im, tdh, error_raising=True)
-            except ValueError:
-                Im = np.nan
-                Vm = np.nan
-            except (errors.CurrentError, errors.HeadError):
+                Im = load_fctIfromVH(Vm, tdh, error_raising=True)
+#            except ValueError:
+#                Im = np.nan
+#                Vm = np.nan
+            except (errors.VoltageError, errors.HeadError):
                 Im = np.nan
                 Vm = np.nan
 
-            result.append({'I': Im,
-                           'V': Vm})
+        result.append({'I': Im,
+                       'V': Vm})
+
     # conversion in pd.DataFrame
     pdresult = pd.DataFrame(result)
     pdresult.index = params.index
@@ -421,8 +414,7 @@ def functioning_point_noiteration(params, modules_per_string,
 def calc_flow_directly_coupled(modelchain, motorpump, pipes,
                                atol=0.1,
                                stop=8760):
-    """DEBUG VERSION of 'calc_flow_directly_coupled'
-
+    """
     Function computing the flow at the output of the PVPS.
 
     Parameters
@@ -459,9 +451,10 @@ def calc_flow_directly_coupled(modelchain, motorpump, pipes,
     # retrieve specific functions of motorpump V(I,H) and Q(V,H)
     M_s = modelchain.system.modules_per_string
     M_p = modelchain.system.strings_per_inverter
+
+    load_fctIfromVH, intervalsVH = motorpump.functIforVH()
 # useless !?:
-#    load_fctI, intervalsVH = motorpump.functIforVH()
-    load_fctV, intervalsIH = motorpump.functVforIH()
+#    load_fctV, intervalsIH = motorpump.functVforIH()
     fctQwithPH, sigma2 = motorpump.functQforPH()
 
     for i, row in tqdm.tqdm(enumerate(
@@ -485,9 +478,10 @@ def calc_flow_directly_coupled(modelchain, motorpump, pipes,
             h_tot = pipes.h_stat + \
                 pipes.dynamichead(Qlpm, T=temp_water)
             # compute functioning point
-            iv_data = functioning_point_noiteration(params, M_s, M_p,
-                                                    load_fctV,
-                                                    h_tot)
+            iv_data = functioning_point_noiteration(
+                    params, M_s, M_p,
+                    load_fctIfromVH=load_fctIfromVH,
+                    tdh=h_tot)
             # consider losses
             if modelchain.losses != 1:
                 power = iv_data.V*iv_data.I * modelchain.losses
@@ -692,3 +686,55 @@ def calc_reservoir(reservoir, Q_pumped, Q_consumption):
     level_df.index = Q_pumped.index
 
     return level_df
+
+
+if __name__ == '__main__':
+    # %% set up
+    CECMOD = pvlib.pvsystem.retrieve_sam('cecmod')
+
+    glass_params = {'K': 4, 'L': 0.002, 'n': 1.526}
+    pvsys1 = pvlib.pvsystem.PVSystem(
+            surface_tilt=45, surface_azimuth=180,
+            albedo=0, surface_type=None,
+            module=CECMOD.Kyocera_Solar_KU270_6MCA,
+            module_parameters={**dict(CECMOD.Kyocera_Solar_KU270_6MCA),
+                               **glass_params},
+            modules_per_string=2, strings_per_inverter=2,
+            inverter=None, inverter_parameters={'pdc0': 700},
+            racking_model='open_rack_cell_glassback',
+            losses_parameters=None, name=None
+            )
+    weatherdata1, metadata1 = pvlib.iotools.epw.read_epw(
+        'weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC_truncated.epw',
+#        'weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw',
+        coerce_year=2005)
+    locat1 = pvlib.location.Location.from_epw(metadata1)
+
+    chain1 = pvlib.modelchain.ModelChain(
+             system=pvsys1, location=locat1,
+             orientation_strategy=None,
+             clearsky_model='ineichen',
+             transposition_model='haydavies',
+             solar_position_method='nrel_numpy',
+             airmass_model='kastenyoung1989',
+             dc_model='desoto', ac_model='pvwatts', aoi_model='physical',
+             spectral_model='first_solar', temp_model='sapm',
+             losses_model='pvwatts', name=None)
+
+    chain1.run_model(times=weatherdata1.index, weather=weatherdata1)
+
+    pump1 = pp.Pump(path="pumps_files/SCB_10_150_120_BL.txt",
+                    modeling_method='arab')
+    pipes1 = pn.PipeNetwork(h_stat=10, l_tot=100, diam=0.08,
+                            material='plastic', optimism=True)
+    reserv1 = rv.Reservoir(1000000, 0)
+    consum1 = cs.Consumption(constant_flow=1)
+
+    pvps1 = PVPumpSystem(chain1, pump1, coupling='direct',
+                         pipes=pipes1, consumption=consum1,
+                         reservoir=reserv1)
+
+# %% thing to try
+    df_iv = pvps1.functioning_point_noiteration()
+    print(df_iv[6:12])
+    pvps1.calc_flow()

@@ -347,7 +347,7 @@ class Pump:
         functI, intervalI = self.functIforVH()
 
         def functV(i, H):
-
+            return NotImplementedError
 
         return functV, intervalsV
 

@@ -34,10 +34,7 @@ def pvps_set_up():
             losses_parameters=None, name=None
             )
     weatherdata1, metadata1 = pvlib.iotools.epw.read_epw(
-        'https://energyplus.net/weather-download/' +
-        'north_and_central_america_wmo_region_4/CAN/PQ/' +
-        'CAN_PQ_Montreal.Intl.AP.716270_CWEC/' +
-        'CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw',
+        '../weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC_truncated.epw',
         coerce_year=2005)
     locat1 = pvlib.location.Location.from_epw(metadata1)
 
@@ -77,6 +74,14 @@ def test_calc_flow(pvps_set_up):
                            44.00, 41.31, 34.25,  0.,
                            0., 0., 0., 0., 0., 0., 0., 0.])
     np.testing.assert_allclose(Q, Q_expected, rtol=1e-3)
+
+
+def test_functioning_point_noiteration_func(pvps_set_up):
+    """
+    """
+
+    df_iv = pvps_set_up.functioning_point_noiteration()
+    print(df_iv)
 
 
 if __name__ == '__main__':

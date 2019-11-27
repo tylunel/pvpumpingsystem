@@ -78,7 +78,7 @@ class PVPumpSystem(object):
         """Finds the IV functioning point(s) of the PV array and the pump
         (load).
 
-        cf pvlib_pvpumpsystem.functioning_point_noiteration for more details.
+        cf pvlib_pvpumpsystem.functioning_point_noiteration for more details
 
         Parameters
         ----------
@@ -108,7 +108,7 @@ class PVPumpSystem(object):
         M_p = self.modelchain.system.strings_per_inverter
 
         load_fctI, intervalsVH = self.motorpump.functIforVH()
-#        load_fctV, intervalsIH = self.motorpump.functVforIH()
+
         fctQwithVH, sigma2 = self.motorpump.functQforVH()
 
         tdh = self.pipes.h_stat
@@ -735,6 +735,6 @@ if __name__ == '__main__':
                          reservoir=reserv1)
 
 # %% thing to try
-    df_iv = pvps1.functioning_point_noiteration()
+    df_iv = pvps1.functioning_point_noiteration(plot=True)
     print(df_iv[6:12])
     pvps1.calc_flow()

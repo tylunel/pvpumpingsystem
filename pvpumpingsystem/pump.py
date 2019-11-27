@@ -342,14 +342,10 @@ class Pump:
 
     def functVforIH(self):
         """
-        Function whose goal is to inverse functIforVH.
+        Function whose goal is to inverse functIforVH to find I from V and H
+        analytically.
         """
-        functI, intervalI = self.functIforVH()
-
-        def functV(i, H):
-            return NotImplementedError
-
-        return functV, intervalsV
+        raise NotImplementedError
 
     def functIforVH(self):
         """

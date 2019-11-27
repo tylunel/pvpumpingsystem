@@ -8,6 +8,7 @@ Created on Tue Jul 23 17:22:25 2019
 import pytest
 import numpy as np
 import pvlib
+import pandas as pd
 
 import pvpumpingsystem.pump as pp
 import pvpumpingsystem.pipenetwork as pn
@@ -65,7 +66,7 @@ def pvps_set_up():
 
 
 def test_calc_flow(pvps_set_up):
-    """Test the computing of flows.
+    """Test the computing of flows in the case coupled with mppt.
     """
     pvps_set_up.calc_flow(atol=0.1, stop=24)
     Q = pvps_set_up.flow.Qlpm.values
@@ -76,12 +77,21 @@ def test_calc_flow(pvps_set_up):
     np.testing.assert_allclose(Q, Q_expected, rtol=1e-3)
 
 
-def test_functioning_point_noiteration_func(pvps_set_up):
+def test_functioning_point_noiteration(pvps_set_up):
+    """Test the ability of code to find the functioning point between
+    pump and pv array when directly-coupled.
     """
-    """
-
     df_iv = pvps_set_up.functioning_point_noiteration()
-    print(df_iv)
+    arr_iv = np.array(df_iv[11:19], dtype=float)
+    arr_iv_expected = np.array([[2.12604482, 75.76427699],
+                                [2.12241983, 75.18362267],
+                                [2.12135466, 75.01300389],
+                                [2.11539094, 74.05773065],
+                                [np.nan, np.nan],
+                                [np.nan, np.nan],
+                                [0., 0.],
+                                [0., 0.]])
+    np.testing.assert_allclose(arr_iv, arr_iv_expected, rtol=0.1)
 
 
 if __name__ == '__main__':

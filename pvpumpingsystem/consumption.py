@@ -30,10 +30,11 @@ class Consumption(object):
         consumption through the time.
     """
 
-    def __init__(self, flow_rate=None, constant_flow=None, repeated_flow=None):
+    def __init__(self, flow_rate=None, constant_flow=None, repeated_flow=None,
+                 length=8760):
         if flow_rate is None:
             index = pd.date_range(datetime.datetime(2005, 1, 1, 0),
-                                  datetime.datetime(2005, 12, 31, 23),
+                                  periods=length,
                                   freq='H')
             self.flow_rate = pd.DataFrame(index=index, columns=('Qlpm',))
         else:

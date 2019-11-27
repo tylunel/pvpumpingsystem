@@ -25,14 +25,12 @@ import pvpumpingsystem.pvpumpsystem as pvps
 #                  'USA_CO_Denver.Intl.AP.725650_TMY3/' +
 #                  'USA_CO_Denver.Intl.AP.725650_TMY3.epw')
 
-weather_montreal = ('https://energyplus.net/weather-download/' +
-                    'north_and_central_america_wmo_region_4/CAN/PQ/' +
-                    'CAN_PQ_Montreal.Intl.AP.716270_CWEC/' +
-                    'CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw')
+weather_montreal = (
+    '../weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC_truncated.epw')
 
 pump_sunpump = pp.Pump(path="../pumps_files/SCB_10_150_120_BL.txt",
                        model='SCB_10',
-                       modeling_method='hamidat')
+                       modeling_method='arab')
 pump_shurflo = pp.Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163,
                                  155, 136],
                             24: [443, 432, 413, 401, 390, 382, 375, 371, 352,
@@ -61,20 +59,20 @@ CECMOD = pvlib.pvsystem.retrieve_sam('cecmod')
 
 glass_params = {'K': 4, 'L': 0.002, 'n': 1.526}
 pvsys1 = pvlib.pvsystem.PVSystem(
-            surface_tilt=50, surface_azimuth=180,
+            surface_tilt=45, surface_azimuth=180,
             albedo=0, surface_type=None,
             module=CECMOD.Kyocera_Solar_KU270_6MCA,
             module_parameters={**dict(CECMOD.Kyocera_Solar_KU270_6MCA),
                                **glass_params},
-            modules_per_string=M_s, strings_per_inverter=M_p,
+            modules_per_string=2, strings_per_inverter=2,
             inverter=None, inverter_parameters={'pdc0': 700},
             racking_model='open_rack_cell_glassback',
             losses_parameters=None, name=None
             )
 
 weatherdata1, metadata1 = pvlib.iotools.epw.read_epw(
-    weather_path, coerce_year=2005)
-
+    '../weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC_truncated.epw',
+    coerce_year=2005)
 locat1 = pvlib.location.Location.from_epw(metadata1)
 
 chain1 = pvlib.modelchain.ModelChain(
@@ -90,11 +88,14 @@ chain1 = pvlib.modelchain.ModelChain(
 
 chain1.run_model(times=weatherdata1.index, weather=weatherdata1)
 
-pipes1 = pn.PipeNetwork(40, 100, 0.08, material='glass', optimism=True)
-consumption1 = cs.Consumption(constant_flow=1)
-reservoir1 = rv.Reservoir(10000, 0)
+pump1 = pp.Pump(path="../pumps_files/SCB_10_150_120_BL.txt",
+                modeling_method='arab')
+pipes1 = pn.PipeNetwork(h_stat=10, l_tot=100, diam=0.08,
+                        material='plastic', optimism=True)
+reservoir1 = rv.Reservoir(1000000, 0)
+consumption1 = cs.Consumption(constant_flow=1, length=len(weatherdata1))
 
-pvps1 = pvps.PVPumpSystem(chain1, pump1, coupling=coupling_method,
+pvps1 = pvps.PVPumpSystem(chain1, pump1, coupling='direct',
                           pipes=pipes1,
                           consumption=consumption1,
                           reservoir=reservoir1)
@@ -108,9 +109,9 @@ pvps1 = pvps.PVPumpSystem(chain1, pump1, coupling=coupling_method,
 #                        'mppt': res2.Qlpm})
 #eff1 = pvps1.calc_efficiency()
 
-flow = pvps1.calc_flow()
-
-eff2 = pvps1.calc_efficiency()
+pvps1.calc_flow()
+print(pvps1.flow[6:16])
+pvps1.calc_efficiency()
 # %% figures
 #plt.figure()
 #plt.plot(pvps1.efficiency.index, pvps1.efficiency.electric_power)

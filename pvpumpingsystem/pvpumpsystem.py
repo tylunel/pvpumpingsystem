@@ -82,7 +82,6 @@ class PVPumpSystem(object):
 
         Parameters
         ----------
-
         plot: Boolean
             Allows or not the printing of IV curves of PV system and of
             the load.
@@ -101,7 +100,7 @@ class PVPumpSystem(object):
 
         Note / Issues
         -------------
-        - takes ~10sec for computing 8760 iterations
+        - takes ~10sec to compute 8760 iterations
         """
         params = self.modelchain.diode_params[0:stop]
         M_s = self.modelchain.system.modules_per_string
@@ -348,7 +347,8 @@ def functioning_point_noiteration(params, modules_per_string,
     -------
     IV : pandas.DataFrame
         Current ('I') and voltage ('V') at the functioning point between
-        load and pv array.
+        load and pv array. I and V are float. It is 0 when there is no
+        irradiance, and np.nan when pv array and load don't match.
 
     Note / Issues
     ---------
@@ -728,13 +728,14 @@ if __name__ == '__main__':
     pipes1 = pn.PipeNetwork(h_stat=10, l_tot=100, diam=0.08,
                             material='plastic', optimism=True)
     reserv1 = rv.Reservoir(1000000, 0)
-    consum1 = cs.Consumption(constant_flow=1)
+    consum1 = cs.Consumption(constant_flow=1, length=len(weatherdata1))
 
     pvps1 = PVPumpSystem(chain1, pump1, coupling='direct',
                          pipes=pipes1, consumption=consum1,
                          reservoir=reserv1)
 
 # %% thing to try
-    df_iv = pvps1.functioning_point_noiteration(plot=True)
-    print(df_iv[6:12])
+#    df_iv = pvps1.functioning_point_noiteration(plot=True)
+
     pvps1.calc_flow()
+    print(pvps1.flow[6:16])

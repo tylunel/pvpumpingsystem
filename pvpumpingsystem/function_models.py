@@ -4,6 +4,31 @@ Created on Wed Oct 23 15:50:19 2019
 
 @author: Tanguy
 """
+import numpy as np
+from sklearn.metrics import r2_score
+
+
+def correlation_stats(funct_mod, params, data_input, data_to_fit):
+    """
+    Compute statistical figures to assess quality of curve fitting.
+
+    Returns
+    -------
+    dict with keys:
+        -'rmse'
+        -'nrmse'
+        -'r_squared'
+        -'nb_data'
+    """
+    data_fitted = funct_mod(data_input, *params)
+    rmse = np.sqrt(sum((data_to_fit-data_fitted)**2)/len(data_to_fit))
+    nrmse = rmse/np.mean(data_fitted)
+    r_squared = r2_score(data_to_fit, data_fitted)
+    nb_data = len(data_to_fit)
+    return {'rmse': rmse,
+            'nrmse': nrmse,
+            'r_squared': r_squared,
+            'nb_data': nb_data}
 
 
 def compound_polynomial_1_3(input_val, a1, a2, a3, a4, b1, b2, b3, b4):
@@ -132,3 +157,10 @@ def polynomial_1(x, y_intercept, a):
     Model of a polynomial function of first order, i.e. a linear function.
     """
     return y_intercept + a*x
+
+
+def polynomial_divided_2_1(x, a, b, c):
+    """
+    Model of a polynomial function of second order divided by x.
+    """
+    return a/x + b + c*x

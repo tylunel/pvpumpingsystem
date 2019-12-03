@@ -19,6 +19,7 @@ from mpl_toolkits.mplot3d import Axes3D  # needed for plotting in 3d
 import scipy.optimize as opt
 import scipy.interpolate as spint
 from sklearn.metrics import r2_score
+import warnings
 
 from pvpumpingsystem import errors
 from pvpumpingsystem import function_models
@@ -365,6 +366,8 @@ class Pump:
             return self.functIforVH_Kou()
         if self.modeling_method == 'arab':
             return self.functIforVH_Arab()
+        if self.modeling_method == 'theoretical':
+            return self.functIforVH_theoretical()
         if self.modeling_method == 'hamidat':
             raise NotImplementedError(
                 "Hamidat method does not provide model for functIforVH, "
@@ -460,6 +463,53 @@ class Pump:
             return funct_mod([V, H], *coeffs)
 
         return functI, intervals
+
+# TODO: change this function in functIforVH for standardizing
+    def functVforIH_theoretical(self):
+        """
+        Function using electrical architecture for modeling V vs I of pump.
+
+        Reference
+        ---------
+        [1]
+        """
+
+        coeffs = self.coeffs['coeffs_f1']
+
+        def funct_mod(input_values, R_a, beta_0, beta_1, beta_2):
+            """Returns the equation v(i, h).
+            """
+            i, h = input_values
+            funct_mod_beta = function_models.polynomial_2
+            beta = funct_mod_beta(h, beta_0, beta_1, beta_2)
+            return R_a*i + beta*np.sqrt(i)
+
+        # domain of V and tdh and gathering in one single variable
+        dom = _domain_I_H(self.specs_df, self.data_completeness)
+        intervals = {'I': dom[0],
+                     'H': dom[1]}
+
+        def functV(I, H, error_raising=True):
+            """Function giving current I according to voltage V and tdh H.
+
+            Error_raising parameter allows to check the given values
+            according to the possible intervals and to raise errors if not
+            corresponding.
+            """
+            if error_raising is True:
+                if not intervals['I'](H)[0] <= I <= intervals['I'](H)[1]:
+                    raise errors.CurrentError(
+                            'I (={0}) is out of bounds. For this specific '
+                            'head H (={1}), I should be in the interval {2}'
+                            .format(I, H, intervals['V'](H)))
+                if not intervals['H'](I)[0] <= H <= intervals['H'](I)[1]:
+                    raise errors.HeadError(
+                            'H (={0}) is out of bounds. For this specific '
+                            'current I (={1}), H should be in the interval {2}'
+                            .format(H, I, intervals['H'](I)))
+            return funct_mod([I, H], *coeffs)
+
+        return functV, intervals
 
 #    def functQforVH(self):
 #        """Returns a tuple containing :
@@ -832,6 +882,9 @@ def _curves_coeffs_Arab06(specs_df, data_completeness):
     """
     funct_mod_I = function_models.polynomial_1
     funct_mod_coeffs = function_models.polynomial_3
+# TODO: make the regression directly on the compound function, as in
+# the theoretical case.
+#    funct_mod_I_compound = function_models.compound_polynomial_1_3
 
     # TODO: add check on number of head available (for lin. reg. of coeffs)
     if data_completeness['data_number'] >= 10 \
@@ -893,6 +946,23 @@ def _curves_coeffs_Arab06(specs_df, data_completeness):
 
     return coeffs_dict
 
+# TODO: standardize output with statistical values as well
+#    param_f1 = coeffs_dict['a', 'b']
+#    stats_f1 = function_models.correlation_stats(funct_mod_I_compound,
+#                                                 (param_f1['a'],
+#                                                 param_f1['b']),
+#                                                 dataxy_ar, dataz_ar)
+#    param_f2 = coeffs_dict['c', 'd', 'e']
+#
+#    return {'coeffs_f1': param_f1,
+#            'rmse_f1': stats_f1['rmse'],
+#            'nrmse_f1': stats_f1['nrmse'],
+#            'r_squared_f1': stats_f1['r_squared'],
+#            'coeffs_f2': param_f2,
+#            'rmse_f2': stats_f2['rmse'],
+#            'nrmse_f2': stats_f2['nrmse'],
+#            'r_squared_f2': stats_f2['r_squared']}
+
 
 def _curves_coeffs_Kou98(specs_df, data_completeness):
     """Compute curve-fitting coefficient with method of Kou [1].
@@ -932,10 +1002,8 @@ def _curves_coeffs_Kou98(specs_df, data_completeness):
 #            , bounds=([0, 0, -np.inf, -np.inf, -np.inf],
 #                    [np.inf, np.inf, 0, 0, 0]))
     # computing of RMSE and of normalized RMSE for f1
-    datacheck = funct_mod(dataxy_ar, *param_f1)
-    rmse_f1 = np.sqrt(sum((dataz_ar-datacheck)**2)/len(dataz_ar))
-    nrmse_f1 = rmse_f1/np.mean(datacheck)
-    r_squared_f1 = r2_score(dataz_ar, datacheck)
+    stats_f1 = function_models.correlation_stats(funct_mod, param_f1,
+                                                 dataxy_ar, dataz_ar)
 
     # f2: Q(P, H)
     datax_df = specs_df['power']
@@ -947,19 +1015,17 @@ def _curves_coeffs_Kou98(specs_df, data_completeness):
     param_f2, covmat_f2 = opt.curve_fit(funct_mod, dataxy_ar,
                                         dataz_ar)
     # computing of RMSE and of normalized RMSE for f2
-    datacheck = funct_mod(dataxy_ar, *param_f2)
-    rmse_f2 = np.sqrt(sum((dataz_ar-datacheck)**2)/len(dataz_ar))
-    nrmse_f2 = rmse_f2/np.mean(datacheck)
-    r_squared_f2 = r2_score(dataz_ar, datacheck)
+    stats_f2 = function_models.correlation_stats(funct_mod, param_f2,
+                                                 dataxy_ar, dataz_ar)
 
     return {'coeffs_f1': param_f1,
-            'rmse_f1': rmse_f1,
-            'nrmse_f1': nrmse_f1,
-            'r_squared_f1': r_squared_f1,
+            'rmse_f1': stats_f1['rmse'],
+            'nrmse_f1': stats_f1['nrmse'],
+            'r_squared_f1': stats_f1['r_squared'],
             'coeffs_f2': param_f2,
-            'rmse_f2': rmse_f2,
-            'nrmse_f2': nrmse_f2,
-            'r_squared_f2': r_squared_f2}
+            'rmse_f2': stats_f2['rmse'],
+            'nrmse_f2': stats_f2['nrmse'],
+            'r_squared_f2': stats_f2['r_squared']}
 
 
 def _curves_coeffs_Hamidat08(specs_df, data_completeness):
@@ -1017,7 +1083,81 @@ def _curves_coeffs_Hamidat08(specs_df, data_completeness):
             funct_mod_coeffs, tdh, eval(coeff + '_ls'))
         coeffs_dict[coeff] = params
 
+# TODO: standardize output with statistical values as well
     return coeffs_dict
+
+
+def _curves_coeffs_theoretical(specs_df, data_completeness, elec_archi):
+    """Compute curve-fitting coefficient following theoretical analysis of
+    motor architecture.
+
+    It uses a equation of the form V = R_a*i + beta(H)*np.sqrt(i) to model
+    V(I, TDH) and an equation of the form Q = (a + b*H) * (c + d*P) to model
+    Q(P, TDH) from the data.
+
+    This kind of equation is used in [1], [2], ...
+
+
+    Parameters
+    ----------
+    specs_df: pd.DataFrame
+        DataFrame with specs.
+
+    Reference
+    ---------
+    [1] Mokkedem & al, ...
+
+    """
+    if elec_archi != 'permanent_magnet':
+        raise NotImplementedError(
+            'This model is not implemented yet for electrical architecture '
+            'different from permanent magnet motor.')
+
+    if not data_completeness['data_number'] >= 10 \
+            and data_completeness['voltage_number'] > 3:
+        raise errors.InsufficientDataError('Lack of information on lpm, '
+                                           'current or tdh for pump.')
+
+    # gives f1: V=f1(i, H)
+    def funct_mod_v(input_values, R_a, beta_0, beta_1, beta_2):
+        """Returns the equation v(i, h).
+        """
+        i, h = input_values
+        funct_mod_beta = function_models.polynomial_2
+        beta = funct_mod_beta(h, beta_0, beta_1, beta_2)
+        return R_a*i + beta*np.sqrt(i)
+
+    dataxy = [np.array(specs_df.current),
+              np.array(specs_df.tdh)]
+    dataz = np.array(specs_df.voltage)
+    param_f1, matcov = opt.curve_fit(funct_mod_v, dataxy, dataz, maxfev=10000)
+
+    stats_f1 = function_models.correlation_stats(funct_mod_v, param_f1,
+                                                 dataxy, dataz)
+
+    # gives f2; Q=f2(P, H)
+    def funct_mod_Q(input_values, a, b, c, d):
+        P, H = input_values
+        return (a + b*H) * (c + d*P)
+        # theoretically it should be the following formula, but doesn't work
+        # return (a + b*H + c*H**2) * P/H
+
+    dataxy = [np.array(specs_df.power),
+              np.array(specs_df.tdh)]
+    dataz = np.array(specs_df.flow)
+    param_f2, matcov = opt.curve_fit(funct_mod_Q, dataxy, dataz, maxfev=10000)
+
+    stats_f2 = function_models.correlation_stats(funct_mod_Q, param_f2,
+                                                 dataxy, dataz)
+
+    return {'coeffs_f1': param_f1,
+            'rmse_f1': stats_f1['rmse'],
+            'nrmse_f1': stats_f1['nrmse'],
+            'r_squared_f1': stats_f1['r_squared'],
+            'coeffs_f2': param_f2,
+            'rmse_f2': stats_f2['rmse'],
+            'nrmse_f2': stats_f2['nrmse'],
+            'r_squared_f2': stats_f2['r_squared']}
 
 
 def _curves_coeffs_Gualteros17(lpm, tdh, watts):
@@ -1254,7 +1394,8 @@ def _domain_P_H(specs_df, data_completeness):
 if __name__ == "__main__":
     # %% pump creation
     pump1 = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
-                 model='SCB_10', modeling_method='arab')
+                 model='SCB_10', modeling_method='arab',
+                 motor_electrical_architecture='permanent_magnet')
 
     pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
                            136],
@@ -1285,12 +1426,18 @@ if __name__ == "__main__":
 #                               3.8, 4.1],
 #                          }, model='Shurflo_9325')
 
-#    coeffs = _curves_coeffs_Hamidat08(pump1.specs_df, pump1.data_completeness)
+    coeffs_1 = _curves_coeffs_Hamidat08(pump1.specs_df, pump1.data_completeness)
+    coeffs_2 = _curves_coeffs_theoretical(pump1.specs_df,
+                                          pump1.data_completeness,
+                                          pump1.motor_electrical_architecture)
+    coeffs_3 = _curves_coeffs_Arab06(pump1.specs_df, pump1.data_completeness)
+    coeffs_4 = _curves_coeffs_Kou98(pump1.specs_df, pump1.data_completeness)
+
 #    print(pump1.coeffs)
-    f2, _ = pump1.functQforPH()
-    print(f2(400, 10))
-    intervals = _domain_I_H(pump1.specs_df, pump1.data_completeness)
-    print(intervals)
+#    f2, _ = pump1.functQforPH()
+#    print(f2(400, 10))
+#    intervals = _domain_I_H(pump1.specs_df, pump1.data_completeness)
+#    print(intervals)
 
 
 #    print(pump1.coeffs)

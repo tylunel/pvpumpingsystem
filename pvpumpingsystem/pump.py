@@ -129,8 +129,9 @@ class Pump:
                                       'flow': flow,
                                       'power': power})
 
-        self.data_completeness = specs_completeness(self.specs_df,
-            self.motor_electrical_architecture)
+        self.data_completeness = specs_completeness(
+                self.specs_df,
+                self.motor_electrical_architecture)
 
         # new ones
         if self.modeling_method.lower() == 'kou':
@@ -620,7 +621,6 @@ class Pump:
         intervals = {'P': dom[0],
                      'H': dom[1]}
 
-        # TODO: Generalize this control of output for other functions
         def functQ(P, H):
             if P < intervals['P'](H)[0]:
                 Q = 0

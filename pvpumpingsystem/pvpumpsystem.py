@@ -152,7 +152,7 @@ class PVPumpSystem(object):
 
         return pdresult
 
-    def calc_flow(self, atol=0.1, stop=8760):
+    def calc_flow(self, atol=0.1, stop=8760, **kwargs):
         """Function computing the flow at the output of the PVPS.
         cf pvlib_pvpumpsystem.calc_flow_directly_coupled for more details
 
@@ -184,12 +184,14 @@ class PVPumpSystem(object):
             self.flow = calc_flow_mppt_coupled(self.modelchain,
                                                self.motorpump,
                                                self.pipes,
-                                               atol=atol, stop=stop)
+                                               atol=atol, stop=stop,
+                                               **kwargs)
         elif self.coupling == 'direct':
             self.flow = calc_flow_directly_coupled(self.modelchain,
                                                    self.motorpump,
                                                    self.pipes,
-                                                   atol=atol, stop=stop)
+                                                   atol=atol, stop=stop,
+                                                   **kwargs)
         else:
             raise ValueError("Inappropriate value for argument coupling." +
                              "It should be 'mppt' or 'direct'.")
@@ -413,7 +415,8 @@ def functioning_point_noiteration(params, modules_per_string,
 
 def calc_flow_directly_coupled(modelchain, motorpump, pipes,
                                atol=0.1,
-                               stop=8760):
+                               stop=8760,
+                               **kwargs):
     """
     Function computing the flow at the output of the PVPS.
 
@@ -460,7 +463,8 @@ def calc_flow_directly_coupled(modelchain, motorpump, pipes,
     for i, row in tqdm.tqdm(enumerate(
             modelchain.diode_params[0:stop].iterrows()),
                                       desc='Computing of Q',
-                                      total=stop):
+                                      total=stop,
+                                      **kwargs):
 
         params = row[1]
         Qlpm = 1
@@ -516,7 +520,8 @@ def calc_flow_directly_coupled(modelchain, motorpump, pipes,
 
 def calc_flow_mppt_coupled(modelchain, motorpump, pipes, mppt=None,
                            atol=0.1,
-                           stop=8760):
+                           stop=8760,
+                           **kwargs):
     """Function computing the flow at the output of the PVPS.
 
     Parameters
@@ -557,7 +562,8 @@ def calc_flow_mppt_coupled(modelchain, motorpump, pipes, mppt=None,
     for i, power in tqdm.tqdm(enumerate(
             modelchain.dc.p_mp[0:stop]),
                               desc='Computing of Q',
-                              total=stop):
+                              total=stop,
+                              **kwargs):
 
         Qlpm = 1
         Qlpmnew = 0

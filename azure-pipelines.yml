@@ -10,10 +10,6 @@ pool:
   vmImage: 'ubuntu-16.04'
 strategy:
   matrix:
-    Python35:
-      python.version: '3.5'
-    Python36:
-      python.version: '3.6'
     Python37:
       python.version: '3.7'
 
@@ -23,20 +19,23 @@ steps:
     versionSpec: '$(python.version)'
   displayName: 'Use Python $(python.version)'
 
-- script: |
-    python -m pip install --upgrade pip
-    pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
-  displayName: 'Install pvpumpingsystem dependency'	
+#- script: |
+#    python -m pip install --upgrade pip
+#    pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
+#  displayName: 'Install pvpumpingsystem dependency'	
 
 - script: |
-    python -m pip install --upgrade pip
-    pip install -r requirements.txt
-  displayName: 'Install dependencies'
+    pip install numpy
 
-- script: |
-    python -m pip install flake8
-    flake8 .
-  displayName: 'Run lint tests'
+#- script: |
+#    python -m pip install --upgrade pip
+#    pip install -r requirements.txt
+#  displayName: 'Install dependencies'
+
+#- script: |
+#    python -m pip install flake8
+#    flake8 .
+#  displayName: 'Run lint tests'
 
 #- script: |
 #    pip install pytest pytest-azurepipelines

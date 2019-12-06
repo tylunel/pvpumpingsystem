@@ -7,7 +7,7 @@ trigger:
 - master
 
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: 'ubuntu-16.04'
 strategy:
   matrix:
     Python35:
@@ -27,6 +27,11 @@ steps:
     python -m pip install --upgrade pip
     pip install -r requirements.txt
   displayName: 'Install dependencies'
+
+- script: |
+    python -m pip install flake8
+    flake8 .
+  displayName: 'Run lint tests'
 
 - script: |
     pip install pytest pytest-azurepipelines

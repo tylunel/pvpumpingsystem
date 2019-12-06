@@ -23,5 +23,10 @@ steps:
     pip install numpy
 
 - script: |
+    pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
+  displayName: 'Install pvpumpingsystem dependency'
+
+- script: |
     python -m pip install flake8
   displayName: 'Run lint tests'
+

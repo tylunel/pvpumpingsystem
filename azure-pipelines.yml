@@ -29,10 +29,11 @@ steps:
 
 - script: |
     pip install matplotlib
-  displayName: 'Install dependencies'
+  displayName: 'Install matplotlib'
 
 - script: |
     pip install sklearn
+    pip install tqdm
   displayName: 'Install dependencies'
 
 #- script: |

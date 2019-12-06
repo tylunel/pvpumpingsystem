@@ -31,6 +31,10 @@ steps:
     pip install matplotlib
   displayName: 'Install dependencies'
 
+- script: |
+    pip install sklearn
+  displayName: 'Install dependencies'
+
 #- script: |
 #    pip install -r requirements.txt
 #  displayName: 'Install dependencies'

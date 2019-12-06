@@ -297,8 +297,9 @@ def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
     [1] Petrone & al (2017), "Photovoltaic Sources Modeling", Wiley, p.5.
         URL: http://doi.wiley.com/10.1002/9781118755877
     """
-    warn("'function_i_from_v' deprecated. Use pvlib.pvsystem.i_from_v instead",
-         DeprecationWarning)
+    warnings.warn(
+        "'function_i_from_v' deprecated. Use pvlib.pvsystem.i_from_v instead",
+        DeprecationWarning)
 
     if (M_s, M_p) != (1, 1):
         I_L = M_p * I_L
@@ -315,8 +316,8 @@ def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
     sol = opt.root(I_pv_fct, x0=Iguess)
 
     if (sol.x).any() < 0:
-        warn('A current is negative. The PV module may be '
-             'absorbing energy and it can lead to unusual degradation.')
+        warnings.warn('A current is negative. The PV module may be absorbing '
+                      'energy and it can lead to unusual degradation.')
 
     return sol.x
 

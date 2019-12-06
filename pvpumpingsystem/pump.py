@@ -10,8 +10,6 @@ module defining class and functions for modeling the pump.
 import collections
 import numpy as np
 import pandas as pd
-import tkinter as tk
-import tkinter.filedialog as tkfile
 from itertools import count
 from matplotlib.pyplot import plot
 import matplotlib.pyplot as plt
@@ -89,17 +87,8 @@ class Pump:
             # TODO: Delete use of dict and put everything as DataFrame
         else:
             # retrieve pump data from txt datasheet given by path
-            try:
-                self.voltage, self.lpm, self.tdh, self.current, \
-                    self.watts = get_data_pump(path)
-            except IOError:
-                print('The mentionned path does not exist, please select'
-                      'another in the pop-up window.')
-                tk.Tk().withdraw()
-                filepath = tkfile.askopenfilename()
-                self.path = filepath
-                self.voltage, self.lpm, self.tdh, self.current, \
-                    self.watts = get_data_pump(path)
+            self.voltage, self.lpm, self.tdh, self.current, \
+                self.watts = get_data_pump(path)
 
         self.motor_electrical_architecture = motor_electrical_architecture
         self.pump_category = pump_category

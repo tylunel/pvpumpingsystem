@@ -27,6 +27,11 @@ steps:
     pip install git+https://github.com/tylunel/fluids#egg=fluids
   displayName: 'Install fluids'
 
+- script: |
+    python -m pip install --upgrade pip
+    pip install -r requirements.txt
+  displayName: 'Install dependencies'
+
 #- script: |
 #    python -m pip install flake8
 #    flake8 --ignore=E226,E231,E241,E265,E266,F401

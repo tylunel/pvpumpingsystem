@@ -1,4 +1,8 @@
 numpy
 pandas
 pvlib
-pvpumpingsystem
+matplotlib
+warning
+tqdm
+sklearn
+

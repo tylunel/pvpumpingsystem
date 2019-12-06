@@ -1,4 +1,4 @@
 numpy
 pandas
 pvlib
-scipy
+https://github.com/tylunel/pvpumpingsystem/archive/master.tar.gz#egg=package-pvpumpingsystem

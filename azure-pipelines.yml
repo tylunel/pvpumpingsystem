@@ -21,7 +21,11 @@ steps:
 
 - script: |
     pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
-  displayName: 'Install pvpumpingsystem dependency'
+  displayName: 'Install pvpumpingsystem'
+
+- script: |
+    pip install git+https://github.com/tylunel/fluids#egg=fluids
+  displayName: 'Install fluids'
 
 #- script: |
 #    python -m pip install flake8

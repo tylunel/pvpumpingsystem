@@ -19,25 +19,5 @@ steps:
     versionSpec: '$(python.version)'
   displayName: 'Use Python $(python.version)'
 
-#- script: |
-#    python -m pip install --upgrade pip
-#    pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
-#  displayName: 'Install pvpumpingsystem dependency'	
-
 - script: |
     pip install numpy
-
-#- script: |
-#    python -m pip install --upgrade pip
-#    pip install -r requirements.txt
-#  displayName: 'Install dependencies'
-
-#- script: |
-#    python -m pip install flake8
-#    flake8 .
-#  displayName: 'Run lint tests'
-
-#- script: |
-#    pip install pytest pytest-azurepipelines
-#    pytest
-#  displayName: 'pytest'

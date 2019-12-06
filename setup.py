@@ -7,7 +7,7 @@ setup(
    name='pvpumpingsystem',
    version='0.1',
    description='Module for simulating off-grid photovoltaic powered pumping station',
-   license=GPL3,
+   license='GPL3',
    author=AUTHORS,
    author_email=MAINTAINER_EMAIL,
    url='https://github.com/tylunel/pvpumpingsystem',

@@ -15,8 +15,6 @@ from matplotlib.pyplot import plot
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # needed for plotting in 3d
 import scipy.optimize as opt
-import scipy.interpolate as spint
-from sklearn.metrics import r2_score
 import warnings
 
 from pvpumpingsystem import errors

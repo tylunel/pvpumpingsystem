@@ -20,14 +20,11 @@ steps:
   displayName: 'Use Python $(python.version)'
 
 - script: |
-    pip install numpy
-
-- script: |
     pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
   displayName: 'Install pvpumpingsystem dependency'
 
 - script: |
     python -m pip install flake8
-    flake8 .
+    flake8 --ignore=E231,E265,E266,F401
   displayName: 'Run lint tests'
 

@@ -24,7 +24,9 @@ steps:
   displayName: 'Use Python $(python.version)'
 
 - script: |
-    git clone https://github.com/tylunel/pvlib-python.git
+    python -m pip install --upgrade pip
+    pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
+  displayName: 'Install pvpumpingsystem dependency'	
 
 - script: |
     python -m pip install --upgrade pip

@@ -1,4 +1,3 @@
 numpy
 pandas
 pvlib
-dependency_links=["git+https://github.com/tylunel/pvpumpingsystem.git#subdirectory=PythonAPI#egg=pvpumpingsystem"]

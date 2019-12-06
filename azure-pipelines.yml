@@ -33,8 +33,11 @@ steps:
 
 - script: |
     pip install sklearn
-    pip install tqdm
   displayName: 'Install dependencies'
+
+- script: |
+    pip install tqdm
+  displayName: 'Install tqdm'
 
 #- script: |
 #    pip install -r requirements.txt

@@ -29,11 +29,12 @@ steps:
 
 - script: |
     pip install matplotlib
-  displayName: 'Install matplotlib'
-
-- script: |
-    pip install -r requirements.txt
+    pip install warnings
   displayName: 'Install dependencies'
+
+#- script: |
+#    pip install -r requirements.txt
+#  displayName: 'Install dependencies'
 
 #- script: |
 #    python -m pip install flake8

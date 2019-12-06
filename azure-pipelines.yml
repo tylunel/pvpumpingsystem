@@ -23,8 +23,12 @@ steps:
     pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
   displayName: 'Install pvpumpingsystem dependency'
 
-- script: |
-    python -m pip install flake8
-    flake8 --ignore=E226,E231,E241,E265,E266,F401
-  displayName: 'Run lint tests'
+#- script: |
+#    python -m pip install flake8
+#    flake8 --ignore=E226,E231,E241,E265,E266,F401
+#  displayName: 'Run lint tests'
 
+- script: |
+    pip install pytest pytest-azurepipelines
+    pytest
+  displayName: 'pytest'

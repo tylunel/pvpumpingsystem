@@ -64,9 +64,10 @@ pvsys1 = pvlib.pvsystem.PVSystem(
             module=CECMOD.Kyocera_Solar_KU270_6MCA,
             module_parameters={**dict(CECMOD.Kyocera_Solar_KU270_6MCA),
                                **glass_params},
-            modules_per_string=2, strings_per_inverter=2,
+            module_type='glass_polymer',
+            modules_per_string=M_s, strings_per_inverter=M_p,
             inverter=None, inverter_parameters={'pdc0': 700},
-            racking_model='open_rack_cell_glassback',
+            racking_model='open_rack',
             losses_parameters=None, name=None
             )
 
@@ -86,7 +87,7 @@ chain1 = pvlib.modelchain.ModelChain(
             spectral_model='first_solar', temperature_model='sapm',
             losses_model='pvwatts', name=None)
 
-chain1.run_model(times=weatherdata1.index, weather=weatherdata1)
+chain1.run_model(weather=weatherdata1)
 
 pump1 = pp.Pump(path="../pumps_files/SCB_10_150_120_BL.txt",
                 modeling_method='arab')

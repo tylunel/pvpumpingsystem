@@ -94,7 +94,8 @@ def shrink_weather(weather_data, nb_elt=48):
     return final_df
 
 
-def run_pv_model(M_s, M_p, weather_data, weather_metadata, pv_module):
+def run_pv_model(M_s, M_p, weather_data, weather_metadata, pv_module,
+                 pv_array_tilt=30):
     """
     Runs the simulation of the photovoltaïc power generation.
 
@@ -107,16 +108,17 @@ def run_pv_model(M_s, M_p, weather_data, weather_metadata, pv_module):
 
     glass_params = {'K': 4, 'L': 0.002, 'n': 1.526}
     pvsys1 = pvlib.pvsystem.PVSystem(
-                surface_tilt=45, surface_azimuth=180,
-                albedo=0, surface_type=None,
-                module=pv_module,
-                module_parameters={**dict(pv_module),
-                                   **glass_params},
-                modules_per_string=M_s, strings_per_inverter=M_p,
-                inverter=None, inverter_parameters={'pdc0': 700},
-                racking_model='open_rack_cell_glassback',
-                losses_parameters=None, name=None
-                )
+            surface_tilt=pv_array_tilt, surface_azimuth=180,
+            albedo=0, surface_type=None,
+            module=pv_module,
+            module_parameters={**dict(pv_module),
+                               **glass_params},
+            module_type='glass_polymer',
+            modules_per_string=M_s, strings_per_inverter=M_p,
+            inverter=None, inverter_parameters={'pdc0': 700},
+            racking_model='open_rack',
+            losses_parameters=None, name=None
+            )
 
     locat1 = pvlib.location.Location.from_epw(weather_metadata)
 
@@ -131,7 +133,7 @@ def run_pv_model(M_s, M_p, weather_data, weather_metadata, pv_module):
                 spectral_model='first_solar', temperature_model='sapm',
                 losses_model='pvwatts', name=None)
 
-    chain1.run_model(times=weather_data.index, weather=weather_data)
+    chain1.run_model(weather=weather_data)
 
     return chain1
 
@@ -264,7 +266,7 @@ if __name__ == '__main__':
 
     # ------------ PV DATABASE ---------------------
     # use regex to add more than one provider
-    provider = "Canadian_Solar|Zytech"
+    provider = "Canadian_Solar"
     nb_elt_kept = 5
     pv_database = shrink_pv_database(provider, nb_elt_kept)
 

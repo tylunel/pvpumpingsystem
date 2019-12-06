@@ -16,7 +16,6 @@ import tqdm
 import time
 import pvlib
 import warnings
-from warnings import warn
 
 import pvpumpingsystem.pump as pp
 import pvpumpingsystem.pipenetwork as pn

@@ -29,7 +29,6 @@ steps:
 
 - script: |
     pip install matplotlib
-    pip install warnings
   displayName: 'Install dependencies'
 
 #- script: |

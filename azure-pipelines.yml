@@ -28,16 +28,16 @@ steps:
   displayName: 'Install fluids'
 
 - script: |
-    pip install matplotlib sklearn
-  displayName: 'Install matplotlib'
-
-- script: |
-    pip install sklearn
+    pip install matplotlib sklearn tqdm
   displayName: 'Install dependencies'
 
-- script: |
-    pip install tqdm
-  displayName: 'Install tqdm'
+#- script: |
+#    pip install sklearn
+#  displayName: 'Install dependencies'
+
+#- script: |
+#    pip install tqdm
+#  displayName: 'Install tqdm'
 
 #- script: |
 #    pip install -r requirements.txt
@@ -50,5 +50,5 @@ steps:
 
 - script: |
     pip install pytest pytest-azurepipelines
-    pytest --junit_family=legacy
+    pytest --junitxml=junit/test-results.xml
   displayName: 'pytest'

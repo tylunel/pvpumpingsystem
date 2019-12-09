@@ -19,6 +19,7 @@ resources:
   - repository: pvlib
     type: github
     name: tylunel/pvlib-python
+    endpoint: MyGitHubServiceConnection
 
 steps:
 - task: UsePythonVersion@0

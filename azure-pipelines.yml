@@ -21,6 +21,11 @@ steps:
 
 - script: |
     pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
+    # specific branch build
+    trigger:
+      branches:
+        include:
+          - all_changes
   displayName: 'Install pvpumpingsystem'
 
 - script: |
@@ -30,14 +35,6 @@ steps:
 - script: |
     pip install matplotlib sklearn tqdm
   displayName: 'Install dependencies'
-
-#- script: |
-#    pip install sklearn
-#  displayName: 'Install dependencies'
-
-#- script: |
-#    pip install tqdm
-#  displayName: 'Install tqdm'
 
 #- script: |
 #    pip install -r requirements.txt
@@ -50,5 +47,5 @@ steps:
 
 - script: |
     pip install pytest pytest-azurepipelines
-    pytest --junitxml=junit/test-results.xml
+    pytest
   displayName: 'pytest'

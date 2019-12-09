@@ -1,7 +1,0 @@
-numpy
-pandas
-pvlib
-warning
-tqdm
-sklearn
-

@@ -21,7 +21,7 @@ steps:
   displayName: 'Use Python $(python.version)'
 
 - script: |
-    pip install git+https://github.com/tylunel/pvpumpingsystem/all_changes#egg=pvpumpingsystem
+    pip install -b all_changes git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
   displayName: 'Install pvpumpingsystem'
 
 - script: |

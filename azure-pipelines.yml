@@ -21,8 +21,7 @@ steps:
   displayName: 'Use Python $(python.version)'
 
 - script: |
-    pip install git+https://github.com/tylunel/pvlib-python#egg=pvlib
-    git checkout all_changes
+    pip install git+https://github.com/tylunel/pvlib-python/tree/all_changes#egg=pvlib
   displayName: 'Install pvlib'
 
 - script: |

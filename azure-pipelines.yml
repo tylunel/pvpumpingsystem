@@ -3,6 +3,7 @@
 # Add steps that analyze code, save the dist with the build record, publish to a PyPI-compatible index, and more:
 # https://docs.microsoft.com/azure/devops/pipelines/languages/python
 
+# specify branch build
 trigger:
 - master
 
@@ -20,12 +21,7 @@ steps:
   displayName: 'Use Python $(python.version)'
 
 - script: |
-    pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
-    # specific branch build
-    trigger:
-      branches:
-        include:
-          - all_changes
+    pip install git+https://github.com/tylunel/pvpumpingsystem/all_changes#egg=pvpumpingsystem
   displayName: 'Install pvpumpingsystem'
 
 - script: |

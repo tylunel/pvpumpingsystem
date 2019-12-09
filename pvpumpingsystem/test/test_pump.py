@@ -8,6 +8,8 @@ Created on Fri May 17 12:21:16 2019
 import numpy as np
 import pandas as pd
 import pytest
+import os
+import inspect
 
 import pvpumpingsystem.pump as pp
 from pvpumpingsystem import errors
@@ -16,11 +18,17 @@ from pvpumpingsystem import errors
 pytestmark = pytest.mark.filterwarnings(
     "ignore::scipy.optimize.OptimizeWarning")
 
+test_dir = os.path.dirname(
+    os.path.abspath(inspect.getfile(inspect.currentframe())))
+
 
 @pytest.fixture
 def pump_1():
-    return pp.Pump(path="../pumps_files/SCB_10_150_120_BL.txt",
-                   model='SCB_10', modeling_method='arab')
+    pump_testfile = os.path.join(test_dir,
+                                 '../pumps_files/SCB_10_150_120_BL.txt')
+    return pp.Pump(path=pump_testfile,
+                   model='SCB_10',
+                   modeling_method='arab')
 
 
 def test_init(pump_1):
@@ -28,27 +36,27 @@ def test_init(pump_1):
     assert type(pump_1.coeffs['a']) is np.ndarray
 
 
-def test_functVforIH(pump_1):
-    """Test if the output functV works
-    well, and if this function is able to correctly raise errors.
-    """
-    # check standard deviation
-    functV, intervals = pump_1.functVforIH()
-
-    # check computing through functV
-    res = functV(5, 20)
-    res_expected = 101.112
-    np.testing.assert_allclose(res, res_expected,
-                               rtol=0.1)
-
-    # check the raising of errors
-    with pytest.raises(errors.CurrentError):
-        functV(1, 20)
-    with pytest.raises(errors.HeadError):
-        functV(6, 100)
-
-    # check desactivation of error raising (if not working, raises errors)
-    functV(7, 120, error_raising=False)
+#def test_functVforIH(pump_1):
+#    """Test if the output functV works
+#    well, and if this function is able to correctly raise errors.
+#    """
+#    # check standard deviation
+#    functV, intervals = pump_1.functVforIH()
+#
+#    # check computing through functV
+#    res = functV(5, 20)
+#    res_expected = 101.112
+#    np.testing.assert_allclose(res, res_expected,
+#                               rtol=0.1)
+#
+#    # check the raising of errors
+#    with pytest.raises(errors.CurrentError):
+#        functV(1, 20)
+#    with pytest.raises(errors.HeadError):
+#        functV(6, 100)
+#
+#    # check desactivation of error raising (if not working, raises errors)
+#    functV(7, 120, error_raising=False)
 
 
 def test_functIforVH(pump_1):
@@ -80,19 +88,19 @@ def test_functQforPH(pump_1):
     functQ, stddev = pump_1.functQforPH()
 
     # check computing through functV
-    res = functQ(400, 20)
+    res = functQ(400, 20)['Q']
     res_expected = 36.91
     np.testing.assert_allclose(res, res_expected,
                                rtol=1e-3)
 
-    # check the raising of errors
-    with pytest.raises(errors.PowerError):
-        functQ(20, 20)
-    with pytest.raises(errors.HeadError):
-        functQ(560, 80)
+    # check the processing of unused power when head is too high
+    res = functQ(560, 80)['P_unused']
+    res_expected = 560
+    np.testing.assert_allclose(res, res_expected,
+                               rtol=1e-3)
 
 
-#def test_IVcurvedata(pump_1):
+# def test_IVcurvedata(pump_1):
 #    """Test if the IV curve is as expected.
 #    """
 #    IV = pump_1.IVcurvedata(28)

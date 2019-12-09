@@ -7,7 +7,6 @@ Created on Wed Oct 16 17:11:38 2019
 
 import matplotlib.pyplot as plt
 import pvlib
-import pandas as pd
 
 import pvpumpingsystem.pump as pp
 import pvpumpingsystem.pipenetwork as pn
@@ -20,7 +19,7 @@ import pvpumpingsystem.pvpumpsystem as pvps
 
 # Do not use this data, because precipitable water data is incorrect, and
 # will result in wrongly null output
-#weather_denver = ('https://energyplus.net/weather-download/' +
+# weather_denver = ('https://energyplus.net/weather-download/' +
 #                  'north_and_central_america_wmo_region_4/USA/CO/' +
 #                  'USA_CO_Denver.Intl.AP.725650_TMY3/' +
 #                  'USA_CO_Denver.Intl.AP.725650_TMY3.epw')

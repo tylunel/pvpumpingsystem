@@ -8,13 +8,17 @@ Created on Tue Jul 23 17:22:25 2019
 import pytest
 import numpy as np
 import pvlib
-import pandas as pd
+import os
+import inspect
 
 import pvpumpingsystem.pump as pp
 import pvpumpingsystem.pipenetwork as pn
 import pvpumpingsystem.reservoir as rv
 import pvpumpingsystem.consumption as cs
 import pvpumpingsystem.pvpumpsystem as pvps
+
+test_dir = os.path.dirname(
+    os.path.abspath(inspect.getfile(inspect.currentframe())))
 
 
 @pytest.fixture
@@ -31,12 +35,15 @@ def pvps_set_up():
                                **glass_params},
             modules_per_string=2, strings_per_inverter=2,
             inverter=None, inverter_parameters={'pdc0': 700},
-            racking_model='open_rack_cell_glassback',
+            racking_model='open_rack',
             losses_parameters=None, name=None
             )
-    weatherdata1, metadata1 = pvlib.iotools.epw.read_epw(
-        '../weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC_truncated.epw',
-        coerce_year=2005)
+
+    weather_testfile = os.path.join(
+        test_dir,
+        '../weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC_truncated.epw')
+    weatherdata1, metadata1 = pvlib.iotools.epw.read_epw(weather_testfile,
+                                                         coerce_year=2005)
     locat1 = pvlib.location.Location.from_epw(metadata1)
 
     chain1 = pvlib.modelchain.ModelChain(
@@ -47,12 +54,14 @@ def pvps_set_up():
              solar_position_method='nrel_numpy',
              airmass_model='kastenyoung1989',
              dc_model='desoto', ac_model='pvwatts', aoi_model='physical',
-             spectral_model='first_solar', temp_model='sapm',
+             spectral_model='first_solar', temperature_model='sapm',
              losses_model='pvwatts', name=None)
 
     chain1.run_model(times=weatherdata1.index, weather=weatherdata1)
 
-    pump1 = pp.Pump(path="../pumps_files/SCB_10_150_120_BL.txt",
+    pump_testfile = os.path.join(test_dir,
+                                 '../pumps_files/SCB_10_150_120_BL.txt')
+    pump1 = pp.Pump(path=pump_testfile,
                     modeling_method='arab')
     pipes1 = pn.PipeNetwork(h_stat=10, l_tot=100, diam=0.08,
                             material='plastic', optimism=True)
@@ -71,8 +80,8 @@ def test_calc_flow(pvps_set_up):
     pvps_set_up.calc_flow(atol=0.1, stop=24)
     Q = pvps_set_up.flow.Qlpm.values
     Q_expected = np.array([0., 0., 0., 0., 0., 0., 0., 0.,
-                           32.67, 51.86, 58.54, 61.04,
-                           44.00, 41.31, 34.25,  0.,
+                           32.77, 52.11, 58.80, 61.24,
+                           44.18, 41.47, 34.35, 0.,
                            0., 0., 0., 0., 0., 0., 0., 0.])
     np.testing.assert_allclose(Q, Q_expected, rtol=1e-3)
 

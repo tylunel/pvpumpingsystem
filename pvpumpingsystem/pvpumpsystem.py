@@ -724,7 +724,7 @@ if __name__ == '__main__':
              solar_position_method='nrel_numpy',
              airmass_model='kastenyoung1989',
              dc_model='desoto', ac_model='pvwatts', aoi_model='physical',
-             spectral_model='first_solar', temp_model='sapm',
+             spectral_model='first_solar', temperature_model='sapm',
              losses_model='pvwatts', name=None)
 
     chain1.run_model(times=weatherdata1.index, weather=weatherdata1)

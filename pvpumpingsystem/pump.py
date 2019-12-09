@@ -609,19 +609,27 @@ class Pump:
                      'H': dom[1]}
 
         def functQ(P, H):
+            # check if head is in available range (NOT redundant with rest)
+            if H > intervals['H'](P)[1]:
+                Q = 0
+                P_unused = P
+            # check if P is insufficient
             if P < intervals['P'](H)[0]:
                 Q = 0
                 P_unused = P
+            # if P is in available range
             elif intervals['P'](H)[0] < P < intervals['P'](H)[1]:
                 # Newton-Raphson numeraical method:
                 # actually fprime should be given for using Newton-Raphson
                 Q = opt.newton(funct_P, 5, args=(P, H))
                 P_unused = 0  # power unused for pumping
+            # if P is more than maximum
             elif intervals['P'](H)[1] < P:
                 Pmax = intervals['P'](H)[1]
                 Q = opt.newton(funct_P, 5, args=(Pmax, H))
                 P_unused = P - Pmax
-            else:  # for example P is NaN
+            # if P is NaN or other
+            else:
                 Q = np.nan
                 P_unused = np.nan
             return {'Q': Q, 'P_unused': P_unused}
@@ -652,17 +660,25 @@ class Pump:
                      'H': dom[1]}
 
         def functQ(P, H):
-            if P < intervals['P'](H)[0]:
+            # check if head is in available range (NOT redundant with rest)
+            if H > intervals['H'](P)[1]:
                 Q = 0
                 P_unused = P
+            # check if P is insufficient
+            elif P < intervals['P'](H)[0]:
+                Q = 0
+                P_unused = P
+            # if P is in available range
             elif intervals['P'](H)[0] < P < intervals['P'](H)[1]:
                 Q = funct_mod([P, H], *coeffs_c, *coeffs_d, *coeffs_e)
                 P_unused = 0
+            # if P is more than maximum
             elif intervals['P'](H)[1] < P:
                 Pmax = intervals['P'](H)[1]
                 Q = funct_mod([Pmax, H], *coeffs_c, *coeffs_d, *coeffs_e)
                 P_unused = P - Pmax
-            else:  # for example P is NaN
+            # if P is NaN or other
+            else:
                 Q = np.nan
                 P_unused = np.nan
             return {'Q': Q, 'P_unused': P_unused}
@@ -689,17 +705,25 @@ class Pump:
                      'H': dom[1]}
 
         def functQ(P, H):
+            # check if head is in available range (NOT redundant with rest)
+            if H > intervals['H'](P)[1]:
+                Q = 0
+                P_unused = P
+            # check if P is insufficient
             if P < intervals['P'](H)[0]:
                 Q = 0
                 P_unused = P
+            # if P is in available range
             elif intervals['P'](H)[0] < P < intervals['P'](H)[1]:
                 Q = funct_mod([P, H], *coeffs)
                 P_unused = 0
+            # if P is more than maximum
             elif intervals['P'](H)[1] < P:
                 Pmax = intervals['P'](H)[1]
                 Q = funct_mod([P, H], *coeffs)
                 P_unused = P - Pmax
-            else:  # for example P is NaN
+            # if P is NaN or other
+            else:
                 Q = np.nan
                 P_unused = np.nan
             return {'Q': Q, 'P_unused': P_unused}

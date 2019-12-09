@@ -28,7 +28,7 @@ steps:
   displayName: 'Install fluids'
 
 - script: |
-    pip install matplotlib
+    pip install matplotlib sklearn
   displayName: 'Install matplotlib'
 
 - script: |
@@ -50,5 +50,5 @@ steps:
 
 - script: |
     pip install pytest pytest-azurepipelines
-    pytest junit_family=legacy
+    pytest --junit_family=legacy
   displayName: 'pytest'

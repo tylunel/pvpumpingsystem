@@ -14,6 +14,12 @@ strategy:
     Python37:
       python.version: '3.7'
 
+resources:
+  repositories:
+  - repository: pvlib
+    type: github
+    name: tylunel/pvlib-python
+
 steps:
 - task: UsePythonVersion@0
   inputs:
@@ -21,7 +27,7 @@ steps:
   displayName: 'Use Python $(python.version)'
 
 - script: |
-    pip install git+https://github.com/tylunel/pvlib-python#egg=pvlib
+    pip install pvlib
   displayName: 'Install pvlib'
 
 - script: |

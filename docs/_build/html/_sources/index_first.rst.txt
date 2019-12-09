@@ -1,0 +1,7 @@
+pvpumpingsystem is a tool aimed at simulating and sizing photovoltaic powered water pumping station. 
+It is entirely written in Python, and relies on two other python packages that can be found on GitHub: 
+pvlib/pvlib-python and CalebBell/fluids.
+This package was originally developped at the Industrial Research Chair in energy technologies and energy 
+efficiency (t3e), at the Ecole de Technologie Supérieure de Montréal.
+
+The source code for pvpumpingsystem is hosted on `github <https://github.com/tylunel/pvpumpingsystem>`_.

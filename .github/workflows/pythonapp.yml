@@ -20,7 +20,7 @@ jobs:
         pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
         pip install git+https://github.com/tylunel/fluids#egg=fluids
         pip install matplotlib sklearn tqdm
-    - name: Lint with flake8
+    - name: Lint with flake8 (only installation for now - no actual lint scan for now)
       run: |
         pip install flake8
         # stop the build if there are Python syntax errors or undefined names

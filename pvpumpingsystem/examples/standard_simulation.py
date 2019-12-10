@@ -15,7 +15,7 @@ import pvpumpingsystem.consumption as cs
 import pvpumpingsystem.pvpumpsystem as pvps
 
 
-# %% def of fixture
+# def of fixture
 
 # Do not use this data, because precipitable water data is incorrect, and
 # will result in wrongly null output
@@ -53,7 +53,7 @@ weather_path = weather_montreal
 pump1 = pump_sunpump
 coupling_method = 'direct'
 
-# %% modeling steps
+# %% pv modeling steps
 CECMOD = pvlib.pvsystem.retrieve_sam('cecmod')
 
 glass_params = {'K': 4, 'L': 0.002, 'n': 1.526}
@@ -73,7 +73,8 @@ pvsys1 = pvlib.pvsystem.PVSystem(
 weatherdata1, metadata1 = pvlib.iotools.epw.read_epw(
     '../weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC_truncated.epw',
     coerce_year=2005)
-locat1 = pvlib.location.Location.from_epw(metadata1)
+#locat1 = pvlib.location.Location.from_epw(metadata1)
+locat1 = pvlib.location.Location(45, -73.5)
 
 chain1 = pvlib.modelchain.ModelChain(
             system=pvsys1, location=locat1,
@@ -88,6 +89,7 @@ chain1 = pvlib.modelchain.ModelChain(
 
 chain1.run_model(weather=weatherdata1)
 
+# %% pvps modeling steps
 pump1 = pp.Pump(path="../pumps_files/SCB_10_150_120_BL.txt",
                 modeling_method='arab')
 pipes1 = pn.PipeNetwork(h_stat=10, l_tot=100, diam=0.08,

@@ -1000,34 +1000,28 @@ def _curves_coeffs_Kou98(specs_df, data_completeness):
     else:
         raise errors.InsufficientDataError('Lack of information on lpm, '
                                            'current or tdh for pump.')
-    # f1: I(V, H)
-    datax_df = specs_df['voltage']
-    datay_df = specs_df['tdh']
-    dataz_df = specs_df['current']
-    dataxy_ar = [np.array(datax_df),
-                 np.array(datay_df)]
-    dataz_ar = np.array(dataz_df)
 
-    param_f1, covmat_f1 = opt.curve_fit(
-            funct_mod, dataxy_ar, dataz_ar)
+    # f1: I(V, H)
+    dataxy = [np.array(specs_df.voltage),
+              np.array(specs_df.tdh)]
+    dataz = np.array(specs_df.current)
+
+    param_f1, covmat_f1 = opt.curve_fit(funct_mod, dataxy, dataz)
 #            , bounds=([0, 0, -np.inf, -np.inf, -np.inf],
 #                    [np.inf, np.inf, 0, 0, 0]))
-    # computing of RMSE and of normalized RMSE for f1
+    # computing of statistical figures for f1
     stats_f1 = function_models.correlation_stats(funct_mod, param_f1,
-                                                 dataxy_ar, dataz_ar)
+                                                 dataxy, dataz)
 
     # f2: Q(P, H)
-    datax_df = specs_df['power']
-    dataz_df = specs_df['flow']
-    dataxy_ar = [np.array(datax_df),
-                 np.array(datay_df)]
-    dataz_ar = np.array(dataz_df)
+    dataxy = [np.array(specs_df.power),
+              np.array(specs_df.tdh)]
+    dataz = np.array(specs_df.flow)
 
-    param_f2, covmat_f2 = opt.curve_fit(funct_mod, dataxy_ar,
-                                        dataz_ar)
-    # computing of RMSE and of normalized RMSE for f2
+    param_f2, covmat_f2 = opt.curve_fit(funct_mod, dataxy, dataz)
+    # computing of statistical figures for f2
     stats_f2 = function_models.correlation_stats(funct_mod, param_f2,
-                                                 dataxy_ar, dataz_ar)
+                                                 dataxy, dataz)
 
     return {'coeffs_f1': param_f1,
             'rmse_f1': stats_f1['rmse'],
@@ -1129,8 +1123,8 @@ def _curves_coeffs_theoretical(specs_df, data_completeness, elec_archi):
         raise errors.InsufficientDataError('Lack of information on lpm, '
                                            'current or tdh for pump.')
 
-    # gives f1: V=f1(i, H)
-    def funct_mod_v(input_values, R_a, beta_0, beta_1, beta_2):
+    # f1: V(I, H) - To change in I(V, H) afterward
+    def funct_mod_1(input_values, R_a, beta_0, beta_1, beta_2):
         """Returns the equation v(i, h).
         """
         i, h = input_values
@@ -1141,13 +1135,13 @@ def _curves_coeffs_theoretical(specs_df, data_completeness, elec_archi):
     dataxy = [np.array(specs_df.current),
               np.array(specs_df.tdh)]
     dataz = np.array(specs_df.voltage)
-    param_f1, matcov = opt.curve_fit(funct_mod_v, dataxy, dataz, maxfev=10000)
-
-    stats_f1 = function_models.correlation_stats(funct_mod_v, param_f1,
+    param_f1, matcov = opt.curve_fit(funct_mod_1, dataxy, dataz, maxfev=10000)
+    # computing of statistical figures for f1
+    stats_f1 = function_models.correlation_stats(funct_mod_1, param_f1,
                                                  dataxy, dataz)
 
     # gives f2; Q=f2(P, H)
-    def funct_mod_Q(input_values, a, b, c, d):
+    def funct_mod_2(input_values, a, b, c, d):
         P, H = input_values
         return (a + b*H) * (c + d*P)
         # theoretically it should be the following formula, but doesn't work
@@ -1156,9 +1150,9 @@ def _curves_coeffs_theoretical(specs_df, data_completeness, elec_archi):
     dataxy = [np.array(specs_df.power),
               np.array(specs_df.tdh)]
     dataz = np.array(specs_df.flow)
-    param_f2, matcov = opt.curve_fit(funct_mod_Q, dataxy, dataz, maxfev=10000)
-
-    stats_f2 = function_models.correlation_stats(funct_mod_Q, param_f2,
+    param_f2, matcov = opt.curve_fit(funct_mod_2, dataxy, dataz, maxfev=10000)
+    # computing of statistical figures for f2
+    stats_f2 = function_models.correlation_stats(funct_mod_2, param_f2,
                                                  dataxy, dataz)
 
     return {'coeffs_f1': param_f1,

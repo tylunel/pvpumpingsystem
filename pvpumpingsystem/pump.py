@@ -371,17 +371,14 @@ class Pump:
         """
         Function using [1] for modeling I vs V of pump.
 
-        References
+        Reference
         ---------
-        [1] Hadj Arab A., Benghanem M. & Chenlo F.,
-        "Motor-pump system modelization", 2006, Renewable Energy
-        [2] Djoudi Gherbi, Hadj Arab A., Salhi H., "Improvement and validation
-        of PV motor-pump model for PV pumping system performance analysis",
-        2017
+        [1] Kou Q, Klein S.A. & Beckman W.A., "A method for estimating the
+        long-term performance of direct-coupled PV pumping systems", 1998,
+        Solar Energy
         """
 
-        coeffs_a = self.coeffs['a']
-        coeffs_b = self.coeffs['b']
+        coeffs = self.coeffs['coeffs_f1']
         funct_mod = function_models.compound_polynomial_1_3
 
         # domain of V and tdh and gathering in one single variable
@@ -407,7 +404,7 @@ class Pump:
                             'H (={0}) is out of bounds. For this specific '
                             'voltage V (={1}), H should be in the interval {2}'
                             .format(H, V, intervals['H'](V)))
-            return funct_mod([V, H], *coeffs_a, *coeffs_b)
+            return funct_mod([V, H], *coeffs)
 
         return functI, intervals
 
@@ -875,7 +872,7 @@ def _curves_coeffs_Arab06(specs_df, data_completeness):
     Djoudi Gherbi [2].
 
     It uses a 3rd order polynomial to model Q(P) and
-    a 1st order polynomial to model V(I). Each corresponding
+    a 1st order polynomial to model I(V). Each corresponding
     coefficient depends on TDH through a 3rd order polynomial.
 
     Parameters
@@ -891,88 +888,52 @@ def _curves_coeffs_Arab06(specs_df, data_completeness):
     of PV motor-pump model for PV pumping system performance analysis", 2017
 
     """
-    funct_mod_I = function_models.polynomial_1
-    funct_mod_coeffs = function_models.polynomial_3
+
 # TODO: make the regression directly on the compound function, as in
 # the theoretical case.
-#    funct_mod_I_compound = function_models.compound_polynomial_1_3
+    funct_mod_1 = function_models.compound_polynomial_1_3
 
     # TODO: add check on number of head available (for lin. reg. of coeffs)
     if data_completeness['data_number'] >= 10 \
             and data_completeness['voltage_number'] >= 3:
-        funct_mod_Q = function_models.polynomial_2
-        funct_mod_Q_order = 2
+        funct_mod_2 = function_models.compound_polynomial_2_3
+#        funct_mod_2_order = 2
     elif data_completeness['data_number'] >= 10 \
             and data_completeness['voltage_number'] >= 2:
-        funct_mod_Q = function_models.polynomial_1
-        funct_mod_Q_order = 1
+        funct_mod_2 = function_models.compound_polynomial_1_3
+#        funct_mod_2_order = 1
     else:
         raise errors.InsufficientDataError('Lack of information on lpm, '
                                            'current or tdh for pump.')
 
-    # linear equation I = a + b*V
-    a_ls = []
-    b_ls = []
-    tdh_1 = []
-    for H in specs_df.tdh:
-        if H not in tdh_1:
-            sub_df = specs_df[specs_df.tdh == H]
-            if len(sub_df) >= 2:
-                params_a_b, _ = opt.curve_fit(
-                    funct_mod_I, sub_df.power, sub_df.current)
-                a_ls.append(params_a_b[0])
-                b_ls.append(params_a_b[1])
-                tdh_1.append(H)
+    # f1: I(V, H)
+    dataxy = [np.array(specs_df.voltage),
+              np.array(specs_df.tdh)]
+    dataz = np.array(specs_df.current)
 
-    # TODO: compare Q(P) or Q(V) (original article uses the latter)
-    # quadratic equation Q = c + d*P + e*P**2
-    c_ls = []
-    d_ls = []
-    e_ls = []
-    tdh_2 = []
-    for H in specs_df.tdh:
-        if H not in tdh_2:
-            sub_df = specs_df[specs_df.tdh == H]
-            if len(sub_df) > funct_mod_Q_order:
-                params_c_d_e, _ = opt.curve_fit(
-                    funct_mod_Q, sub_df.power, sub_df.flow)
-                c_ls.append(params_c_d_e[0])
-                d_ls.append(params_c_d_e[1])
-                tdh_2.append(H)
-                if data_completeness['voltage_number'] >= 3:  # useless ?
-                    e_ls.append(params_c_d_e[2])
-                else:
-                    e_ls.append(0)
+    param_f1, covmat_f1 = opt.curve_fit(funct_mod_1, dataxy, dataz)
+    # computing of statistical figures for f1
+    stats_f1 = function_models.correlation_stats(funct_mod_1, param_f1,
+                                                 dataxy, dataz)
 
-    # dependance of a, b, c, d, e on H
-    coeffs_dict = {}
-    for coeff in ['a', 'b']:
-        params, _ = opt.curve_fit(
-            funct_mod_coeffs, tdh_1, eval(coeff + '_ls'))
-        coeffs_dict[coeff] = params
-    for coeff in ['c', 'd', 'e']:  # two loops needed because tdh_2 != tdh_1
-        params, _ = opt.curve_fit(
-            funct_mod_coeffs, tdh_2, eval(coeff + '_ls'))
-        coeffs_dict[coeff] = params
+    # f2: Q(P, H)
+    dataxy = [np.array(specs_df.power),
+              np.array(specs_df.tdh)]
+    dataz = np.array(specs_df.flow)
 
-    return coeffs_dict
+    param_f2, covmat_f2 = opt.curve_fit(funct_mod_2, dataxy, dataz)
+    # computing of statistical figures for f2
+    stats_f2 = function_models.correlation_stats(funct_mod_2, param_f2,
+                                                 dataxy, dataz)
 
-# TODO: standardize output with statistical values as well
-#    param_f1 = coeffs_dict['a', 'b']
-#    stats_f1 = function_models.correlation_stats(funct_mod_I_compound,
-#                                                 (param_f1['a'],
-#                                                 param_f1['b']),
-#                                                 dataxy_ar, dataz_ar)
-#    param_f2 = coeffs_dict['c', 'd', 'e']
-#
-#    return {'coeffs_f1': param_f1,
-#            'rmse_f1': stats_f1['rmse'],
-#            'nrmse_f1': stats_f1['nrmse'],
-#            'r_squared_f1': stats_f1['r_squared'],
-#            'coeffs_f2': param_f2,
-#            'rmse_f2': stats_f2['rmse'],
-#            'nrmse_f2': stats_f2['nrmse'],
-#            'r_squared_f2': stats_f2['r_squared']}
+    return {'coeffs_f1': param_f1,
+            'rmse_f1': stats_f1['rmse'],
+            'nrmse_f1': stats_f1['nrmse'],
+            'r_squared_f1': stats_f1['r_squared'],
+            'coeffs_f2': param_f2,
+            'rmse_f2': stats_f2['rmse'],
+            'nrmse_f2': stats_f2['nrmse'],
+            'r_squared_f2': stats_f2['r_squared']}
 
 
 def _curves_coeffs_Kou98(specs_df, data_completeness):
@@ -1438,6 +1399,7 @@ if __name__ == "__main__":
     coeffs_3 = _curves_coeffs_Arab06(pump1.specs_df, pump1.data_completeness)
     coeffs_4 = _curves_coeffs_Kou98(pump1.specs_df, pump1.data_completeness)
 
+
 #    print(pump1.coeffs)
 #    f2, _ = pump1.functQforPH()
 #    print(f2(400, 10))
@@ -1455,19 +1417,19 @@ if __name__ == "__main__":
 #    pump1.plot_tdh_Q()
 #    pump2.plot_tdh_Q()
 
-## %% set-up for following plots
-#    vol = []
-#    tdh = []
-#    cur = []
-#    lpm = []
-#    power = []
-#    for V in pump1.voltage:
-#        for i, I in enumerate(pump1.current[V]):
-#            vol.append(V)
-#            cur.append(I)
-#            tdh.append(pump1.tdh[V][i])
-#            lpm.append(pump1.lpm[V][i])
-#            power.append(pump1.watts[V][i])
+# %% set-up for following plots
+    vol = []
+    tdh = []
+    cur = []
+    lpm = []
+    power = []
+    for V in pump1.voltage:
+        for i, I in enumerate(pump1.current[V]):
+            vol.append(V)
+            cur.append(I)
+            tdh.append(pump1.tdh[V][i])
+            lpm.append(pump1.lpm[V][i])
+            power.append(pump1.watts[V][i])
 #
 #
 ## %% plot of functVforIH
@@ -1488,24 +1450,24 @@ if __name__ == "__main__":
 #    print('std dev on V:', stddev)
 ##    print('V for IH=(4,25): {0:.2f}'.format(f1(4, 25)))
 #
-## %% plot of functIforVH
-#    f2, stddev, intervals = pump1.functIforVH()
-#    cur_check = []
-#    for i, V in enumerate(vol):
-#        cur_check.append(f2(V, tdh[i], error_raising=False))
-#
-#    fig = plt.figure()
-#    ax = fig.add_subplot(111, projection='3d', title='Current as a function of'
-#                         ' voltage (V) and static head (m)')
-#    ax.scatter(vol, tdh, cur, label='from data')
-#    ax.scatter(vol, tdh, cur_check, label='from curve fitting')
-#    ax.set_xlabel('voltage')
-#    ax.set_ylabel('head')
-#    ax.set_zlabel('current I')
-#    ax.legend(loc='lower left')
-#    plt.show()
-#    print('std dev on I: ', stddev)
-##    print('I for VH=(20, 25): {0:.2f}'.format(f2(20, 25)))
+# %% plot of functIforVH
+    f2, intervals = pump1.functIforVH_Arab()
+    cur_check = []
+    for i, V in enumerate(vol):
+        cur_check.append(f2(V, tdh[i], error_raising=False))
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d', title='Current as a function of'
+                         ' voltage (V) and static head (m)')
+    ax.scatter(vol, tdh, cur, label='from data')
+    ax.scatter(vol, tdh, cur_check, label='from curve fitting')
+    ax.set_xlabel('voltage')
+    ax.set_ylabel('head')
+    ax.set_zlabel('current I')
+    ax.legend(loc='lower left')
+    plt.show()
+    print('I for VH=(80, 25): {0:.2f}'.format(f2(80, 25)))
+
 #
 #
 ## %% plot of functQforVH

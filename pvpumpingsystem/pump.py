@@ -591,15 +591,15 @@ class Pump:
         """
 
         """
-        coeffs_a = self.coeffs['a']
-        coeffs_b = self.coeffs['b']
-        coeffs_c = self.coeffs['c']
-        coeffs_d = self.coeffs['d']
+        coeffs = self.coeffs['coeffs_f2']
+
         funct_mod_P = function_models.compound_polynomial_3_3
 
         def funct_P(Q, power, head):
-            return funct_mod_P([Q, head], *coeffs_a, *coeffs_b, *coeffs_c,
-                               *coeffs_d) - power
+            """Function supposed to equal 0, used for finding numerically the
+            value of flow-rate depending on power.
+            """
+            return funct_mod_P([Q, head], *coeffs) - power
 
         dom = _domain_P_H(self.specs_df, self.data_completeness)
         intervals = {'P': dom[0],
@@ -646,9 +646,7 @@ class Pump:
         2017
         """
 
-        coeffs_c = self.coeffs['c']
-        coeffs_d = self.coeffs['d']
-        coeffs_e = self.coeffs['e']
+        coeffs = self.coeffs['coeffs_f2']
         funct_mod = function_models.compound_polynomial_2_3
 
         # domain of V and tdh and gathering in one single variable
@@ -667,12 +665,12 @@ class Pump:
                 P_unused = P
             # if P is in available range
             elif intervals['P'](H)[0] < P < intervals['P'](H)[1]:
-                Q = funct_mod([P, H], *coeffs_c, *coeffs_d, *coeffs_e)
+                Q = funct_mod([P, H], *coeffs)
                 P_unused = 0
             # if P is more than maximum
             elif intervals['P'](H)[1] < P:
                 Pmax = intervals['P'](H)[1]
-                Q = funct_mod([Pmax, H], *coeffs_c, *coeffs_d, *coeffs_e)
+                Q = funct_mod([Pmax, H], *coeffs)
                 P_unused = P - Pmax
             # if P is NaN or other
             else:
@@ -997,8 +995,10 @@ def _curves_coeffs_Kou98(specs_df, data_completeness):
 def _curves_coeffs_Hamidat08(specs_df, data_completeness):
     """
     Compute curve-fitting coefficient with method of Hamidat [1].
-    It uses a 3rd order polynomial to model Q(P) and each corresponding
-    coefficient depends on TDH through a 3rd order polynomial as well.
+    It uses a 3rd order polynomial to model P(Q) = a + b*Q + c*Q^2 + d*Q^3
+    and each corresponding coefficient depends on TDH through a 3rd order
+    polynomial as well. This function needs to be reversed numerically
+    to be used as Q(P).
 
     Parameters
     ----------
@@ -1007,50 +1007,40 @@ def _curves_coeffs_Hamidat08(specs_df, data_completeness):
 
     Returns
     -------
-    * dict with coefficients of the curve fit (a1, a2, a3, a4, b1, ..., d4)
+    * dict with coefficients and statistical outputs
 
     Reference
     ---------
     [1] Hamidat A., ..., 2008, Renewable Energy
 
     """
-
+    # TODO: add check on number of head available (for lin. reg. of coeffs)
     if data_completeness['data_number'] >= 10 \
-            and data_completeness['voltage_number'] > 3:
-        funct_mod_Q = function_models.polynomial_3
-        funct_mod_Q_order = 3
-        funct_mod_coeffs = function_models.polynomial_3
+            and data_completeness['voltage_number'] >= 4:
+        funct_mod_2 = function_models.compound_polynomial_3_3
+#        funct_mod_2_order = 2
+    elif data_completeness['data_number'] >= 10 \
+            and data_completeness['voltage_number'] >= 2:
+        funct_mod_2 = function_models.compound_polynomial_2_3
+#        funct_mod_2_order = 1
     else:
         raise errors.InsufficientDataError('Lack of information on lpm, '
                                            'current or tdh for pump.')
 
-    # cubic equation P = a + b*Q + c*Q**2 + d*Q**3
-    a_ls = []
-    b_ls = []
-    c_ls = []
-    d_ls = []
-    tdh = []
-    for H in specs_df.tdh:
-        if H not in tdh:
-            sub_df = specs_df[specs_df.tdh == H]
-            if len(sub_df) > funct_mod_Q_order:
-                params, _ = opt.curve_fit(
-                    funct_mod_Q, sub_df.flow, sub_df.power)
-                a_ls.append(params[0])
-                b_ls.append(params[1])
-                c_ls.append(params[2])
-                d_ls.append(params[3])
-                tdh.append(H)
+    # f2: Q(P, H)
+    dataxy = [np.array(specs_df.flow),
+              np.array(specs_df.tdh)]
+    dataz = np.array(specs_df.power)
 
-    # dependance of a, b, c, d, e on H
-    coeffs_dict = {}
-    for coeff in ['a', 'b', 'c', 'd']:
-        params, _ = opt.curve_fit(
-            funct_mod_coeffs, tdh, eval(coeff + '_ls'))
-        coeffs_dict[coeff] = params
+    param_f2, covmat_f2 = opt.curve_fit(funct_mod_2, dataxy, dataz)
+    # computing of statistical figures for f2
+    stats_f2 = function_models.correlation_stats(funct_mod_2, param_f2,
+                                                 dataxy, dataz)
 
-# TODO: standardize output with statistical values as well
-    return coeffs_dict
+    return {'coeffs_f2': param_f2,
+            'rmse_f2': stats_f2['rmse'],
+            'nrmse_f2': stats_f2['nrmse'],
+            'r_squared_f2': stats_f2['r_squared']}
 
 
 def _curves_coeffs_theoretical(specs_df, data_completeness, elec_archi):
@@ -1360,7 +1350,7 @@ def _domain_P_H(specs_df, data_completeness):
 if __name__ == "__main__":
     # %% pump creation
     pump1 = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
-                 model='SCB_10', modeling_method='arab',
+                 model='SCB_10', modeling_method='hamidat',
                  motor_electrical_architecture='permanent_magnet')
 
     pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
@@ -1392,13 +1382,17 @@ if __name__ == "__main__":
 #                               3.8, 4.1],
 #                          }, model='Shurflo_9325')
 
-    coeffs_1 = _curves_coeffs_Hamidat08(pump1.specs_df, pump1.data_completeness)
+    coeffs_1 = _curves_coeffs_Hamidat08(pump1.specs_df,
+                                          pump1.data_completeness)
     coeffs_2 = _curves_coeffs_theoretical(pump1.specs_df,
                                           pump1.data_completeness,
                                           pump1.motor_electrical_architecture)
     coeffs_3 = _curves_coeffs_Arab06(pump1.specs_df, pump1.data_completeness)
     coeffs_4 = _curves_coeffs_Kou98(pump1.specs_df, pump1.data_completeness)
-
+    print('\ncoeffs_Hamidat:', coeffs_1)
+    print('\ncoeffs_Theo:', coeffs_2)
+    print('\ncoeffs_Arab:', coeffs_3)
+    print('\ncoeffs_Kou:', coeffs_4)
 
 #    print(pump1.coeffs)
 #    f2, _ = pump1.functQforPH()
@@ -1417,23 +1411,9 @@ if __name__ == "__main__":
 #    pump1.plot_tdh_Q()
 #    pump2.plot_tdh_Q()
 
-# %% set-up for following plots
-    vol = []
-    tdh = []
-    cur = []
-    lpm = []
-    power = []
-    for V in pump1.voltage:
-        for i, I in enumerate(pump1.current[V]):
-            vol.append(V)
-            cur.append(I)
-            tdh.append(pump1.tdh[V][i])
-            lpm.append(pump1.lpm[V][i])
-            power.append(pump1.watts[V][i])
-#
 #
 ## %% plot of functVforIH
-#    f1, stddev, intervals = pump1.functVforIH()
+#    f1, intervals = pump1.functVforIH()
 #    vol_check = []
 #    for i, I in enumerate(cur):
 #        vol_check.append(f1(I, tdh[i], error_raising=False))
@@ -1451,24 +1431,23 @@ if __name__ == "__main__":
 ##    print('V for IH=(4,25): {0:.2f}'.format(f1(4, 25)))
 #
 # %% plot of functIforVH
-    f2, intervals = pump1.functIforVH_Arab()
-    cur_check = []
-    for i, V in enumerate(vol):
-        cur_check.append(f2(V, tdh[i], error_raising=False))
-
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d', title='Current as a function of'
-                         ' voltage (V) and static head (m)')
-    ax.scatter(vol, tdh, cur, label='from data')
-    ax.scatter(vol, tdh, cur_check, label='from curve fitting')
-    ax.set_xlabel('voltage')
-    ax.set_ylabel('head')
-    ax.set_zlabel('current I')
-    ax.legend(loc='lower left')
-    plt.show()
-    print('I for VH=(80, 25): {0:.2f}'.format(f2(80, 25)))
-
+#    f2, intervals = pump1.functIforVH_Arab()
+#    cur_check = []
+#    for i, V in enumerate(vol):
+#        cur_check.append(f2(V, tdh[i], error_raising=False))
 #
+#    fig = plt.figure()
+#    ax = fig.add_subplot(111, projection='3d', title='Current as a function of'
+#                         ' voltage (V) and static head (m)')
+#    ax.scatter(vol, tdh, cur, label='from data')
+#    ax.scatter(vol, tdh, cur_check, label='from curve fitting')
+#    ax.set_xlabel('voltage')
+#    ax.set_ylabel('head')
+#    ax.set_zlabel('current I')
+#    ax.legend(loc='lower left')
+#    plt.show()
+#    print('I for VH=(80, 25): {0:.2f}'.format(f2(80, 25)))
+
 #
 ## %% plot of functQforVH
 #    f3, stddev = pump1.functQforVH()
@@ -1492,9 +1471,9 @@ if __name__ == "__main__":
 #    print('std dev on Q calculated from V:', stddev)
 #
 #
-## %% plot of functQforPH
-#    pump_concerned = pump2
-#    f4, stddev = pump_concerned.functQforPH()
+# %% plot of functQforPH
+#    pump_concerned = pump1
+#    f4, intervals = pump_concerned.functQforPH()
 #    lpm_check = []
 #
 #    for index, row in pump_concerned.specs_df.iterrows():
@@ -1502,10 +1481,10 @@ if __name__ == "__main__":
 #            Q = f4(row.power, row.tdh)
 #        except (errors.PowerError, errors.HeadError):
 #            Q = 0
-#        lpm_check.append(Q)
+#        lpm_check.append(Q['Q'])
 #    fig = plt.figure()
-#    ax = fig.add_subplot(111, projection='3d', title='Q (lpm) as a function of'
-#                         ' power (W) and static head (m)')
+#    ax = fig.add_subplot(111, projection='3d',
+#                         title='Flow Q depending on P and H')
 #    ax.scatter(pump_concerned.specs_df.power, pump_concerned.specs_df.tdh,
 #               pump_concerned.specs_df.flow,
 #               label='from data')
@@ -1518,4 +1497,3 @@ if __name__ == "__main__":
 #    ax.set_zlabel('discharge Q')
 #    ax.legend(loc='lower left')
 #    plt.show()
-#    print('std dev on Q calculated from P: ', stddev)

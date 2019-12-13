@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Oct  7 16:47:29 2019
+Defines Consumption class.
 
-@author: AP78430
+@author: Tanguy Lunel
 
-Class Consumption
 """
 
 import pandas as pd

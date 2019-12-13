@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri May 17 07:54:42 2019
+Module defining class and functions for modeling the pump.
 
-@author: Sergio Gualteros, Tanguy Lunel
-
-module defining class and functions for modeling the pump.
+@author: Tanguy Lunel, Sergio Gualteros
 
 """
 import collections
@@ -1401,10 +1399,23 @@ def _domain_P_H(specs_df, data_completeness):
     return interval_power, interval_tdh
 
 
+def _reverse_func(function, input_to_reverse, input_stable):
+    """This function aims at getting the inverse function of a particular
+    function. The input function needs to be BIJECTIVE in order to return
+    a correct inverse function.
+
+    Note: It should be ok as long as it is not asked to inverse a function
+    according to the head input.
+    Particularly I(V, H=constant) is strictly monotonic,
+    but I(H, V=constant) is not.
+
+    """
+
+
 if __name__ == "__main__":
     # %% pump creation
     pump1 = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
-                 model='SCB_10', modeling_method='theoretical',
+                 model='SCB_10', modeling_method='arab',
                  motor_electrical_architecture='permanent_magnet')
 
     pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
@@ -1485,21 +1496,24 @@ if __name__ == "__main__":
 ##    print('V for IH=(4,25): {0:.2f}'.format(f1(4, 25)))
 #
 # %% plot of functIforVH
-#    f2, intervals = pump1.functIforVH_Arab()
-#    cur_check = []
-#    for i, V in enumerate(vol):
-#        cur_check.append(f2(V, tdh[i], error_raising=False))
-#
-#    fig = plt.figure()
-#    ax = fig.add_subplot(111, projection='3d', title='Current as a function of'
-#                         ' voltage (V) and static head (m)')
-#    ax.scatter(vol, tdh, cur, label='from data')
-#    ax.scatter(vol, tdh, cur_check, label='from curve fitting')
-#    ax.set_xlabel('voltage')
-#    ax.set_ylabel('head')
-#    ax.set_zlabel('current I')
-#    ax.legend(loc='lower left')
-#    plt.show()
+    pump_concerned = pump1
+    f2, intervals = pump_concerned.functIforVH()
+    cur_check = []
+    for index, row in pump_concerned.specs_df.iterrows():
+        cur_check.append(f2(row.voltage, row.tdh, error_raising=False))
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d', title='Current as a function of'
+                         ' voltage (V) and static head (m)')
+    ax.scatter(pump_concerned.specs_df.voltage, pump_concerned.specs_df.tdh,
+               pump_concerned.specs_df.current, label='from data')
+    ax.scatter(pump_concerned.specs_df.voltage, pump_concerned.specs_df.tdh,
+               cur_check, label='from curve fitting')
+    ax.set_xlabel('voltage')
+    ax.set_ylabel('head')
+    ax.set_zlabel('current I')
+    ax.legend(loc='lower left')
+    plt.show()
 #    print('I for VH=(80, 25): {0:.2f}'.format(f2(80, 25)))
 
 #

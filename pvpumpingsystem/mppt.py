@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 """
+Module for defining MPPT characteristic. Still at embryonic stage.
 
-@author: Tanguy
+@author: Tanguy Lunel
 
 Defines a MPPT
 """

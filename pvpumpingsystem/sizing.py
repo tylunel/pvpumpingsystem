@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-@author: Tanguy
+Module implementing sizing procedure to facilitate pv pumping station sizing.
+
+@author: Tanguy Lunel
 """
 
 import numpy as np

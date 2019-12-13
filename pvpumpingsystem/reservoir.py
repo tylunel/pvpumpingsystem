@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Jul  3 17:34:56 2019
+Module for reservoir modeling.
 
-@author: AP78430
+@author: Tanguy Lunel
 """
 
 import numpy as np

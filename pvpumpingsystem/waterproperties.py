@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri May 24 14:54:44 2019
-
-@author: Louis LAMARCHE,  Tanguy LUNEL
-
 Gives water properties in various physical conditions.
+
+@author: Louis Lamarche,  Tanguy Lunel
 """
 
 import numpy as np

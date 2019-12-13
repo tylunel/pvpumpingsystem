@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri May 24 14:54:44 2019
-
-@author: Tanguy
-
 Defines a whole PVPS, with PV array, pump, pipes... and provide
 functions for computing main output (water discharge,...) from input
-(weather,...)
+(weather, pv array, water consumption)
+
+@author: Tanguy Lunel
+
 """
 import numpy as np
 import pandas as pd

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Oct 23 15:50:19 2019
+Module gathering mathematical function, including typical function templates.
 
-@author: Tanguy
+@author: Tanguy Lunel
 """
 import numpy as np
 from sklearn.metrics import r2_score

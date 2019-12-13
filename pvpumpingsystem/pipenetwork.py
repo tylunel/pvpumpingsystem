@@ -1,11 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon May 27 10:46:33 2019
-
-@author: Tanguy
-
-Module for defining a pipenetwork.
+Module for defining a pipes network.
 Uses fluids module.
+
+@author: Tanguy Lunel
 
 Still to do :
 

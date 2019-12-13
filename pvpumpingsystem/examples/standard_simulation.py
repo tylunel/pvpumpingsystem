@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Oct 16 17:11:38 2019
+Example of a simulation with pvpumpingsystem package.
 
-@author: AP78430
+@author: Tanguy Lunel
 """
 
 import matplotlib.pyplot as plt

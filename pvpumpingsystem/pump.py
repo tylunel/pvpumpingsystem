@@ -130,6 +130,10 @@ class Pump:
         elif self.modeling_method.lower() == 'hamidat':
             self.coeffs = _curves_coeffs_Hamidat08(
                     self.specs_df, self.data_completeness)
+        elif self.modeling_method.lower() == 'theoretical':
+            self.coeffs = _curves_coeffs_theoretical(
+                    self.specs_df, self.data_completeness,
+                    self.motor_electrical_architecture)
         else:
             self.coeffs = None
 #        self.coeff_pow_with_lpm = coeffs[1]
@@ -581,6 +585,8 @@ class Pump:
             return self.functQforPH_Arab()
         if self.modeling_method == 'hamidat':
             return self.functQforPH_Hamidat()
+        if self.modeling_method == 'theoretical':
+            return self.functQforPH_theoretical()
         else:
             raise NotImplementedError(
                 "The function functQforPH corresponding to the requested "
@@ -615,7 +621,7 @@ class Pump:
                 Q = 0
                 P_unused = P
             # if P is in available range
-            elif intervals['P'](H)[0] < P < intervals['P'](H)[1]:
+            elif intervals['P'](H)[0] <= P <= intervals['P'](H)[1]:
                 # Newton-Raphson numeraical method:
                 # actually fprime should be given for using Newton-Raphson
                 Q = opt.newton(funct_P, 5, args=(P, H))
@@ -664,7 +670,7 @@ class Pump:
                 Q = 0
                 P_unused = P
             # if P is in available range
-            elif intervals['P'](H)[0] < P < intervals['P'](H)[1]:
+            elif intervals['P'](H)[0] <= P <= intervals['P'](H)[1]:
                 Q = funct_mod([P, H], *coeffs)
                 P_unused = 0
             # if P is more than maximum
@@ -709,7 +715,53 @@ class Pump:
                 Q = 0
                 P_unused = P
             # if P is in available range
-            elif intervals['P'](H)[0] < P < intervals['P'](H)[1]:
+            elif intervals['P'](H)[0] <= P <= intervals['P'](H)[1]:
+                Q = funct_mod([P, H], *coeffs)
+                P_unused = 0
+            # if P is more than maximum
+            elif intervals['P'](H)[1] < P:
+                Pmax = intervals['P'](H)[1]
+                Q = funct_mod([P, H], *coeffs)
+                P_unused = P - Pmax
+            # if P is NaN or other
+            else:
+                Q = np.nan
+                P_unused = np.nan
+            return {'Q': Q, 'P_unused': P_unused}
+
+        return functQ, intervals
+
+    def functQforPH_theoretical(self):
+        """
+        Function using theoretical approach for output flow rate modeling.
+
+        Reference
+        ---------
+        [1]
+        """
+
+        def funct_mod(input_values, a, b, c, d):
+            P, H = input_values
+            return (a + b*H) * (c + d*P)
+
+        coeffs = self.coeffs['coeffs_f2']
+
+        # domain of V and tdh and gathering in one single variable
+        dom = _domain_P_H(self.specs_df, self.data_completeness)
+        intervals = {'P': dom[0],
+                     'H': dom[1]}
+
+        def functQ(P, H):
+            # check if head is in available range (NOT redundant with rest)
+            if H > intervals['H'](P)[1]:
+                Q = 0
+                P_unused = P
+            # check if P is insufficient
+            if P < intervals['P'](H)[0]:
+                Q = 0
+                P_unused = P
+            # if P is in available range
+            elif intervals['P'](H)[0] <= P <= intervals['P'](H)[1]:
                 Q = funct_mod([P, H], *coeffs)
                 P_unused = 0
             # if P is more than maximum
@@ -1092,6 +1144,8 @@ def _curves_coeffs_theoretical(specs_df, data_completeness, elec_archi):
                                                  dataxy, dataz)
 
     # gives f2; Q=f2(P, H)
+    # TODO: equivalent to developped form with cross term,
+    # -> take from function_models
     def funct_mod_2(input_values, a, b, c, d):
         P, H = input_values
         return (a + b*H) * (c + d*P)
@@ -1350,7 +1404,7 @@ def _domain_P_H(specs_df, data_completeness):
 if __name__ == "__main__":
     # %% pump creation
     pump1 = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
-                 model='SCB_10', modeling_method='hamidat',
+                 model='SCB_10', modeling_method='theoretical',
                  motor_electrical_architecture='permanent_magnet')
 
     pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
@@ -1382,17 +1436,17 @@ if __name__ == "__main__":
 #                               3.8, 4.1],
 #                          }, model='Shurflo_9325')
 
-    coeffs_1 = _curves_coeffs_Hamidat08(pump1.specs_df,
-                                          pump1.data_completeness)
-    coeffs_2 = _curves_coeffs_theoretical(pump1.specs_df,
-                                          pump1.data_completeness,
-                                          pump1.motor_electrical_architecture)
-    coeffs_3 = _curves_coeffs_Arab06(pump1.specs_df, pump1.data_completeness)
-    coeffs_4 = _curves_coeffs_Kou98(pump1.specs_df, pump1.data_completeness)
-    print('\ncoeffs_Hamidat:', coeffs_1)
-    print('\ncoeffs_Theo:', coeffs_2)
-    print('\ncoeffs_Arab:', coeffs_3)
-    print('\ncoeffs_Kou:', coeffs_4)
+#    coeffs_1 = _curves_coeffs_Hamidat08(pump1.specs_df,
+#                                          pump1.data_completeness)
+#    coeffs_2 = _curves_coeffs_theoretical(pump1.specs_df,
+#                                          pump1.data_completeness,
+#                                          pump1.motor_electrical_architecture)
+#    coeffs_3 = _curves_coeffs_Arab06(pump1.specs_df, pump1.data_completeness)
+#    coeffs_4 = _curves_coeffs_Kou98(pump1.specs_df, pump1.data_completeness)
+#    print('\ncoeffs_Hamidat:', coeffs_1)
+#    print('\ncoeffs_Theo:', coeffs_2)
+#    print('\ncoeffs_Arab:', coeffs_3)
+#    print('\ncoeffs_Kou:', coeffs_4)
 
 #    print(pump1.coeffs)
 #    f2, _ = pump1.functQforPH()
@@ -1472,28 +1526,28 @@ if __name__ == "__main__":
 #
 #
 # %% plot of functQforPH
-#    pump_concerned = pump1
-#    f4, intervals = pump_concerned.functQforPH()
-#    lpm_check = []
-#
-#    for index, row in pump_concerned.specs_df.iterrows():
-#        try:
-#            Q = f4(row.power, row.tdh)
-#        except (errors.PowerError, errors.HeadError):
-#            Q = 0
-#        lpm_check.append(Q['Q'])
-#    fig = plt.figure()
-#    ax = fig.add_subplot(111, projection='3d',
-#                         title='Flow Q depending on P and H')
-#    ax.scatter(pump_concerned.specs_df.power, pump_concerned.specs_df.tdh,
-#               pump_concerned.specs_df.flow,
-#               label='from data')
-#    ax.scatter(pump_concerned.specs_df.power, pump_concerned.specs_df.tdh,
-#               lpm_check,
-#               label='from curve fitting with modeling method {0}'.format(
-#                       pump_concerned.modeling_method))
-#    ax.set_xlabel('power')
-#    ax.set_ylabel('head')
-#    ax.set_zlabel('discharge Q')
-#    ax.legend(loc='lower left')
-#    plt.show()
+    pump_concerned = pump1
+    f4, intervals = pump_concerned.functQforPH()
+    lpm_check = []
+
+    for index, row in pump_concerned.specs_df.iterrows():
+        try:
+            Q = f4(row.power, row.tdh)
+        except (errors.PowerError, errors.HeadError):
+            Q = 0
+        lpm_check.append(Q['Q'])
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d',
+                         title='Flow Q depending on P and H')
+    ax.scatter(pump_concerned.specs_df.power, pump_concerned.specs_df.tdh,
+               pump_concerned.specs_df.flow,
+               label='from data')
+    ax.scatter(pump_concerned.specs_df.power, pump_concerned.specs_df.tdh,
+               lpm_check,
+               label='from curve fitting with modeling method {0}'.format(
+                       pump_concerned.modeling_method))
+    ax.set_xlabel('power')
+    ax.set_ylabel('head')
+    ax.set_zlabel('discharge Q')
+    ax.legend(loc='lower left')
+    plt.show()

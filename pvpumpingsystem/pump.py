@@ -14,9 +14,9 @@ import matplotlib.pyplot as plt
 import scipy.optimize as opt
 
 # pvpumpingsystem modules:
-import inverse
-import errors
-import function_models
+from pvpumpingsystem import inverse
+from pvpumpingsystem import errors
+from pvpumpingsystem import function_models
 
 
 class Pump:
@@ -1388,10 +1388,6 @@ if __name__ == "__main__":
                  motor_electrical_architecture='permanent_magnet',
                  modeling_method='arab')
 
-    fV, intervals_fV = pump1.functVforIH_theoretical()
-    fI, intervals_fI = pump1.functIforVH_theoretical()
-    fI_Kou, intervals_Kou = pump1.functIforVH_Kou()
-    print(fI(70, 25))
 
 #    coeffs_1 = _curves_coeffs_Hamidat08(pump1.specs_df,
 #                                          pump1.data_completeness)
@@ -1405,41 +1401,50 @@ if __name__ == "__main__":
 #    print('\ncoeffs_Arab:', coeffs_3)
 #    print('\ncoeffs_Kou:', coeffs_4)
 
-#    print(pump1.coeffs)
-#    f2, _ = pump1.functQforPH()
-#    print(f2(400, 10))
-#    intervals = _domain_I_H(pump1.specs_df, pump1.data_completeness)
-#    print(intervals)
-
-
-#    print(pump1.coeffs)
-#    print(pump2.coeffs)
-#    f11, _ = pump1.functIforVH()
-#    f21, _ = pump1.functQforPH()
-#    f12, _ = pump2.functIforVH()
-#    f22, _ = pump2.functQforPH()
-
-#    pump1.plot_tdh_Q()
-#    pump2.plot_tdh_Q()
-
-#
-## %% plot of functVforIH
-#    f1, intervals = pump1.functVforIH()
-#    vol_check = []
-#    for i, I in enumerate(cur):
-#        vol_check.append(f1(I, tdh[i], error_raising=False))
-#    fig = plt.figure()
-#    ax = fig.add_subplot(111, projection='3d', title='Voltage as a function of'
-#                         ' current (A) and static head (m)')
-#    ax.scatter(cur, tdh, vol, label='from data')
-#    ax.scatter(cur, tdh, vol_check, label='from curve fitting')
-#    ax.set_xlabel('current')
-#    ax.set_ylabel('head')
-#    ax.set_zlabel('voltage V')
-#    ax.legend(loc='lower left')
-#    plt.show()
-#    print('std dev on V:', stddev)
-##    print('V for IH=(4,25): {0:.2f}'.format(f1(4, 25)))
-#
 # %% plot of functIforVH
+    pump_concerned = pump1
+    f2, intervals = pump_concerned.functIforVH()
+    cur_check = []
+    for index, row in pump_concerned.specs_df.iterrows():
+        cur_check.append(f2(row.voltage, row.tdh, error_raising=False))
 
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d', title='Current as a function of'
+                         ' voltage (V) and static head (m)')
+    ax.scatter(pump_concerned.specs_df.voltage, pump_concerned.specs_df.tdh,
+               pump_concerned.specs_df.current, label='from data')
+    ax.scatter(pump_concerned.specs_df.voltage, pump_concerned.specs_df.tdh,
+               cur_check, label='from curve fitting')
+    ax.set_xlabel('voltage')
+    ax.set_ylabel('head')
+    ax.set_zlabel('current I')
+    ax.legend(loc='lower left')
+    plt.show()
+#    print('I for VH=(80, 25): {0:.2f}'.format(f2(80, 25)))
+
+# %% plot of functQforPH
+    pump_concerned = pump1
+    f4, intervals = pump_concerned.functQforPH()
+    lpm_check = []
+
+    for index, row in pump_concerned.specs_df.iterrows():
+        try:
+            Q = f4(row.power, row.tdh)
+        except (errors.PowerError, errors.HeadError):
+            Q = 0
+        lpm_check.append(Q['Q'])
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d',
+                         title='Flow Q depending on P and H')
+    ax.scatter(pump_concerned.specs_df.power, pump_concerned.specs_df.tdh,
+               pump_concerned.specs_df.flow,
+               label='from data')
+    ax.scatter(pump_concerned.specs_df.power, pump_concerned.specs_df.tdh,
+               lpm_check,
+               label='from curve fitting with modeling method {0}'.format(
+                       pump_concerned.modeling_method))
+    ax.set_xlabel('power')
+    ax.set_ylabel('head')
+    ax.set_zlabel('discharge Q')
+    ax.legend(loc='lower left')
+    plt.show()

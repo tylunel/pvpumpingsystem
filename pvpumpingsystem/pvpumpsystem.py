@@ -112,6 +112,8 @@ class PVPumpSystem(object):
 
         pdresult = functioning_point_noiteration(
                 params, M_s, M_p, load_fctIfromVH=load_fctI,
+                load_interval_V=intervalsVH['V'](tdh),
+                pv_interval_V=[0, self.modelchain.dc.v_oc*M_s],
                 tdh=tdh)
 
         if plot:
@@ -320,9 +322,12 @@ def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
     return sol.x
 
 
-def functioning_point_noiteration(params, modules_per_string,
+def functioning_point_noiteration(params,
+                                  modules_per_string,
                                   strings_per_inverter,
                                   load_fctIfromVH=None,
+                                  load_interval_V=[-np.inf, np.inf],
+                                  pv_interval_V=[-np.inf, np.inf],
                                   tdh=0):
     """Finds the IV functioning point(s) of the PV array and the load.
 
@@ -392,12 +397,19 @@ def functioning_point_noiteration(params, modules_per_string,
                 return load_fctIfromVH(V, tdh, error_raising=False)
 
             # finds intersection. 10 is starting estimate, could be improved
-            Vm = opt.fsolve(lambda v: pv_fctI(v) - load_fctI(v), 10)
+#            Vm = opt.fsolve(lambda v: pv_fctI(v) - load_fctI(v), 10)
+            try:
+                Vm = opt.brentq(lambda v: pv_fctI(v) - load_fctI(v),
+                                load_interval_V[0], pv_interval_V[1])
+            except ValueError as e:
+                if 'f(a) and f(b) must have different signs' in str(e):
+                    # basically means that there is no functioning point
+                    Im = np.nan
+                    Vm = np.nan
+                else:
+                    raise
             try:
                 Im = load_fctIfromVH(Vm, tdh, error_raising=True)
-#            except ValueError:
-#                Im = np.nan
-#                Vm = np.nan
             except (errors.VoltageError, errors.HeadError):
                 Im = np.nan
                 Vm = np.nan
@@ -484,6 +496,8 @@ def calc_flow_directly_coupled(modelchain, motorpump, pipes,
             iv_data = functioning_point_noiteration(
                     params, M_s, M_p,
                     load_fctIfromVH=load_fctIfromVH,
+                    load_interval_V=intervalsVH['V'](h_tot),
+                    pv_interval_V=[0, modelchain.dc.v_oc[i] * M_s],
                     tdh=h_tot)
             # consider losses
             if modelchain.losses != 1:
@@ -729,18 +743,21 @@ if __name__ == '__main__':
     chain1.run_model(times=weatherdata1.index, weather=weatherdata1)
 
     pump1 = pp.Pump(path="pumps_files/SCB_10_150_120_BL.txt",
-                    modeling_method='arab')
+                    modeling_method='arab',
+                    motor_electrical_architecture='permanent_magnet')
     pipes1 = pn.PipeNetwork(h_stat=10, l_tot=100, diam=0.08,
                             material='plastic', optimism=True)
     reserv1 = rv.Reservoir(1000000, 0)
     consum1 = cs.Consumption(constant_flow=1, length=len(weatherdata1))
 
-    pvps1 = PVPumpSystem(chain1, pump1, coupling='direct',
+    pvps1 = PVPumpSystem(chain1, pump1, coupling='mppt',
                          pipes=pipes1, consumption=consum1,
                          reservoir=reserv1)
 
 # %% thing to try
-#    df_iv = pvps1.functioning_point_noiteration(plot=True)
 
+    warnings.filterwarnings("ignore")  # disable all warnings
     pvps1.calc_flow()
+    warnings.simplefilter("always")  # enable all warnings
+
     print(pvps1.flow[6:16])

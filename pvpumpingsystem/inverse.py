@@ -49,7 +49,7 @@ def inversefunc(func,
         a callable that can be used to calculate the inverse of values is
         returned. Default None.
     domain : float, ndarray, optional
-        Boundaries of the domain (`domain[0]`, `domain[1]`).
+        Boundaries of the domain on x (`domain[0]`, `domain[1]`).
         `domain[1]` must be larger than `domain[0]`.
         None values are assumed to be no boundary in that direction.
         A single scalar value will set it to [`domain`, None].
@@ -59,6 +59,7 @@ def inversefunc(func,
         A single scalar boolean will set it to [`open_domain`, `open_domain`].
         Default None [False, False].
     image : float, ndarray, optional
+        Boundaries of the domain on y.
         Image of the function in the domain (`image[0]`, `image[1]`).
         `image[1]` must be larger than `image[0]`.
         None values are assumed to be no boundary in that direction.
@@ -133,9 +134,9 @@ def inversefunc(func,
     # Creating bounded function
     def bounded_f(x):
         if xmin is not None and (x < xmin or (x == xmin and xmin_open)):
-                val = -1 * np.inf * trend
+            val = -1 * np.inf * trend
         elif xmax is not None and (x > xmax or (x == xmax and xmax_open)):
-                val = np.inf * trend
+            val = np.inf * trend
         else:
             val = func(x, *args)
         return val

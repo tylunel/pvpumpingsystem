@@ -11,12 +11,12 @@ import pandas as pd
 from itertools import count
 from matplotlib.pyplot import plot
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D  # needed for plotting in 3d
 import scipy.optimize as opt
-import warnings
 
-from pvpumpingsystem import errors
-from pvpumpingsystem import function_models
+# pvpumpingsystem modules:
+import inverse
+import errors
+import function_models
 
 
 class Pump:
@@ -272,65 +272,6 @@ class Pump:
 
         plt.show()
 
-    def functVforIH_old(self):
-        """
-        Returns:
-        --------
-        * Tuple containing :
-            - the function giving V according to I and H static for the pump :
-                V = f1(I, H)
-            - a dict containing the domains of I and H
-                (Now the control is done inside the function by raising errors)
-        """
-        if (len(self.current[self.voltage[0]]) >= 4
-                and len(self.tdh[self.voltage[0]]) >= 4):
-            funct_mod = function_models.polynomial_multivar_3_3_1
-        else:
-            raise errors.InsufficientDataError('Information on current '
-                                               'for pump lacks.')
-
-        # gathering of data
-        vol = []
-        tdh = []
-        cur = []
-        for V in self.voltage:
-            for i, Idata in enumerate(self.current[V]):
-                vol.append(V)
-                tdh.append(self.tdh[V][i])
-                cur.append(Idata)
-
-        dataxy = [np.array(cur), np.array(tdh)]
-        dataz = np.array(np.array(vol))
-        # computing of linear regression
-        param, covmat = opt.curve_fit(funct_mod, dataxy, dataz)
-
-        # domain computing
-        dom = _domain_I_H(self.specs_df, self.data_completeness)
-        intervals = {'I': dom[0],
-                     'H': dom[1]}
-
-        def functV(i, H, error_raising=True):
-            """Function giving voltage V according to current I and tdh H.
-
-            Error_raising parameter allows to check the given values
-            according to the possible intervals and to raise errors if not
-            corresponding.
-            """
-            if error_raising is True:
-                if not intervals['I'](H)[0] <= i <= intervals['I'](H)[1]:
-                    raise errors.CurrentError(
-                            'I (={0}) is out of bounds. For this specific '
-                            'head H (={1}), current I should be in the '
-                            'interval {2}'.format(i, H, intervals['I'](H)))
-                if not intervals['H'](i)[0] <= H <= intervals['H'](i)[1]:
-                    raise errors.HeadError(
-                            'H (={0}) is out of bounds. For this specific '
-                            'current I (={1}), H should be in the interval {2}'
-                            .format(H, i, intervals['H'](i)))
-            return funct_mod([i, H], *param)
-
-        return functV, intervals
-
     def functVforIH(self):
         """
         Function whose goal is to inverse functIforVH to find I from V and H
@@ -368,6 +309,7 @@ class Pump:
                 "The function functIforVH corresponding to the requested "
                 "modeling method is not available yet, need to "
                 "implemented another valid method.")
+        #TODO: Standardize output of functionIforVH with output of QforPH?
 
     def functIforVH_Arab(self):
         """
@@ -451,8 +393,7 @@ class Pump:
 
         return functI, intervals
 
-# TODO: change this function in functIforVH for standardizing
-    def functVforIH_theoretical(self):
+    def functIforVH_theoretical(self):
         """
         Function using electrical architecture for modeling V vs I of pump.
 
@@ -472,31 +413,43 @@ class Pump:
             return R_a*i + beta*np.sqrt(i)
 
         # domain of V and tdh and gathering in one single variable
-        dom = _domain_I_H(self.specs_df, self.data_completeness)
-        intervals = {'I': dom[0],
-                     'H': dom[1]}
+        dom_VH = _domain_V_H(self.specs_df, self.data_completeness)
+        intervals_VH = {'V': dom_VH[0],
+                        'H': dom_VH[1]}
 
         def functV(I, H, error_raising=True):
-            """Function giving current I according to voltage V and tdh H.
-
-            Error_raising parameter allows to check the given values
-            according to the possible intervals and to raise errors if not
-            corresponding.
+            """Function giving current I according to voltage V and tdh H,
+            as theoretical model enables
             """
+            # No need of error_raising because this function is only used
+            # for being inversed numerically after
             if error_raising is True:
-                if not intervals['I'](H)[0] <= I <= intervals['I'](H)[1]:
-                    raise errors.CurrentError(
-                            'I (={0}) is out of bounds. For this specific '
-                            'head H (={1}), I should be in the interval {2}'
-                            .format(I, H, intervals['V'](H)))
-                if not intervals['H'](I)[0] <= H <= intervals['H'](I)[1]:
-                    raise errors.HeadError(
-                            'H (={0}) is out of bounds. For this specific '
-                            'current I (={1}), H should be in the interval {2}'
-                            .format(H, I, intervals['H'](I)))
+                pass
             return funct_mod([I, H], *coeffs)
 
-        return functV, intervals
+        def functI(V, H, error_raising=True):
+            """Inverse function of functV"""
+            inv_fun = inverse.inversefunc(functV,
+                                          args=(H, False))
+
+            if error_raising is True:
+                # check if the head is available for the pump
+                v_max = intervals_VH['V'](0)[1]
+                if not 0 < H < intervals_VH['H'](v_max)[1]:
+                    raise errors.HeadError(
+                            'H (={0}) is out of bounds for this pump. '
+                            'H should be in the interval {1}.'
+                            .format(H, intervals_VH['H'](v_max)))
+                # check if there is enough current for given head
+                if not intervals_VH['V'](H)[0] <= V <= intervals_VH['V'](H)[1]:
+                    raise errors.VoltageError(
+                            'V (={0}) is out of bounds. For this specific '
+                            'head H (={1}), V should be in the interval {2}'
+                            .format(V, H, intervals_VH['V'](H)))
+
+            return float(inv_fun(V))  # type casting to standardize with rest
+
+        return functI, intervals_VH
 
 #    def functQforVH(self):
 #        """Returns a tuple containing :
@@ -549,7 +502,8 @@ class Pump:
 
     def functQforVH(self):
         """
-        Function redirecting to functQforPH
+        Function redirecting to functQforPH. It first computes P with
+        functIforVH(), and then reinject it in functQforPH().
         """
 
         def functQ(V, H):
@@ -1415,7 +1369,7 @@ def _reverse_func(function, input_to_reverse, input_stable):
 if __name__ == "__main__":
     # %% pump creation
     pump1 = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
-                 model='SCB_10', modeling_method='arab',
+                 model='SCB_10', modeling_method='theoretical',
                  motor_electrical_architecture='permanent_magnet')
 
     pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
@@ -1434,18 +1388,10 @@ if __name__ == "__main__":
                  motor_electrical_architecture='permanent_magnet',
                  modeling_method='arab')
 
-#    pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155],
-#                      24: [443, 432, 413, 401, 390, 382, 375, 371, 352, 345,
-#                           310]},
-#                 tdh={12: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
-#                           54.9, 61.0],
-#                      24: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
-#                           54.9, 61.0, 70.1]},
-#                 current={12: [1.2, 1.5, 1.8, 2.0, 2.1, 2.4, 2.7, 3.0, 3.3,
-#                               3.4],
-#                          24: [1.5, 1.7, 2.1, 2.4, 2.6, 2.8, 3.1, 3.3, 3.6,
-#                               3.8, 4.1],
-#                          }, model='Shurflo_9325')
+    fV, intervals_fV = pump1.functVforIH_theoretical()
+    fI, intervals_fI = pump1.functIforVH_theoretical()
+    fI_Kou, intervals_Kou = pump1.functIforVH_Kou()
+    print(fI(70, 25))
 
 #    coeffs_1 = _curves_coeffs_Hamidat08(pump1.specs_df,
 #                                          pump1.data_completeness)
@@ -1496,72 +1442,4 @@ if __name__ == "__main__":
 ##    print('V for IH=(4,25): {0:.2f}'.format(f1(4, 25)))
 #
 # %% plot of functIforVH
-    pump_concerned = pump1
-    f2, intervals = pump_concerned.functIforVH()
-    cur_check = []
-    for index, row in pump_concerned.specs_df.iterrows():
-        cur_check.append(f2(row.voltage, row.tdh, error_raising=False))
 
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d', title='Current as a function of'
-                         ' voltage (V) and static head (m)')
-    ax.scatter(pump_concerned.specs_df.voltage, pump_concerned.specs_df.tdh,
-               pump_concerned.specs_df.current, label='from data')
-    ax.scatter(pump_concerned.specs_df.voltage, pump_concerned.specs_df.tdh,
-               cur_check, label='from curve fitting')
-    ax.set_xlabel('voltage')
-    ax.set_ylabel('head')
-    ax.set_zlabel('current I')
-    ax.legend(loc='lower left')
-    plt.show()
-#    print('I for VH=(80, 25): {0:.2f}'.format(f2(80, 25)))
-
-#
-## %% plot of functQforVH
-#    f3, stddev = pump1.functQforVH()
-#    lpm_check = []
-#    for i, v in enumerate(vol):
-#        try:
-#            Q = f3(v, tdh[i])
-#        except (errors.VoltageError, errors.HeadError):
-#            Q = 0
-#        lpm_check.append(Q)
-#    fig = plt.figure()
-#    ax = fig.add_subplot(111, projection='3d', title='Q (lpm) as a function of'
-#                         ' voltage (V) and static head (m)')
-#    ax.scatter(vol, tdh, lpm, label='from data')
-#    ax.scatter(vol, tdh, lpm_check, label='from curve fitting')
-#    ax.set_xlabel('voltage')
-#    ax.set_ylabel('head')
-#    ax.set_zlabel('discharge Q')
-#    ax.legend(loc='lower left')
-#    plt.show()
-#    print('std dev on Q calculated from V:', stddev)
-#
-#
-# %% plot of functQforPH
-    pump_concerned = pump1
-    f4, intervals = pump_concerned.functQforPH()
-    lpm_check = []
-
-    for index, row in pump_concerned.specs_df.iterrows():
-        try:
-            Q = f4(row.power, row.tdh)
-        except (errors.PowerError, errors.HeadError):
-            Q = 0
-        lpm_check.append(Q['Q'])
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d',
-                         title='Flow Q depending on P and H')
-    ax.scatter(pump_concerned.specs_df.power, pump_concerned.specs_df.tdh,
-               pump_concerned.specs_df.flow,
-               label='from data')
-    ax.scatter(pump_concerned.specs_df.power, pump_concerned.specs_df.tdh,
-               lpm_check,
-               label='from curve fitting with modeling method {0}'.format(
-                       pump_concerned.modeling_method))
-    ax.set_xlabel('power')
-    ax.set_ylabel('head')
-    ax.set_zlabel('discharge Q')
-    ax.legend(loc='lower left')
-    plt.show()

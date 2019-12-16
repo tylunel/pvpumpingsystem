@@ -164,6 +164,10 @@ class Pump:
         """
         Print the graph of Q(in liter per minute) vs tdh(in m)
 
+        Prints
+        -------
+        * Graph Q vs H: matplotlib.figure
+
         """
         # Get the model function
         f2, intervals = self.functQforVH()
@@ -214,10 +218,12 @@ class Pump:
 
         Returns
         -------
-        * a tuple containing :
-            - the function giving I according to voltage V and head H
-            for the pump : I = f1(V, H)
-            - the domains of validity for V and H. Can be functions, so as the
+        Tuple containing :
+
+        Function giving I according to voltage V and head H for the pump:
+            I = f1(V, H)
+
+        Domains of validity for V and H. Can be functions, so as the
             range of one depends on the other, or fixed ranges.
         """
 
@@ -235,7 +241,7 @@ class Pump:
                 "The function functIforVH corresponding to the requested "
                 "modeling method is not available yet, need to "
                 "implemented another valid method.")
-        #TODO: Standardize output of functionIforVH with output of QforPH?
+        # TODO: Standardize output of functionIforVH with output of QforPH?
 
     def functIforVH_Arab(self):
         """

@@ -28,35 +28,27 @@ def pump_1():
                                  '../pumps_files/SCB_10_150_120_BL.txt')
     return pp.Pump(path=pump_testfile,
                    model='SCB_10',
-                   modeling_method='arab')
+                   modeling_method='arab',
+                   motor_electrical_architecture='permanent_magnet')
 
 
 def test_init(pump_1):
     assert type(pump_1.specs_df) is pd.DataFrame
-    assert type(pump_1.coeffs['a']) is np.ndarray
+    assert type(pump_1.coeffs['coeffs_f1']) is np.ndarray
 
 
-#def test_functVforIH(pump_1):
-#    """Test if the output functV works
-#    well, and if this function is able to correctly raise errors.
-#    """
-#    # check standard deviation
-#    functV, intervals = pump_1.functVforIH()
-#
-#    # check computing through functV
-#    res = functV(5, 20)
-#    res_expected = 101.112
-#    np.testing.assert_allclose(res, res_expected,
-#                               rtol=0.1)
-#
-#    # check the raising of errors
-#    with pytest.raises(errors.CurrentError):
-#        functV(1, 20)
-#    with pytest.raises(errors.HeadError):
-#        functV(6, 100)
-#
-#    # check desactivation of error raising (if not working, raises errors)
-#    functV(7, 120, error_raising=False)
+def test_all_models_coeffs(pump_1):
+    # Arab model
+    assert pump_1.coeffs['r_squared_f1'] > 0.8
+    # Kou model
+    pump_1.modeling_method = 'kou'
+    assert pump_1.coeffs['r_squared_f1'] > 0.8
+    # theoretical model
+    pump_1.modeling_method = 'theoretical'
+    assert pump_1.coeffs['r_squared_f1'] > 0.8
+    # Hamidat model
+    pump_1.modeling_method = 'hamidat'
+    assert pump_1.coeffs['r_squared_f2'] > 0.8
 
 
 def test_functIforVH(pump_1):
@@ -89,15 +81,15 @@ def test_functQforPH(pump_1):
 
     # check computing through functV
     res = functQ(400, 20)['Q']
-    res_expected = 36.91
+    res_expected = 37.09
     np.testing.assert_allclose(res, res_expected,
-                               rtol=1e-3)
+                               rtol=1e-2)
 
     # check the processing of unused power when head is too high
     res = functQ(560, 80)['P_unused']
     res_expected = 560
     np.testing.assert_allclose(res, res_expected,
-                               rtol=1e-3)
+                               rtol=1e-2)
 
 
 # def test_IVcurvedata(pump_1):

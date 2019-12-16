@@ -26,25 +26,28 @@ class Pump:
 
     Attributes
     ----------
-        path: str,
-            The path to the txt file with specifications. Can be given
-            through constructor or through pop-up window.
-
-        lpm: dict
-            Dictionary of flow rate (values) [liter per minute] according to
-            voltage (keys) [V]
-        tdh: dict
-            Dictionary of total dynamic head (values) [m]
-            according to voltage (keys) [V]
-        current: dict
-            Dictionary of current (values) [A]
-            according to voltage (keys) [V]
-        voltage: list
+        voltage_list: list
             list of voltage (the keys of preceding dictionaries) [V]
+        specs_df: pandas.DataFrame
+            Dataframe with columns of following numeric:
+                'voltage': voltage at pump input [V]
+                'current': current at pump input [A]
+                'power': electrical power at pump input [W]]
+                'tdh': total dynamic head in the pipes at output [m]
+                'flow': pump output flow rate [liter per minute]
+        data_completeness: dict
+            Provides some figures to assess the completeness of the data.
+            (for more details, see pump.specs_completeness() )
 
+        optional attributes:
+
+        path: str,
+            The path to the txt file with specifications.
         motor_electrical_architecture: str,
             'permanent_magnet', 'series_excited', 'shunt_excited',
             'separately_excited'.
+        modeling_method: str,
+            name of the method used for modeling the pump.
         pump_category: str,
             centrifugal or positive displacement
         model: str
@@ -55,19 +58,13 @@ class Pump:
             Power rating of the pump (in fact)
         controler: str
             Name of controller
-        diameter_output: numeric
-            output diameter
-
-        data extracted from datasheet :
-            (voltage, lpm, tdh, current, watts, efficiency ).
-
 
     """
     _ids = count(1)
 
     def __init__(self, path='',
                  lpm=None, tdh=None, current=None,
-                 motor_electrical_architecture='permanent_magnet',
+                 motor_electrical_architecture=None,
                  pump_category=None, model=None,
                  price=None, power_rating=None,
                  controler=None, diameter_output=None,
@@ -81,19 +78,12 @@ class Pump:
         self.price = price
         self.power_rating = power_rating
         self.controler = controler
-        self.diameter_output = diameter_output
 
-        if None not in (lpm, tdh, current):
-            # use input data to create pump object
-            self.lpm = lpm
-            self.tdh = tdh
-            self.current = current
-            self.voltage = list(self.lpm.keys())
-            # TODO: Delete use of dict and put everything as DataFrame
-        else:
-            # retrieve pump data from txt datasheet given by path
-            self.voltage, self.lpm, self.tdh, self.current, \
-                self.watts = get_data_pump(path)
+        # retrieve pump data from txt datasheet given by path
+        if None in (lpm, tdh, current):
+            voltage, lpm, tdh, current, watts = get_data_pump(path)
+
+        self.voltage_list = list(lpm.keys())
 
         # data in the form of DataFrame
         vol = []
@@ -101,12 +91,12 @@ class Pump:
         cur = []
         flow = []
         power = []
-        for V in self.current:
-            for i, Idata in enumerate(self.current[V]):
+        for V in self.voltage_list:
+            for i, Idata in enumerate(current[V]):
                 vol.append(V)
-                head.append(self.tdh[V][i])
+                head.append(tdh[V][i])
                 cur.append(Idata)
-                flow.append(self.lpm[V][i])
+                flow.append(lpm[V][i])
                 power.append(V*Idata)
         self.specs_df = pd.DataFrame({'voltage': vol,
                                       'tdh': head,
@@ -119,16 +109,6 @@ class Pump:
                 self.motor_electrical_architecture)
 
         self.modeling_method = modeling_method
-
-#        self.coeff_pow_with_lpm = coeffs[1]
-#        self.coeff_pow_with_tdh = coeffs['pow_with_tdh']
-#        self.coeff_tdh_with_lpm = coeffs['tdh_with_lpm']
-
-        # coeffs not really directly used previously, changed for new ones
-#        coeffs = _curves_coeffs_Gualteros17(self.lpm, self.tdh, self.watts)
-#        self.coeff_pow_with_lpm = coeffs['pow_with_lpm']
-#        self.coeff_pow_with_tdh = coeffs['pow_with_tdh']
-#        self.coeff_tdh_with_lpm = coeffs['tdh_with_lpm']
 
     def __repr__(self):
         affich = "model: " + str(self.model) + \
@@ -166,21 +146,10 @@ class Pump:
 
     def starting_characteristics(self, tdh, motor_electrical_architecture):
         """
-        ------------------------- TO CHECK !! -------------------------
-        --------- consistant with results from functVforIH ??? --------
-
-        Returns the required starting voltage, power and current
-        for a specified tdh.
-
-        motor_electrical_architecture: str,
-            'permanent_magnet', 'series_excited', 'shunt_excited',
-            'separately_excited'. Names selected according to [1]
-
-        returns :
-            {'V':vmin,'P':pmin,'I':imin}
-            vmin is :
-                None: if tdh out of the range of the pump
-                float: value of minimum starting voltage
+        To Develop:
+        In order to start, the pump usually need a higher power input
+        than the minimum power input in standard functioning.
+        One potential path for adressing this issue is in [1]
 
         References
         ----------
@@ -191,48 +160,16 @@ class Pump:
         """
         raise NotImplementedError
 
-#        if self.coeff_tdh is None:
-#            self._curves_coeffs_Gualteros17()
-#
-#        tdhmax = {}
-#        powmin = {}
-#        for V in self.voltage:
-#            tdhmax[V] = self.coeff_tdh[V][0]  # y-intercept of tdh vs lpm
-#            powmin[V] = self.coeff_pow[V][0]
-#
-#        # interpolation:
-#        # of Vmin vs tdh
-#        newf_t = spint.interp1d(list(tdhmax.values()), list(tdhmax.keys()),
-#                                kind='cubic')
-#        # of power vs V
-#        newf_p = spint.interp1d(list(powmin.keys()), list(powmin.values()),
-#                                kind='cubic')
-#
-#        if tdh < min(tdhmax.values()):
-#            print('The resqueted tdh is out of the range for the pump,'
-#                  'it is below the minimum tdh.')
-#            vmin = 'below'
-#            pmin = None
-#            imin = None
-#        elif tdh > max(tdhmax.values()):
-#            print('The resqueted tdh is out of the range for the pump,'
-#                  'it is above the maximum tdh delivered by the pump.')
-#            vmin = 'above'
-#            pmin = None
-#            imin = None
-#        else:
-#            vmin = newf_t(tdh)
-#            pmin = newf_p(vmin)
-#            imin = pmin/vmin
-#        return {'V': vmin, 'P': pmin, 'I': imin}
-
-    def plot_tdh_Q(self):
-        """Print the graph of tdh(in m) vs Q(in lpm)
+    def plot_Q_vs_H(self):
         """
-        f2, intervals = self.functQforVH()
+        Print the graph of Q(in liter per minute) vs tdh(in m)
 
+        """
+        # Get the model function
+        f2, intervals = self.functQforVH()
+        # Loops for computing the data computed with the model
         modeled_data = pd.DataFrame()
-        for V in self.voltage:
+        for V in self.voltage_list:
             tdh_max = self.specs_df[self.specs_df.voltage == V].tdh.max()
             tdh_vect = np.linspace(0, tdh_max, num=10)  # vector of tdh
             for H in tdh_vect:
@@ -240,26 +177,28 @@ class Pump:
                         {'voltage': V, 'tdh': H, 'flow': f2(V, H)['Q']},
                         ignore_index=True)
 
-        fig = plt.figure(facecolor='White')
-        # add space in height between the subplots:
-        fig.subplots_adjust(hspace=0.5)
-        ax1 = plt.subplot(1, 1, 1)
+        # Plot
+        plt.figure(facecolor='White')
+        ax1 = plt.subplot(1, 1, 1)  # needed for using the prop_cycler
 
-        for i, V in enumerate(self.voltage):
+        for i, V in enumerate(self.voltage_list):
             # get the next color to have the same color by voltage:
             col = next(ax1._get_lines.prop_cycler)['color']
+            # plot simulated data
             plot(modeled_data[modeled_data.voltage == V].tdh,
                  modeled_data[modeled_data.voltage == V].flow,
                  linestyle='--',
                  linewidth=1.5,
                  color=col,
                  label=str(V)+'VDC extrapolated')
+            # plot measured data
             plot(self.specs_df[self.specs_df.voltage == V].tdh,
                  self.specs_df[self.specs_df.voltage == V].flow,
                  linestyle='-',
                  linewidth=2,
                  color=col,
                  label=str(V)+'VDC from specs')
+        # graph general appearance
         ax1.set_title(str(self.model) +
                       ' Flow rate curves Vs. Head')
         ax1.set_xlabel('lpm')
@@ -267,71 +206,6 @@ class Pump:
         ax1.set_ylim(0, tdh_max*1.1)
         ax1.legend(loc='best')
         ax1.grid(True)
-
-
-    def plot_tdh_Q_old(self):
-        """Print the graph of tdh(in m) vs Q(in lpm)
-        """
-
-        coeffs = _curves_coeffs_Gualteros17(self.lpm, self.tdh, self.watts)
-
-        tdh_x = {}
-        # greatest value of lpm encountered in data
-        lpm_max = max(self.lpm[max(self.voltage)])
-        lpm_x = np.arange(0, lpm_max, step=lpm_max/10)  # vector of lpm
-
-        for V in self.voltage:
-
-            def tdh_funct(x):
-                # function tdh
-                return (coeffs['tdh_with_lpm'][V][0]
-                        + coeffs['tdh_with_lpm'][V][1]*x
-                        + coeffs['tdh_with_lpm'][V][2]*x**2
-                        + coeffs['tdh_with_lpm'][V][3]*x**3
-                        + coeffs['tdh_with_lpm'][V][4]*x**4)
-
-            # vectors of tdh and efficiency with lpm - ready to be printed
-            tdh_x[V] = tdh_funct(lpm_x)
-
-        fig = plt.figure(facecolor='White')
-        # add space in height between the subplots:
-        fig.subplots_adjust(hspace=0.5)
-        ax1 = plt.subplot(2, 1, 1)
-
-        for i, V in enumerate(self.voltage):  # for each voltage available :
-            # get the next color to have the same color by voltage:
-            col = next(ax1._get_lines.prop_cycler)['color']
-            plot(lpm_x, tdh_x[V], linestyle='--', linewidth=1.5, color=col,
-                 label=str(V)+'VDC extrapolated')
-            plot(self.lpm[V], self.tdh[V], linestyle='-', linewidth=2,
-                 color=col, label=str(V)+'VDC from specs')
-        ax1.set_title(str(self.model) +
-                      ' Flow rate curves Vs. Head')
-        ax1.set_xlabel('lpm')
-        ax1.set_ylabel('Head (m)')
-        ax1.set_ylim(0, max(tdh_x[max(self.voltage)])*1.1)
-        ax1.legend(loc='best')
-        ax1.grid(True)
-
-        ax2 = plt.subplot(2, 1, 2)
-        for V in self.voltage:
-            plot(self.lpm[V], self.watts[V], linewidth=2,
-                 label=str(V) + ' VDC')
-        ax2.set_xlabel('lpm')
-        ax2.set_ylabel('watts')
-        ax2.set_title(str(self.model) +
-                      'Flow rate Vs. electrical power')
-        ax2.grid(True)
-        ax2.legend(loc='best')
-
-        plt.show()
-
-    def functVforIH(self):
-        """
-        Function whose goal is to inverse functIforVH to find I from V and H
-        analytically.
-        """
-        raise NotImplementedError
 
     def functIforVH(self):
         """
@@ -1363,7 +1237,7 @@ def _domain_P_H(specs_df, data_completeness):
 if __name__ == "__main__":
     # %% pump creation
     pump1 = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
-                 model='SCB_10', modeling_method='hamidat',
+                 model='SCB_10', modeling_method='theoretical',
                  motor_electrical_architecture='permanent_magnet')
 
     pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
@@ -1381,8 +1255,7 @@ if __name__ == "__main__":
                           }, model='Shurflo_9325',
                  motor_electrical_architecture='permanent_magnet',
                  modeling_method='arab')
-
-    pump1.plot_tdh_Q()
+    pump1.plot_Q_vs_H()
 
 #    coeffs_1 = _curves_coeffs_Hamidat08(pump1.specs_df,
 #                                          pump1.data_completeness)

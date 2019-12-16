@@ -569,7 +569,6 @@ def calc_flow_mppt_coupled(modelchain, motorpump, pipes, mppt=None,
     """
     result = []
 
-#    fctQnPwithPH, sigma2 = motorpump.functQforPH()
     fctQwithPH, sigma2 = motorpump.functQforPH()
 
     for i, power in tqdm.tqdm(enumerate(
@@ -598,8 +597,6 @@ def calc_flow_mppt_coupled(modelchain, motorpump, pipes, mppt=None,
             # code for exiting while loop if problem happens
             mem.append(Qlpmnew)
             if time.time() - t_init > 0.1:
-#                print('\nP:', power)
-#                print('Q:', mem)
                 warnings.warn('Loop too long to execute. NaN returned.')
                 Qlpmnew = np.nan
                 break

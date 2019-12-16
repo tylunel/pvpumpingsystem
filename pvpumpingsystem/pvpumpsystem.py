@@ -113,7 +113,7 @@ class PVPumpSystem(object):
         pdresult = functioning_point_noiteration(
                 params, M_s, M_p, load_fctIfromVH=load_fctI,
                 load_interval_V=intervalsVH['V'](tdh),
-                pv_interval_V=[0, self.modelchain.dc.v_oc*M_s],
+                pv_interval_V=[0, self.modelchain.dc.v_oc.max() * M_s],
                 tdh=tdh)
 
         if plot:
@@ -750,7 +750,7 @@ if __name__ == '__main__':
     reserv1 = rv.Reservoir(1000000, 0)
     consum1 = cs.Consumption(constant_flow=1, length=len(weatherdata1))
 
-    pvps1 = PVPumpSystem(chain1, pump1, coupling='mppt',
+    pvps1 = PVPumpSystem(chain1, pump1, coupling='direct',
                          pipes=pipes1, consumption=consum1,
                          reservoir=reserv1)
 
@@ -759,5 +759,8 @@ if __name__ == '__main__':
     warnings.filterwarnings("ignore")  # disable all warnings
     pvps1.calc_flow()
     warnings.simplefilter("always")  # enable all warnings
+    pvps1.calc_efficiency()
 
-    print(pvps1.flow[6:16])
+    pvps1.functioning_point_noiteration(plot=True)
+
+    print(pvps1.flow[11:19][['I', 'V']])

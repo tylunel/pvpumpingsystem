@@ -67,7 +67,7 @@ class Pump:
 
     def __init__(self, path='',
                  lpm=None, tdh=None, current=None,
-                 motor_electrical_architecture=None,
+                 motor_electrical_architecture='permanent_magnet',
                  pump_category=None, model=None,
                  price=None, power_rating=None,
                  controler=None, diameter_output=None,

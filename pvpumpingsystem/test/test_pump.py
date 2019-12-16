@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri May 17 12:21:16 2019
-
-@author: Tanguy
+@author: Tanguy Lunel
 """
 
 import numpy as np

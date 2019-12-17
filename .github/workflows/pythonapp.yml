@@ -3,8 +3,6 @@ name: CI general checks
 # Trigger the workflow on push or pull request
 on: [push, pull_request]
 
-CODECOV_TOKEN="3168bf2e-ee39-4900-bb7d-54c94b84aad9"
-
 jobs:
   build:
 
@@ -24,7 +22,7 @@ jobs:
       with:
         python-version: 3.7
 
-    - name: codecov 
+    - name: codecov  # Does not seems to work for now
       uses: codecov/codecov-action@v1
       with:
         token: ${{ secrets.CODECOV_TOKEN }} #required

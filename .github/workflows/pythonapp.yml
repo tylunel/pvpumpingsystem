@@ -18,11 +18,14 @@ jobs:
     # make a copy of concerned repository's code, for being used later. '@v1' get the stable version
     - uses: actions/checkout@v1  
       with:
+        repository: pvpumpingsystem
         fetch-depth: 1  # this is a shallow clone. To understand better: http://geogig.org/docs/repo/partialcloning.html
+
     - name: Set up Python 3.7
       uses: actions/setup-python@v1
       with:
         python-version: 3.7
+
     - name: Install dependencies
       run: |  # The pipe (|) is a tool allowing us to write multiple lines that execute independently without having to use multiple run: commands or multiple jobs.
         python -m pip install --upgrade pip
@@ -31,6 +34,7 @@ jobs:
         # pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
         # pip install git+https://github.com/tylunel/fluids#egg=fluids
         pip install matplotlib sklearn tqdm fluids
+
     - name: Lint with flake8 (only installation for now - no actual lint scan for now)
       run: |
         pip install flake8

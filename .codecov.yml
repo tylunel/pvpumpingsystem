@@ -11,7 +11,7 @@ coverage:
   status:
     patch:
       default:
-        target: 100%
+        target: 50%
         if_no_uploads: error
         if_not_found: success
         if_ci_failed: failure
@@ -23,8 +23,8 @@ coverage:
         if_not_found: success
         if_ci_failed: failure
         paths:
-          - "pvlib/(\w+/)?[^/]+\.py$"
+          - "pvpumpingsystem/(\w+/)?[^/]+\.py$"
       tests:
-        target: 95%
+        target: 50%
         paths:
-          - "pvlib/test/.*"
+          - "pvpumpingsystem/test/.*"

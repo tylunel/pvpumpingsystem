@@ -13,7 +13,6 @@ jobs:
       matrix:
         os: [vs2017-win2018]
         # os: [ubuntu-latest, windows-latest]
-      matrix:
         Python35:
           python.version: '3.5'
         Python36:

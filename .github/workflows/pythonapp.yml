@@ -30,7 +30,7 @@ jobs:
         python -m pip install --upgrade pip
         # pip install git+https://github.com/tylunel/pvlib-python@all_changes#egg=pvlib  # It is possible to specify the branch we want to download with @<branch>
         pip install git+https://github.com/pvlib/pvlib-python#egg=pvlib  # still useful because last changes are not in the last release that can be found on pip
-        pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
+        pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem-0
         # pip install git+https://github.com/tylunel/fluids#egg=fluids
         pip install matplotlib sklearn tqdm fluids
 

@@ -3,7 +3,8 @@ name: CI general checks
 # Trigger the workflow on push or pull request
 on: [push, pull_request]
 
-
+# Decide which environnement the package will be tested on
+runs-on: ${{ matrix.os }}
 strategy:
   matrix:
     os: [ubuntu-latest, windows-latest]
@@ -11,8 +12,7 @@ strategy:
 jobs:
   build:
 
-    # Decide which environnement the package will be tested on
-    runs-on: ${{ matrix.os }}
+
 
     steps:
     - uses: actions/checkout@v1

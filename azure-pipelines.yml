@@ -2,6 +2,9 @@
 # Create and test a Python package on multiple Python versions.
 # Add steps that analyze code, save the dist with the build record, publish to a PyPI-compatible index, and more:
 # https://docs.microsoft.com/azure/devops/pipelines/languages/python
+#
+# Some other reading on the difference between azure-pipelines and github workflow:
+# https://blogs.endjin.com/2019/10/comparing-github-actions-and-azure-pipelines-high-level-concepts/
 
 # specify branch build
 trigger:

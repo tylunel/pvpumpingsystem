@@ -14,13 +14,19 @@ jobs:
         os: [ubuntu-latest, vs2017-win2016]
 
     steps:
-    # make a copy of concerned repository's code, for being used later. '@v1' get the stable version
-    - uses: actions/checkout@v1
+    # make a copy of concerned repository's code, for being used later. '@v1' get the stable version. Not clear why I still need to install pvpumpingsystem later..
+    - name: Checkout
+      uses: actions/checkout@v1
 
     - name: Set up Python 3.7
       uses: actions/setup-python@v1
       with:
         python-version: 3.7
+
+    - name: codecov implementation 
+      uses: codecov/codecov-action@v1
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }} #required
 
     - name: Install dependencies
       run: |  # The pipe (|) is a tool allowing us to write multiple lines that execute independently without having to use multiple run: commands or multiple jobs.

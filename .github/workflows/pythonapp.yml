@@ -16,7 +16,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-#        pip install git+https://github.com/tylunel/pvlib-python@all_changes#egg=pvlib
+        # pip install git+https://github.com/tylunel/pvlib-python@all_changes#egg=pvlib
 	pip install git+https://github.com/pvlib/pvlib-python#egg=pvlib
         pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
         pip install git+https://github.com/tylunel/fluids#egg=fluids

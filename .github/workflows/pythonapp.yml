@@ -18,7 +18,6 @@ jobs:
     # make a copy of concerned repository's code, for being used later. '@v1' get the stable version
     - uses: actions/checkout@v1  
       with:
-        repository: 'pvpumpingsystem'
         fetch-depth: 1  # this is a shallow clone. To understand better: http://geogig.org/docs/repo/partialcloning.html
 
     - name: Set up Python 3.7
@@ -31,7 +30,9 @@ jobs:
         python -m pip install --upgrade pip
         # pip install git+https://github.com/tylunel/pvlib-python@all_changes#egg=pvlib  # It is possible to specify the branch we want to download with @<branch>
         pip install git+https://github.com/pvlib/pvlib-python#egg=pvlib  # still useful because last changes are not in the last release that can be found on pip
-        # pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
+        pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
         # pip install git+https://github.com/tylunel/fluids#egg=fluids
         pip install matplotlib sklearn tqdm fluids
 

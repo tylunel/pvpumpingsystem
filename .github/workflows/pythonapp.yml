@@ -15,8 +15,7 @@ jobs:
         # os: [ubuntu-latest, windows-latest]
 
     steps:
-    - uses: actions/checkout@v1
-    - uses: tylunel/pvpumpingsystem@master
+    - uses: actions/checkout@v1  # copy of concerned repository's code, for being used later. '@v1' get the stable version
     - name: Set up Python 3.7
       uses: actions/setup-python@v1
       with:
@@ -26,7 +25,7 @@ jobs:
         python -m pip install --upgrade pip
         # pip install git+https://github.com/tylunel/pvlib-python@all_changes#egg=pvlib  # It is possible to specify the branch we want to download with @<branch>
         pip install git+https://github.com/pvlib/pvlib-python#egg=pvlib  # still useful because last changes are not in the last release that can be found on pip
-        pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
+        # pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
         # pip install git+https://github.com/tylunel/fluids#egg=fluids
         pip install matplotlib sklearn tqdm fluids
     - name: Lint with flake8 (only installation for now - no actual lint scan for now)

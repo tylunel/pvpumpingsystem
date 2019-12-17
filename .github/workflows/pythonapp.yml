@@ -15,10 +15,7 @@ jobs:
 
     steps:
     # make a copy of concerned repository's code, for being used later. '@v1' get the stable version
-    - uses: actions/checkout@v2
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-        fetch-depth: 1  # this is a shallow clone. To understand better: http://geogig.org/docs/repo/partialcloning.html
+    - uses: actions/checkout@v1
 
     - name: Set up Python 3.7
       uses: actions/setup-python@v1
@@ -40,6 +37,7 @@ jobs:
         # flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --ignore=E226, E231, E241, E265, E266, F401, E741
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         # flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
     - name: Test with pytest
       run: |
         pip install pytest

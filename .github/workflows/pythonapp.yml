@@ -11,8 +11,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [vs2017-win2016]
+        os: [vs2017-win2018]
         # os: [ubuntu-latest, windows-latest]
+      matrix:
+        Python35:
+          python.version: '3.5'
+        Python36:
+          python.version: '3.6'
+        Python37:
+          python.version: '3.7'
 
     steps:
     # make a copy of concerned repository's code, for being used later. '@v1' get the stable version
@@ -32,7 +39,6 @@ jobs:
         # pip install git+https://github.com/tylunel/pvlib-python@all_changes#egg=pvlib  # It is possible to specify the branch we want to download with @<branch>
         pip install git+https://github.com/pvlib/pvlib-python#egg=pvlib  # still useful because last changes are not in the last release that can be found on pip
         pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
-        # pip install git+https://github.com/tylunel/fluids#egg=fluids
         pip install matplotlib sklearn tqdm fluids
 
     - name: Lint with flake8 (only installation for now - no actual lint scan for now)

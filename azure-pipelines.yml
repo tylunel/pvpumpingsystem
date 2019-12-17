@@ -21,7 +21,8 @@ steps:
   displayName: 'Use Python $(python.version)'
 
 - script: |
-    pip install git+https://github.com/tylunel/pvlib-python@all_changes#egg=pvlib    # specify branch with @
+#    pip install git+https://github.com/tylunel/pvlib-python@all_changes#egg=pvlib    # specify branch with @<branch>
+    pip install git+https://github.com/pvlib/pvlib-python#egg=pvlib
   displayName: 'Install pvlib'
 
 - script: |

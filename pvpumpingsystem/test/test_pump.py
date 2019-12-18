@@ -23,7 +23,7 @@ test_dir = os.path.dirname(
 @pytest.fixture
 def pump_1():
     pump_testfile = os.path.join(test_dir,
-                                 '../pumps_files/SCB_10_150_120_BL.txt')
+                                 '../data/pump_files/SCB_10_150_120_BL.txt')
     return pp.Pump(path=pump_testfile,
                    model='SCB_10',
                    modeling_method='arab',
@@ -31,7 +31,7 @@ def pump_1():
 
 
 def test_init(pump_1):
-    assert type(pump_1.specs_df) is pd.DataFrame
+    assert type(pump_1.specs) is pd.DataFrame
     assert type(pump_1.coeffs['coeffs_f1']) is np.ndarray
 
 

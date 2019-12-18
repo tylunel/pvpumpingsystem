@@ -39,7 +39,8 @@ def pvps_set_up():
 
     weather_testfile = os.path.join(
         test_dir,
-        '../weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC_truncated.epw')
+        '../data/weather_files/'
+        'CAN_PQ_Montreal.Intl.AP.716270_CWEC_truncated.epw')
     weatherdata1, metadata1 = pvlib.iotools.epw.read_epw(weather_testfile,
                                                          coerce_year=2005)
     locat1 = pvlib.location.Location.from_epw(metadata1)
@@ -58,7 +59,7 @@ def pvps_set_up():
     chain1.run_model(times=weatherdata1.index, weather=weatherdata1)
 
     pump_testfile = os.path.join(test_dir,
-                                 '../pumps_files/SCB_10_150_120_BL.txt')
+                                 '../data/pump_files/SCB_10_150_120_BL.txt')
     pump1 = pp.Pump(path=pump_testfile,
                     modeling_method='arab')
     pipes1 = pn.PipeNetwork(h_stat=10, l_tot=100, diam=0.08,

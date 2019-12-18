@@ -722,7 +722,6 @@ if __name__ == '__main__':
             )
     weatherdata1, metadata1 = pvlib.iotools.epw.read_epw(
         'weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC_truncated.epw',
-#        'weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw',
         coerce_year=2005)
     locat1 = pvlib.location.Location.from_epw(metadata1)
 

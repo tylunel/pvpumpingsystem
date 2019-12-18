@@ -176,9 +176,18 @@ class Pump:
         Function returning the data needed for plotting the IV curve at
         a given head.
 
+        Parameters
+        ----------
+        head: float
+            Total dynamic head at pump output [m]
+        nbpoint: integer, default 40
+            Number of data point wanted
+
         Return
         ------
-            dict with keys I and V, and the corresponding list of values
+        dict with following couples keys:values :
+            I: list of current [A]
+            V: list of voltage [V]
         """
 
         fctI, intervals = self.functIforVH()
@@ -1224,7 +1233,7 @@ def _domain_P_H(specs, data_completeness):
     else:
         # Would need deeper work to fully understand what are the limits
         # on I and V depending on tdh, and how it affects lpm
-
+        # -> relates to function starting characteristics
         datax_ar = np.array(specs.power)
         datay_ar = np.array(specs.tdh)
 
@@ -1273,8 +1282,6 @@ if __name__ == "__main__":
                  modeling_method='arab',
                  motor_electrical_architecture='permanent_magnet')
 
-    iv_data = pump1.iv_curve_data(head=28)
-    print(iv_data)
 #    pump1.plot_Q_vs_H()
 
 

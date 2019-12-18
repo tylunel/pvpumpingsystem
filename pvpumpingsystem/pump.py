@@ -189,10 +189,7 @@ class Pump:
         Ivect = np.zeros(nbpoint)
 
         for i, V in enumerate(Vvect):
-#            try:
             Ivect[i] = fctI(V, head)
-#            except errors.HeadError:
-#                Vvect[i] = -1
 
         return {'I': Ivect, 'V': Vvect}
 

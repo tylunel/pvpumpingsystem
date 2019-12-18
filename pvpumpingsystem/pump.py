@@ -5,7 +5,7 @@ Module defining class and functions for modeling the pump.
 @author: Tanguy Lunel, Sergio Gualteros
 
 """
-import collections
+
 import numpy as np
 import pandas as pd
 from itertools import count
@@ -127,7 +127,8 @@ class Pump:
     def modeling_method(self):
         return self._modeling_method
 
-    @modeling_method.setter  # setters
+    # setter: Permit to recalculate attribute coeffs when changing the method
+    @modeling_method.setter
     def modeling_method(self, model):
         if model.lower() == 'kou':
             self.coeffs = _curves_coeffs_Kou98(
@@ -149,6 +150,7 @@ class Pump:
                         'kou', 'arab', 'hamidat', 'theoretical'))
         self._modeling_method = model
 
+    # TODO: work on following function
     def starting_characteristics(self, tdh, motor_electrical_architecture):
         """
         To Develop:
@@ -168,6 +170,31 @@ class Pump:
 
         """
         raise NotImplementedError
+
+    def iv_curve_data(self, head, nbpoint=40):
+        """
+        Function returning the data needed for plotting the IV curve at
+        a given head.
+
+        Return
+        ------
+            dict with keys I and V, and the corresponding list of values
+        """
+
+        fctI, intervals = self.functIforVH()
+
+        Vvect = np.linspace(min(intervals['V'](head)),
+                            max(intervals['V'](head)),
+                            nbpoint)
+        Ivect = np.zeros(nbpoint)
+
+        for i, V in enumerate(Vvect):
+#            try:
+            Ivect[i] = fctI(V, head)
+#            except errors.HeadError:
+#                Vvect[i] = -1
+
+        return {'I': Ivect, 'V': Vvect}
 
     def plot_Q_vs_H(self):
         """
@@ -279,16 +306,19 @@ class Pump:
             corresponding.
             """
             if error_raising is True:
+                # check if the head is available for the pump
+                v_max = intervals['V'](0)[1]
+                if not 0 <= H <= intervals['H'](v_max)[1]:
+                    raise errors.HeadError(
+                            'H (={0}) is out of bounds for this pump. '
+                            'H should be in the interval {1}.'
+                            .format(H, intervals['H'](v_max)))
+                # check if there is enough current for given head
                 if not intervals['V'](H)[0] <= V <= intervals['V'](H)[1]:
                     raise errors.VoltageError(
                             'V (={0}) is out of bounds. For this specific '
                             'head H (={1}), V should be in the interval {2}'
                             .format(V, H, intervals['V'](H)))
-                if not intervals['H'](V)[0] <= H <= intervals['H'](V)[1]:
-                    raise errors.HeadError(
-                            'H (={0}) is out of bounds. For this specific '
-                            'voltage V (={1}), H should be in the interval {2}'
-                            .format(H, V, intervals['H'](V)))
             return funct_mod([V, H], *coeffs)
 
         return functI, intervals
@@ -320,16 +350,19 @@ class Pump:
             corresponding.
             """
             if error_raising is True:
+                # check if the head is available for the pump
+                v_max = intervals['V'](0)[1]
+                if not 0 <= H <= intervals['H'](v_max)[1]:
+                    raise errors.HeadError(
+                            'H (={0}) is out of bounds for this pump. '
+                            'H should be in the interval {1}.'
+                            .format(H, intervals['H'](v_max)))
+                # check if there is enough current for given head
                 if not intervals['V'](H)[0] <= V <= intervals['V'](H)[1]:
                     raise errors.VoltageError(
                             'V (={0}) is out of bounds. For this specific '
                             'head H (={1}), V should be in the interval {2}'
                             .format(V, H, intervals['V'](H)))
-                if not intervals['H'](V)[0] <= H <= intervals['H'](V)[1]:
-                    raise errors.HeadError(
-                            'H (={0}) is out of bounds. For this specific '
-                            'voltage V (={1}), H should be in the interval {2}'
-                            .format(H, V, intervals['H'](V)))
             return funct_mod([V, H], *coeffs)
 
         return functI, intervals
@@ -624,32 +657,6 @@ class Pump:
             return {'Q': Q, 'P_unused': P_unused}
 
         return functQ, intervals
-
-    def IVcurvedata(self, head, nbpoint=40):
-        """Function returning the data needed for plotting the IV curve at
-        a given head.
-
-        Return
-        ------
-            -dict with keys I and V, and the corresponding list of values
-        """
-
-        fctV, sigma, inter = self.functVforIH()
-        if head > max(self.tdh):
-            print('h_tot is not in the range of the pump')
-            return {'I': 0, 'V': 0}
-
-        Itab = np.linspace(min(inter['I'](head)), max(inter['I'](head)),
-                           nbpoint)
-        Vtab = np.zeros(nbpoint)
-
-        for i, I in enumerate(Itab):
-            try:
-                Vtab[i] = fctV(I, head)
-            except errors.HeadError:
-                Vtab[i] = -1
-
-        return {'I': Itab, 'V': Vtab}
 
 
 def get_data_pump(path):
@@ -1238,7 +1245,8 @@ def _domain_P_H(specs, data_completeness):
 if __name__ == "__main__":
     # %% pump creation
     pump1 = Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
-                 model='SCB_10', modeling_method='theoretical',
+                 model='SCB_10',
+                 modeling_method='arab',
                  motor_electrical_architecture='permanent_magnet')
 
     pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
@@ -1268,20 +1276,10 @@ if __name__ == "__main__":
                  modeling_method='arab',
                  motor_electrical_architecture='permanent_magnet')
 
-
+    iv_data = pump1.iv_curve_data(head=28)
+    print(iv_data)
 #    pump1.plot_Q_vs_H()
 
-#    coeffs_1 = _curves_coeffs_Hamidat08(pump1.specs,
-#                                          pump1.data_completeness)
-#    coeffs_2 = _curves_coeffs_theoretical(pump1.specs,
-#                                          pump1.data_completeness,
-#                                          pump1.motor_electrical_architecture)
-#    coeffs_3 = _curves_coeffs_Arab06(pump1.specs, pump1.data_completeness)
-#    coeffs_4 = _curves_coeffs_Kou98(pump1.specs, pump1.data_completeness)
-#    print('\ncoeffs_Hamidat:', coeffs_1)
-#    print('\ncoeffs_Theo:', coeffs_2)
-#    print('\ncoeffs_Arab:', coeffs_3)
-#    print('\ncoeffs_Kou:', coeffs_4)
 
 # %% plot of functIforVH
 #    pump_concerned = pump1

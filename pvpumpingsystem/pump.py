@@ -540,7 +540,10 @@ class Pump:
         """
 
         coeffs = self.coeffs['coeffs_f2']
-        funct_mod = function_models.compound_polynomial_2_3
+        if len(coeffs) == 12:
+            funct_mod = function_models.compound_polynomial_2_3
+        elif len(coeffs) == 8:
+            funct_mod = function_models.compound_polynomial_1_3
 
         # domain of V and tdh and gathering in one single variable
         dom = _domain_P_H(self.specs, self.data_completeness)

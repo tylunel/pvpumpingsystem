@@ -168,7 +168,7 @@ def run_water_pumped(pv_modelchain, pump, coupling_method,
 
 def sizing_maximize_flow(pv_database, pump_database,
                          weather_data, weather_metadata,
-                         consumption_data, pipes_network):
+                         pvps_fixture):
     """
     Sizing procedure optimizing the output flow of the pumping station.
 
@@ -185,6 +185,11 @@ def sizing_maximize_flow(pv_database, pump_database,
         most powerful pv module with the highest number of module in series
         and parallel
     """
+    # get characteristic of pvps
+    consumption_data = pvps_fixture.consumption
+    pipes_network = pvps_fixture.pipes
+    coupling_method = pvps_fixture.coupling
+
     # result dataframe
     result = pd.DataFrame()
 
@@ -229,7 +234,7 @@ if __name__ == '__main__':
     # ------------ MAIN INPUTS -------------------------
     # Weather input
     weather_path = (
-        'weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw')
+        'data/weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw')
     weather_data, weather_metadata = pvlib.iotools.epw.read_epw(
             weather_path, coerce_year=2005)
     # Consumption input
@@ -243,23 +248,11 @@ if __name__ == '__main__':
     coupling_method = 'mppt'
 
     # ------------ PUMP DATABASE ---------------------
-    pump_sunpump = pp.Pump(path="pumps_files/SCB_10_150_120_BL.txt",
+    pump_sunpump = pp.Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
                            model='SCB_10',
                            modeling_method=pump_modeling_method)
 
-    pump_shurflo = pp.Pump(lpm={12: [212, 204, 197, 189, 186, 178,
-                                     174, 166, 163, 155, 136],
-                                24: [443, 432, 413, 401, 390, 382,
-                                     375, 371, 352, 345, 310]},
-                           tdh={12: [6.1, 12.2, 18.3, 24.4, 30.5,
-                                     36.6, 42.7, 48.8, 54.9, 61.0, 70.1],
-                                24: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6,
-                                     42.7, 48.8, 54.9, 61.0, 70.1]},
-                           current={12: [1.2, 1.5, 1.8, 2.0, 2.1, 2.4,
-                                         2.7, 3.0, 3.3, 3.4, 3.9],
-                                    24: [1.5, 1.7, 2.1, 2.4, 2.6, 2.8,
-                                         3.1, 3.3, 3.6, 3.8, 4.1]
-                                    },
+    pump_shurflo = pp.Pump(path="data/pump_files/Shurflo_9325.txt",
                            model='Shurflo_9325',
                            motor_electrical_architecture='permanent_magnet',
                            modeling_method=pump_modeling_method)

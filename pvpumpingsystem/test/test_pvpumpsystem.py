@@ -73,15 +73,29 @@ def pvps_set_up():
     return pvps1
 
 
-def test_calc_flow(pvps_set_up):
+def test_calc_flow_mppt(pvps_set_up):
     """Test the computing of flows in the case coupled with mppt.
     """
+    pvps_set_up.coupling = 'mppt'
     pvps_set_up.calc_flow(atol=0.1, stop=24)
     Q = pvps_set_up.flow.Qlpm.values
     Q_expected = np.array([0., 0., 0., 0., 0., 0., 0., 0.,
                            32.77, 52.11, 58.80, 61.24,
                            44.18, 41.47, 34.35, 0.,
                            0., 0., 0., 0., 0., 0., 0., 0.])
+    np.testing.assert_allclose(Q, Q_expected, rtol=1)
+
+
+def test_calc_flow_direct(pvps_set_up):
+    """Test the computing of flows when pump and pv are directly coupled.
+    """
+    pvps_set_up.coupling = 'direct'
+    pvps_set_up.calc_flow(atol=0.1, stop=24)
+    Q = pvps_set_up.flow.Qlpm.values
+    Q_expected = np.array([0., 0., 0., 0., 0., 0., 0., 0.,
+                           26.7413, 28.6602, 29.1504, 29.5732,
+                           28.6143, 28.3941, 27.3603, np.nan,
+                           np.nan, 0., 0., 0., 0., 0., 0., 0.])
     np.testing.assert_allclose(Q, Q_expected, rtol=1)
 
 

@@ -1,4 +1,5 @@
 # pvpumpingsystem
-This package provides tools for modeling photovoltaic water pumping system. 
-It is highly relying on pvlib-python, therefore pvlib-python should be installed. 
-/!\ It is not ready to use yet, still in development.
+This package provides tools for modeling photovoltaic water pumping system.
+It relies on pvlib-python for the photovoltaic power generation, and implements
+different models of pump for the simulation. 
+

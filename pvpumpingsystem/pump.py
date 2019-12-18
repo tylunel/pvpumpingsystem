@@ -56,7 +56,7 @@ class Pump:
             The price of the pump
         power_rating: numeric
             Power rating of the pump (in fact)
-        controler: str
+        controller: str
             Name of controller
 
     """
@@ -67,7 +67,7 @@ class Pump:
                  motor_electrical_architecture=None,
                  pump_category=None, model=None,
                  price=None, power_rating=None,
-                 controler=None, diameter_output=None,
+                 controller=None, diameter_output=None,
                  modeling_method='arab'):
 
         self.id = next(self._ids)
@@ -77,32 +77,33 @@ class Pump:
         self.model = model
         self.price = price
         self.power_rating = power_rating
-        self.controler = controler
+        self.controller = controller
 
         # retrieve pump data from txt datasheet given by path
         if None in (lpm, tdh, current):
-            voltage, lpm, tdh, current, watts = get_data_pump(path)
-
-        self.voltage_list = list(lpm.keys())
-
-        # data in the form of DataFrame
-        vol = []
-        head = []
-        cur = []
-        flow = []
-        power = []
-        for V in self.voltage_list:
-            for i, Idata in enumerate(current[V]):
-                vol.append(V)
-                head.append(tdh[V][i])
-                cur.append(Idata)
-                flow.append(lpm[V][i])
-                power.append(V*Idata)
-        self.specs_df = pd.DataFrame({'voltage': vol,
-                                      'tdh': head,
-                                      'current': cur,
-                                      'flow': flow,
-                                      'power': power})
+            self.specs_df, metadata = get_data_pump(path)
+            self.voltage_list = self.specs_df.voltage.drop_duplicates()
+        # retrieve pump data from dict given in parameter
+        else:
+            self.voltage_list = list(lpm.keys())
+            # put data in the form of DataFrame
+            vol = []
+            head = []
+            cur = []
+            flow = []
+            power = []
+            for V in self.voltage_list:
+                for i, Idata in enumerate(current[V]):
+                    vol.append(V)
+                    head.append(tdh[V][i])
+                    cur.append(Idata)
+                    flow.append(lpm[V][i])
+                    power.append(V*Idata)
+            self.specs_df = pd.DataFrame({'voltage': vol,
+                                          'tdh': head,
+                                          'current': cur,
+                                          'flow': flow,
+                                          'power': power})
 
         self.data_completeness = specs_completeness(
                 self.specs_df,
@@ -150,6 +151,10 @@ class Pump:
         In order to start, the pump usually need a higher power input
         than the minimum power input in standard functioning.
         One potential path for adressing this issue is in [1]
+
+        The other path is to consider the controller that goes with the pump.
+        Check 'pump_files/PCA_PCC_BLS_Controller_Data_Sheet.pdf! for more
+        details.
 
         References
         ----------
@@ -658,50 +663,33 @@ def get_data_pump(path):
 
     Returns:
     --------
-    tuple
-        tuple containing list
-
+    pandas.DataFrame containing the following columns:
+        * voltage: list,
+            input voltage given in specifications [V]
+        * flow: dict
+            output flow rate [liter/minute]
+        * tdh: dict
+            total dynamic head [m]
+        * current: dict
+            input current [A]
+        * power: dict
+            electrical power at input [W]
     """
+    # open in read-only option
+    csvdata = open(path, 'r')
+
+    # get metadata
+    firstline = csvdata.readline()
+    # remove carriage return, split at ':', and remove leading or trailing
+    # whitespace
+    name = firstline.rstrip('\n').split(":")[1].strip()
+    metadata = {'model': name}
+
     # Import data
-    data = np.loadtxt(path, dtype={'names': ('voltage', 'tdh', 'current',
-                                             'lpm', 'watts', 'efficiency'),
-                      'formats': (float, float, float, float, float, float)},
-                      skiprows=1)
+    # header=0 because firstline already read before
+    data_df = pd.read_csv(csvdata, sep='\t', header=0, comment='#')
 
-    # sorting of data
-    volt = np.zeros(data.size)  # array filled with 0
-    for i in range(0, data.size):
-        volt[i] = data[i][0]
-    # create dict with voltage as keys and with number of occurence as values
-    counter = collections.Counter(volt)
-    keys_sorted = sorted(list(counter.keys()))  # voltages in increasing order
-
-    # Creation and filling of data lists
-    voltage = keys_sorted
-    # main dict, containing sub-list per voltage
-    lpm = {}
-    tdh = {}
-    current = {}
-    watts = {}
-
-    k = 0
-    for V in voltage:
-        tdh_temp = []
-        current_temp = []
-        lpm_temp = []
-        watts_temp = []
-        for j in range(0, counter[V]):
-            tdh_temp.append(data[k][1])
-            current_temp.append(data[k][2])
-            lpm_temp.append(data[k][3])
-            watts_temp.append(data[k][4])
-            k = k+1
-        tdh[V] = tdh_temp
-        current[V] = current_temp
-        lpm[V] = lpm_temp
-        watts[V] = watts_temp
-
-    return voltage, lpm, tdh, current, watts
+    return data_df, metadata
 
 
 def specs_completeness(specs_df,
@@ -1242,9 +1230,9 @@ def _domain_P_H(specs_df, data_completeness):
 
 if __name__ == "__main__":
     # %% pump creation
-    pump1 = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
-                 model='SCB_10', modeling_method='theoretical',
-                 motor_electrical_architecture='permanent_magnet')
+#    pump1 = Pump(path="pumps_files/SCB_10_150_120_BL.txt",
+#                 model='SCB_10', modeling_method='theoretical',
+#                 motor_electrical_architecture='permanent_magnet')
 
     pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
                            136],
@@ -1258,10 +1246,20 @@ if __name__ == "__main__":
                                3.4, 3.9],
                           24: [1.5, 1.7, 2.1, 2.4, 2.6, 2.8, 3.1, 3.3, 3.6,
                                3.8, 4.1]
-                          }, model='Shurflo_9325',
-                 motor_electrical_architecture='permanent_magnet',
-                 modeling_method='arab')
-    pump1.plot_Q_vs_H()
+                          },
+                 model='Shurflo_9325',
+                 modeling_method='arab',
+                 motor_electrical_architecture='permanent_magnet')
+
+    pump3 = Pump(path="pumps_files/Shurflo_9325.txt",
+                 model='Shurflo_9325_from_txt',
+                 modeling_method='arab',
+                 motor_electrical_architecture='permanent_magnet')
+
+    specs_df_alter = get_data_pump_to_dataframe("pumps_files/Shurflo_9325.txt")
+    print(specs_df_alter)
+
+#    pump1.plot_Q_vs_H()
 
 #    coeffs_1 = _curves_coeffs_Hamidat08(pump1.specs_df,
 #                                          pump1.data_completeness)

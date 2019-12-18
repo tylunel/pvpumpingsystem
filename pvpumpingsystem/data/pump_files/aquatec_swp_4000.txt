@@ -1,0 +1,39 @@
+PUMP NAME: aquatec_swp_4000
+# '.' are mandatory inputs that should be replaced by specifications or the line should be removed. 
+# 'nan' are optional input.
+# Units for columns are in the order: 
+# [V]	[m]	[A]	[L/min]	[W]	[no unit]
+voltage	tdh	current	flow	power	efficiency
+12	6.1	1.3	2.35	nan	nan
+12	12.2	1.6	2.27	nan	nan
+12	18.3	1.8	2.20	nan	nan
+12	24.4	2.0	2.15	nan	nan
+12	30.5	2.3	2.12	nan	nan
+12	36.6	2.5	2.00	nan	nan
+12	42.7	2.6	1.97	nan	nan
+12	48.8	2.8	1.93	nan	nan
+12	54.9	3.1	1.85	nan	nan
+12	61.0	3.3	1.82	nan	nan
+12	70.1	3.5	1.63	nan	nan
+24	6.1	1.3	5.11	nan	nan
+24	12.2	1.6	5.00	nan	nan
+24	18.3	1.8	4.84	nan	nan
+24	24.4	2.0	4.73	nan	nan
+24	30.5	2.3	4.62	nan	nan
+24	36.6	2.5	4.54	nan	nan
+24	42.7	2.6	4.35	nan	nan
+24	48.8	2.8	4.24	nan	nan
+24	54.9	3.1	4.09	nan	nan
+24	61.0	3.3	4.01	nan	nan
+24	70.1	3.5	3.79	nan	nan
+24	6.1	1.4	6.44	nan	nan
+24	12.2	1.7	6.25	nan	nan
+24	18.3	1.9	6.06	nan	nan
+24	24.4	2.1	5.87	nan	nan
+24	30.5	2.4	5.68	nan	nan
+24	36.6	2.6	5.60	nan	nan
+24	42.7	2.8	5.37	nan	nan
+24	48.8	3.0	5.30	nan	nan
+24	54.9	3.2	5.11	nan	nan
+24	61.0	3.4	4.92	nan	nan
+24	70.1	3.7	4.73	nan	nan

@@ -42,8 +42,8 @@ pump_shurflo = pp.Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163,
 
 M_s = 2
 M_p = 2
-weather_path = weather_montreal
-pump1 = pump_sunpump
+weather_selected = weather_montreal
+pump_selected = pump_sunpump
 coupling_method_selected = 'mppt'
 
 # ------------ PV MODELING STEPS -----------------------
@@ -64,10 +64,9 @@ pvsys1 = pvlib.pvsystem.PVSystem(
             losses_parameters=None, name=None
             )
 
-weatherdata1, metadata1 = pvlib.iotools.epw.read_epw(weather_montreal,
+weatherdata1, metadata1 = pvlib.iotools.epw.read_epw(weather_selected,
                                                      coerce_year=2005)
 locat1 = pvlib.location.Location.from_epw(metadata1)
-#locat1 = pvlib.location.Location(45, -73.5)
 
 chain1 = pvlib.modelchain.ModelChain(
             system=pvsys1, location=locat1,
@@ -90,7 +89,8 @@ pipes1 = pn.PipeNetwork(h_stat=10, l_tot=100, diam=0.08,
 reservoir1 = rv.Reservoir(1000000, 0)
 consumption1 = cs.Consumption(constant_flow=1, length=len(weatherdata1))
 
-pvps1 = pvps.PVPumpSystem(chain1, pump1, coupling=coupling_method_selected,
+pvps1 = pvps.PVPumpSystem(chain1, pump_selected,
+                          coupling=coupling_method_selected,
                           pipes=pipes1,
                           consumption=consumption1,
                           reservoir=reservoir1)

@@ -5,11 +5,16 @@
 
 import pytest
 import pvlib
+import os
+import inspect
 
 import pvpumpingsystem.pump as pp
 import pvpumpingsystem.pipenetwork as pn
 import pvpumpingsystem.pvpumpsystem as pvps
 import pvpumpingsystem.sizing as siz
+
+test_dir = os.path.dirname(
+    os.path.abspath(inspect.getfile(inspect.currentframe())))
 
 
 @pytest.fixture

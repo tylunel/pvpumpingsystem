@@ -30,10 +30,11 @@ pipes = pn.PipeNetwork(h_stat=20, l_tot=100, diam=0.08,
                        material='plastic', optimism=True)
 
 # Modeling method choices
-pump_modeling_method = 'arab'
-coupling_method = 'mppt'
+coupling_method = 'mppt'  # other option is 'direct'
+pump_modeling_method = 'arab'  # others are: 'kou', 'hamidat', 'theoretical'
 
-pvps_fixture = pvps.PVPumpSystem(None, None, coupling='mppt',
+
+pvps_fixture = pvps.PVPumpSystem(None, None, coupling=coupling_method,
                                  pipes=pipes, consumption=consumption_data)
 
 
@@ -52,7 +53,8 @@ pump_shurflo = pp.Pump(path="../data/pump_files/Shurflo_9325.txt",
 pump_database = [pump_sunpump, pump_shurflo]
 
 # PV array database:
-# use regex to add more than one provider
+# use regex to add more than one provider.
+# for example: provider = "Canadian_Solar|Zytech"
 provider = "Canadian_Solar"
 nb_elt_kept = 5
 pv_database = sizing.shrink_pv_database(provider, nb_elt_kept)

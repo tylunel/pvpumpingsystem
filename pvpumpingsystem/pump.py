@@ -675,13 +675,13 @@ def get_data_pump(path):
     follow the style of the template:
     (~/pvpumpingsystem/data/pump_files/0_template_for_pump_specs.txt)
 
-    Parameters:
-    -----------
+    Parameters
+    ----------
     path: str
         path to the file of the pump data
 
-    Returns:
-    --------
+    Returns
+    -------
     Tuple with:
 
         pandas.DataFrame containing the following columns:

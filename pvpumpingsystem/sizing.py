@@ -33,6 +33,11 @@ def shrink_pv_database(provider, nb_elt_kept=10):
 
     nb_elt_kept: integer
         Number of element kept in the shrunk database.
+
+    Returns
+    -------
+    * pandas.DataFrame: Dataframe with the pv modules kept.
+
     """
     # transpose DataFrame
     CECMOD = pvlib.pvsystem.retrieve_sam('cecmod').transpose()
@@ -59,11 +64,24 @@ def shrink_pv_database(provider, nb_elt_kept=10):
 def shrink_weather(weather_data, nb_elt=48):
     """
     Create a new weather_data object representing the range of weather that
-    can be found in the weather_data given.
+    can be found in the weather_data given. It allows to reduce
+    the number of lines in the weather file from 8760 (if full year
+    and hourly data) to 'nb_elt' lines, and eventually to greatly reduce
+    the computation time.
+
+    Parameters
+    ----------
+    weather_data: pandas.DataFrame
+        The hourly data on irradiance, temperature, and others
+        meteorological parameters.
+        Typically comes from pvlib.epw.read_epw() or pvlib.tmy.read.tmy().
+
+    nb_elt: integer, default 48
+        Number of line to keep in the weather_data file.
 
     Returns
     -------
-    * pandas.DatFrame: weather object of nb_elt lines
+    * pandas.DataFrame: weather object of nb_elt lines
 
     """
     # Remove rows with null irradiance
@@ -78,14 +96,14 @@ def shrink_weather(weather_data, nb_elt=48):
     temp_sorted_df = sub_df.sort_values('temp_air')
     temp_sorted_df.reset_index(drop=True, inplace=True)
     index_array = np.linspace(0, temp_sorted_df.index.max(),
-                              num=np.round(nb_elt/2)).round()
+                              num=int(np.round(nb_elt/2))).round()
     temp_selected_df = temp_sorted_df.iloc[index_array]
 
     # Sort DataFrame according to GHI
     ghi_sorted_df = sub_df.sort_values('ghi')
     ghi_sorted_df.reset_index(drop=True, inplace=True)
     index_array = np.linspace(0, ghi_sorted_df.index.max(),
-                              num=np.round(nb_elt/2)).round()
+                              num=int(np.round(nb_elt/2))).round()
     ghi_selected_df = ghi_sorted_df.iloc[index_array]
 
     # Concatenation of two preceding df
@@ -97,9 +115,32 @@ def shrink_weather(weather_data, nb_elt=48):
 
 
 def run_pv_model(M_s, M_p, weather_data, weather_metadata, pv_module,
-                 pv_array_tilt=30):
+                 pv_array_tilt):
     """
     Runs the simulation of the photovoltaïc power generation.
+
+    Parameters
+    ----------
+    M_s: integer,
+        Number of pv modules in series.
+
+    M_p: integer,
+        Number of pv modules in parallel.
+
+    weather_data: pandas.DataFrame
+        The hourly data on irradiance, temperature, and others
+        meteorological parameters.
+        Typically comes from pvlib.epw.read_epw() or pvlib.tmy.read.tmy().
+
+    weather_metadata: dict
+        The site metadata correponding to weather_data.
+        Typically comes from pvlib.epw.read_epw() or pvlib.tmy.read.tmy().
+
+    pv_module: pandas.DataFrame
+         Dataframe with one line containing the pv module characteristics.
+
+    pv_array_tilt: float
+        The tilt of the pv array.
 
     Returns
     -------
@@ -143,7 +184,25 @@ def run_pv_model(M_s, M_p, weather_data, weather_metadata, pv_module,
 def run_water_pumped(pv_modelchain, pump, coupling_method,
                      consumption_data, pipes_network):
     """
-    Compute output flow from pv power available.
+    Compute output flow from the power produced by a pv generator.
+
+    Parameters
+    ----------
+    pv_modelchain: pvlib.modelchain.Modelchain,
+        Object with the pv generator output characteristics (dc power,
+        diode_parameters, ...). Typically comes from sizing.run_pv_model().
+
+    pump: pvpumpingsystem.pump.Pump,
+        Pump to use for modelling the output.
+
+    coupling_method: str,
+        How the pump and the pv array are linked. Can be 'mppt' or direct'.
+
+    consumption_data: pvpumpingsystem.consumption.Consumption,
+        The water consumption through time.
+
+    pipes_network: pvpumpingsystem.pipenetwork.Pipenetwork,
+        The pipes used in the system.
 
     Returns
     -------
@@ -176,7 +235,22 @@ def sizing_maximize_flow(pv_database, pump_database,
     ----------
     pv_database: pandas.DataFrame
         PV module database to explore.
+
     pump_database: list
+        Pump database to explore.
+
+    weather_data: pandas.DataFrame
+        The hourly data on irradiance, temperature, and others
+        meteorological parameters.
+        Typically comes from pvlib.epw.read_epw() or pvlib.tmy.read.tmy().
+
+    weather_metadata: dict
+        The site metadata correponding to weather_data.
+        Typically comes from pvlib.epw.read_epw() or pvlib.tmy.read.tmy().
+
+    pvps_fixture: pvpumpingsystem.pvpumpsystem.PVPumpSystem,
+        The rest of the system in which pv_database and pump_database will
+        be tested to find the best set-up.
 
 
     Note
@@ -199,9 +273,12 @@ def sizing_maximize_flow(pv_database, pump_database,
                                  total=len(pv_database.columns)):
         # TODO add method to guess M_s from rated power of pump and of pv mod
         for M_s in np.arange(1, 8):
+            # TODO: add ways to look for the best tilt of arrays
             pv_chain = run_pv_model(M_s, 1,
                                     weather_data, weather_metadata,
-                                    pv_database[pv_mod_name])
+                                    pv_database[pv_mod_name],
+                                    pv_array_tilt=weather_metadata['latitude']
+                                    )
             for pump in pump_database:
                 output = run_water_pumped(pv_chain, pump,
                                           coupling_method,
@@ -214,11 +291,13 @@ def sizing_maximize_flow(pv_database, pump_database,
                 result = result.append(output, ignore_index=True)
 
     maximum_flow = result.Qlpm.max()
-    selection = result[result.Qlpm > maximum_flow*0.99]
+    # keep all solution that provide at least 99% of maximum output
+    preselection = result[result.Qlpm > maximum_flow*0.99]
 
-    if len(selection.index) > 1:
-        minimum_p_unused = selection.P_unused.min()
-        selection = selection[selection.P_unused == minimum_p_unused]
+    # keep the system which wastes the minimum power among preselection
+    if len(preselection.index) > 1:
+        minimum_p_unused = preselection.P_unused.min()
+        selection = preselection[preselection.P_unused == minimum_p_unused]
 
     return (selection, result)
 
@@ -226,6 +305,14 @@ def sizing_maximize_flow(pv_database, pump_database,
 def sizing_minimize_cost(acceptable_water_shortage_probability):
     """
     Sizing procedure optimizing the cost of the pumping station.
+
+    Parameter
+    ---------
+    acceptable_water_shortage_probability: acceptable loss of power supply
+        for the system.
+        If the system is aimed at giving drinking water, it should be 0.
+        If it is for agriculture, the acceptable shortage probability
+        will depend on the type of culture.
     """
     raise NotImplementedError
 
@@ -247,6 +334,9 @@ if __name__ == '__main__':
     pump_modeling_method = 'arab'
     coupling_method = 'mppt'
 
+    pvps1 = pvps.PVPumpSystem(None, None, coupling=coupling_method,
+                              pipes=pipes, consumption=consumption_data)
+
     # ------------ PUMP DATABASE ---------------------
     pump_sunpump = pp.Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
                            model='SCB_10',
@@ -262,7 +352,7 @@ if __name__ == '__main__':
     # ------------ PV DATABASE ---------------------
     # use regex to add more than one provider
     provider = "Canadian_Solar"
-    nb_elt_kept = 5
+    nb_elt_kept = 3
     pv_database = shrink_pv_database(provider, nb_elt_kept)
 
 
@@ -275,6 +365,6 @@ if __name__ == '__main__':
 
     selection, total = sizing_maximize_flow(pv_database, pump_database,
                                             weather_short, weather_metadata,
-                                            consumption_data, pipes)
+                                            pvps1)
 
     print(selection)

@@ -16,16 +16,16 @@ import sys
 import os
 
 # Mock modules so RTD works
-from unittest.mock import MagicMock
+#from unittest.mock import MagicMock
 
 
-class Mock(MagicMock):
-    @classmethod
-    def __getattr__(cls, name):
-        return Mock()
+#class Mock(MagicMock):
+#    @classmethod
+#    def __getattr__(cls, name):
+#        return Mock()
 
-MOCK_MODULES = []
-sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
+#MOCK_MODULES = []
+#sys.modules.update((mod_name, Mock()) for mod_name in MOCK_MODULES)
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -61,9 +61,7 @@ extensions = [
     'sphinx.ext.intersphinx',
     'sphinx.ext.extlinks',
     'sphinx.ext.napoleon',
-    'sphinx.ext.autosummary',
-    'IPython.sphinxext.ipython_directive',
-    'IPython.sphinxext.ipython_console_highlighting'
+    'sphinx.ext.autosummary'
 ]
 
 napoleon_use_rtype = False  # group rtype on same line together with return

@@ -15,19 +15,12 @@ import pvpumpingsystem.consumption as cs
 import pvpumpingsystem.pvpumpsystem as pvps
 
 
-# def of fixture
-
-# Do not use this data, because precipitable water data is incorrect, and
-# will result in wrongly null output
-# weather_denver = ('https://energyplus.net/weather-download/' +
-#                  'north_and_central_america_wmo_region_4/USA/CO/' +
-#                  'USA_CO_Denver.Intl.AP.725650_TMY3/' +
-#                  'USA_CO_Denver.Intl.AP.725650_TMY3.epw')
+# ------------ DEFINITION OF FIXTURE -----------------
 
 weather_montreal = (
-    '../weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC_truncated.epw')
+    '../data/weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC_truncated.epw')
 
-pump_sunpump = pp.Pump(path="../pumps_files/SCB_10_150_120_BL.txt",
+pump_sunpump = pp.Pump(path="../data/pump_files/SCB_10_150_120_BL.txt",
                        model='SCB_10',
                        modeling_method='arab')
 pump_shurflo = pp.Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163,
@@ -51,9 +44,10 @@ M_s = 2
 M_p = 2
 weather_path = weather_montreal
 pump1 = pump_sunpump
-coupling_method = 'direct'
+coupling_method_selected = 'mppt'
 
-# %% pv modeling steps
+# ------------ PV MODELING STEPS -----------------------
+
 CECMOD = pvlib.pvsystem.retrieve_sam('cecmod')
 
 glass_params = {'K': 4, 'L': 0.002, 'n': 1.526}
@@ -70,11 +64,10 @@ pvsys1 = pvlib.pvsystem.PVSystem(
             losses_parameters=None, name=None
             )
 
-weatherdata1, metadata1 = pvlib.iotools.epw.read_epw(
-    '../weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC_truncated.epw',
-    coerce_year=2005)
-#locat1 = pvlib.location.Location.from_epw(metadata1)
-locat1 = pvlib.location.Location(45, -73.5)
+weatherdata1, metadata1 = pvlib.iotools.epw.read_epw(weather_montreal,
+                                                     coerce_year=2005)
+locat1 = pvlib.location.Location.from_epw(metadata1)
+#locat1 = pvlib.location.Location(45, -73.5)
 
 chain1 = pvlib.modelchain.ModelChain(
             system=pvsys1, location=locat1,
@@ -89,20 +82,22 @@ chain1 = pvlib.modelchain.ModelChain(
 
 chain1.run_model(weather=weatherdata1)
 
-# %% pvps modeling steps
-pump1 = pp.Pump(path="../pumps_files/SCB_10_150_120_BL.txt",
-                modeling_method='arab')
+
+# ------------ PVPS MODELING STEPS ------------------------
+
 pipes1 = pn.PipeNetwork(h_stat=10, l_tot=100, diam=0.08,
                         material='plastic', optimism=True)
 reservoir1 = rv.Reservoir(1000000, 0)
 consumption1 = cs.Consumption(constant_flow=1, length=len(weatherdata1))
 
-pvps1 = pvps.PVPumpSystem(chain1, pump1, coupling='direct',
+pvps1 = pvps.PVPumpSystem(chain1, pump1, coupling=coupling_method_selected,
                           pipes=pipes1,
                           consumption=consumption1,
                           reservoir=reservoir1)
 
-# %% comparison mppt direct coupling
+
+# ------------ COMPARISON MPPT VS DIRECT COUPLING -----------------
+
 #res1 = pvps.calc_flow_directly_coupled(chain1, pump1, pipes1, atol=0.01,
 #                                       stop=8760)
 #res2 = pvps.calc_flow_mppt_coupled(chain1, pump1, pipes1, atol=0.01,
@@ -114,7 +109,10 @@ pvps1 = pvps.PVPumpSystem(chain1, pump1, coupling='direct',
 pvps1.calc_flow()
 print(pvps1.flow[6:16])
 pvps1.calc_efficiency()
-# %% figures
+
+
+# ------------ FIGURES -----------------------
+
 #plt.figure()
 #plt.plot(pvps1.efficiency.index, pvps1.efficiency.electric_power)
 #plt.title('Electric power in vs time')
@@ -122,8 +120,10 @@ pvps1.calc_efficiency()
 #plt.figure()
 #plt.plot(pvps1.efficiency.index, pvps1.modelchain.effective_irradiance)
 #plt.title('Effective irradiance vs time')
-#
-# %% water volume in tank and flow rate vs time
+
+
+# ------------ WATER VOLUME AND FLOW RATE VS TIME ----------
+
 pvps1.calc_reservoir()
 
 fig, ax1 = plt.subplots()
@@ -144,16 +144,11 @@ ax2.tick_params(axis='y', labelcolor='b')
 fig.tight_layout()  # otherwise the right y-label is slightly clipped
 plt.show()
 
-# %% find unused electricity
-electric_power = pvps1.efficiency.electric_power
-flowrate = pvps1.flow.Qlpm
-# unused power only because power is too low, check pvps.flow.P_unused instead
-unused_power = electric_power.loc[electric_power > 0].loc[flowrate == 0]
-used_power = electric_power.loc[electric_power > 0].loc[flowrate != 0]
-total_unused_power_Wh = sum(unused_power)
-total_used_power_Wh = sum(used_power)
 
-total_pumped_water_L = (flowrate*60).sum()
+# ------------ POTENTIAL PATHS TO USE UNUSED ELECTRICITY  ---------------
+
+total_unused_power_Wh = pvps1.flow.P_unused.sum()
+total_pumped_water_L = (pvps1.flow.Qlpm).sum()*60
 
 # potabilization of freshwater polluted from pathogen us bacteria can
 # be obtained with MF-UF that requires low energy consumption: 1.2 kWh/m3

@@ -302,14 +302,15 @@ def sizing_maximize_flow(pv_database, pump_database,
     return (selection, result)
 
 
-def sizing_minimize_cost(acceptable_water_shortage_probability):
+def sizing_minimize_cost(lpsp):
     """
     Sizing procedure optimizing the cost of the pumping station.
 
     Parameter
     ---------
-    acceptable_water_shortage_probability: acceptable loss of power supply
-        for the system.
+    lpsp: float between 0 and 1
+        Acceptable loss of power supply probability (LPSP) for the system,
+        that is to say the acceptable water shortage probability.
         If the system is aimed at giving drinking water, it should be 0.
         If it is for agriculture, the acceptable shortage probability
         will depend on the type of culture.

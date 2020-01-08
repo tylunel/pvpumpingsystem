@@ -24,14 +24,23 @@ from pvpumpingsystem import errors
 
 
 class PVPumpSystem(object):
-    """Class defining a PV pumping system made of :
-            - modelchain : class pvlib.ModelChain
-            - motorpump : class Pump
-            - coupling: 'mppt' or 'direct'
-                represents the type of coupling between pv generator and pump
-            - pipes : class PipeNetwork
-            - reservoir: class Reservoir
-            - consumption: class Consumption
+    """
+    Class defining a PV pumping system made of:
+        modelchain : pvlib.ModelChain,
+            //!\\ The weather file used here should not smooth the extreme
+            conditions (avoid TMY or IWEC).
+
+        motorpump : pvpumpingsystem.Pump
+            The pump used in the system.
+
+        coupling: str, 'mppt' or 'direct'
+            represents the type of coupling between pv generator and pump
+
+        pipes : pvpumpingsystem.PipeNetwork
+
+        reservoir: pvpumpingsystem.Reservoir
+
+        consumption: pvpumpingsystem.Consumption
 
     """
     def __init__(self, modelchain, motorpump, coupling='mppt', mppt=None,

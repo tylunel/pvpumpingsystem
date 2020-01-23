@@ -23,12 +23,23 @@ import pvpumpingsystem.consumption as cs
 from pvpumpingsystem import errors
 
 
+# TODO: add check on dc_model and coupling_method to insure that
+# direct-coupling goes with SDM. (if no check, error can be hard to fine
+# for user)
+
+# TODO: add a function "run_model" which would run everything like
+# for pvlib-python
+
+# TODO: add a way to choose pump model from this class
+
 class PVPumpSystem(object):
     """
     Class defining a PV pumping system made of:
         modelchain : pvlib.ModelChain,
             //!\\ The weather file used here should not smooth the extreme
             conditions (avoid TMY or IWEC).
+            /!\\ the modelchain.dc_model must be a Single Diode model if the
+            system is directly-coupled
 
         motorpump : pvpumpingsystem.Pump
             The pump used in the system.
@@ -78,7 +89,7 @@ class PVPumpSystem(object):
                      .format(self.modelchain, self.motorpump.model))
             return infos
         else:
-            return ('PV Pumping System :'+self.idname)
+            return ('PV Pumping System :' + self.idname)
 
     def functioning_point_noiteration(self,
                                       plot=False, nb_pts=50, stop=8760):
@@ -241,6 +252,20 @@ class PVPumpSystem(object):
 
         self.water_stored = calc_reservoir(self.reservoir, self.flow.Qlpm,
                                            self.consumption.flow_rate.Qlpm)
+
+# TODO: add computation of LCC
+    def run_model(self):
+        """
+        comprehesive modeling of the PVPS. Computes Loss of Power Supply
+        """
+        self.calc_efficiency()
+        self.calc_reservoir()
+
+        total_water_required = sum(self.consumption.flow_rate.Qlpm*60)
+        total_water_lacking = -min(0, sum(self.water_stored.extra_water))
+
+        # water shortage probability
+        self.lpsp = total_water_lacking / total_water_required
 
 
 def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
@@ -676,10 +701,10 @@ def calc_reservoir(reservoir, Q_pumped, Q_consumption):
     Parameters
     ----------
     Q_pumped: pd.DataFrame
-        Dataframe containing the reservoir input flow-rate in liter per minute
+        Dataframe containing the reservoir input flow-rate [L/min]
 
     Q_consumption: pd.DataFrame
-        Dataframe containing the reservoir output flow-rate in liter per minute
+        Dataframe containing the reservoir output flow-rate [L/min]
 
     reservoir: Reservoir object
         The reservoir of the system.
@@ -694,7 +719,7 @@ def calc_reservoir(reservoir, Q_pumped, Q_consumption):
     timestep = Q_pumped.index[1] - Q_pumped.index[0]
     timestep_minute = timestep.seconds/60
 
-    # TODO: temporary: should be replaced by process in Consumption class
+    # TODO: replace by process in Consumption class
     timezone = Q_pumped.index.tz
     Q_consumption.index = Q_consumption.index.tz_localize(timezone)
 
@@ -719,18 +744,24 @@ if __name__ == '__main__':
 
     glass_params = {'K': 4, 'L': 0.002, 'n': 1.526}
     pvsys1 = pvlib.pvsystem.PVSystem(
-            surface_tilt=45, surface_azimuth=180,
-            albedo=0, surface_type=None,
+            surface_tilt=45,
+            surface_azimuth=180,
+            albedo=0,
+            surface_type=None,
             module=CECMOD.Kyocera_Solar_KU270_6MCA,
             module_parameters={**dict(CECMOD.Kyocera_Solar_KU270_6MCA),
                                **glass_params},
-            modules_per_string=2, strings_per_inverter=2,
-            inverter=None, inverter_parameters={'pdc0': 700},
+            modules_per_string=3,
+            strings_per_inverter=2,
+            inverter=None,
+            inverter_parameters={'pdc0': 700},
             racking_model='open_rack_cell_glassback',
-            losses_parameters=None, name=None
+            losses_parameters=None,
+            name=None
             )
+
     weatherdata1, metadata1 = pvlib.iotools.epw.read_epw(
-        'weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC_truncated.epw',
+        'data/weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC_truncated.epw',
         coerce_year=2005)
     locat1 = pvlib.location.Location.from_epw(metadata1)
 
@@ -741,13 +772,16 @@ if __name__ == '__main__':
              transposition_model='haydavies',
              solar_position_method='nrel_numpy',
              airmass_model='kastenyoung1989',
-             dc_model='desoto', ac_model='pvwatts', aoi_model='physical',
-             spectral_model='first_solar', temperature_model='sapm',
+             dc_model='desoto',
+             ac_model='pvwatts',
+             aoi_model='physical',
+             spectral_model='first_solar',
+             temperature_model='sapm',
              losses_model='pvwatts', name=None)
 
     chain1.run_model(times=weatherdata1.index, weather=weatherdata1)
 
-    pump1 = pp.Pump(path="pumps_files/SCB_10_150_120_BL.txt",
+    pump1 = pp.Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
                     modeling_method='arab',
                     motor_electrical_architecture='permanent_magnet')
     pipes1 = pn.PipeNetwork(h_stat=10, l_tot=100, diam=0.08,
@@ -755,17 +789,25 @@ if __name__ == '__main__':
     reserv1 = rv.Reservoir(1000000, 0)
     consum1 = cs.Consumption(constant_flow=1, length=len(weatherdata1))
 
-    pvps1 = PVPumpSystem(chain1, pump1, coupling='direct',
-                         pipes=pipes1, consumption=consum1,
+    pvps1 = PVPumpSystem(chain1,
+                         pump1,
+                         coupling='direct',
+                         pipes=pipes1,
+                         consumption=consum1,
                          reservoir=reserv1)
 
 # %% thing to try
+    pvps1.run_model()
+    print(pvps1.water_stored)
+    print(pvps1.lpsp)
 
-    warnings.filterwarnings("ignore")  # disable all warnings
-    pvps1.calc_flow()
-    warnings.simplefilter("always")  # enable all warnings
-    pvps1.calc_efficiency()
-
-    pvps1.functioning_point_noiteration(plot=True)
-
-    print(pvps1.flow[11:19][['I', 'V']])
+#    warnings.filterwarnings("ignore")  # disable all warnings
+#    pvps1.calc_flow()
+#    warnings.simplefilter("always")  # enable all warnings
+#    pvps1.calc_efficiency()
+#
+#    pvps1.functioning_point_noiteration(plot=True)
+#    # TODO: pb here. The graph represents the I-V relation for only
+#    # one module, not the full array.
+#
+#    print(pvps1.flow[11:19][['I', 'V']])

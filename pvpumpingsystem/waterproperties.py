@@ -2,10 +2,13 @@
 """
 Gives water properties in various physical conditions.
 
+
 @author: Louis Lamarche,  Tanguy Lunel
 """
 
 import numpy as np
+
+# TODO: translate in engligh
 
 
 class Switch(object):

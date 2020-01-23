@@ -38,58 +38,86 @@ pump_shurflo = pp.Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163,
                                 },
                        model='Shurflo_9325',
                        motor_electrical_architecture='permanent_magnet',
-                       modeling_method='arab')
-
-M_s = 2
-M_p = 2
-weather_selected = weather_montreal
-pump_selected = pump_sunpump
-coupling_method_selected = 'mppt'
-
-# ------------ PV MODELING STEPS -----------------------
+                       modeling_method='arab')  # to adapt:
 
 CECMOD = pvlib.pvsystem.retrieve_sam('cecmod')
 
-glass_params = {'K': 4, 'L': 0.002, 'n': 1.526}
+pv_module = CECMOD.Kyocera_Solar_KU270_6MCA  # to adapt: PV module
+weather_selected = weather_montreal  # to adapt:
+pump_selected = pump_sunpump  # to adapt:
+coupling_method_selected = 'mppt'  # to adapt:
+
+# ------------ PV MODELING STEPS -----------------------
+
+# PV module glazing parameters
+glass_params = {'K': 4,  # to adapt: extinction coefficient [1/m]
+                'L': 0.002,  # to adapt: thickness [m]
+                'n': 1.526}  # to adapt: refractive index
+
+# Definition of PV generator
 pvsys1 = pvlib.pvsystem.PVSystem(
-            surface_tilt=45, surface_azimuth=180,
-            albedo=0, surface_type=None,
-            module=CECMOD.Kyocera_Solar_KU270_6MCA,
-            module_parameters={**dict(CECMOD.Kyocera_Solar_KU270_6MCA),
+            surface_tilt=45,  # to adapt: 0 = horizontal, 90 = vertical
+            surface_azimuth=180,  # to adapt: 180 = South, 90 = East
+            albedo=0,  # to adapt: between 0 and 1
+            surface_type=None,
+            module=pv_module,
+            module_parameters={**dict(pv_module),
                                **glass_params},
-            module_type='glass_polymer',
-            modules_per_string=M_s, strings_per_inverter=M_p,
-            inverter=None, inverter_parameters={'pdc0': 700},
-            racking_model='open_rack',
-            losses_parameters=None, name=None
+            module_type='glass_polymer',  # to adapt
+            modules_per_string=2,  # to adapt
+            strings_per_inverter=2,  # to adapt
+            inverter=None,
+            inverter_parameters={'pdc0': 700},
+            racking_model='open_rack',  # to adapt
+            losses_parameters=None,
+            name=None
             )
 
+# Import of weather
 weatherdata1, metadata1 = pvlib.iotools.epw.read_epw(weather_selected,
                                                      coerce_year=2005)
 locat1 = pvlib.location.Location.from_epw(metadata1)
 
+# Choices of models to use
 chain1 = pvlib.modelchain.ModelChain(
-            system=pvsys1, location=locat1,
-            orientation_strategy=None,
-            clearsky_model='ineichen',
-            transposition_model='haydavies',
-            solar_position_method='nrel_numpy',
-            airmass_model='kastenyoung1989',
-            dc_model='desoto', ac_model='pvwatts', aoi_model='physical',
-            spectral_model='first_solar', temperature_model='sapm',
-            losses_model='pvwatts', name=None)
+            system=pvsys1,
+            location=locat1,
+            orientation_strategy=None,  # to adapt: can be ...
+            clearsky_model='ineichen',  # to choose
+            transposition_model='isotropic',  # to choose
+            solar_position_method='nrel_numpy',  # to choose
+            airmass_model='kastenyoung1989',  # to choose
+            dc_model='desoto',  # to choose between 'desoto' and 'cec'.
+            # Others will yield an error in pvpumpingsystem.
+            ac_model='pvwatts',  # to choose
+            aoi_model='physical',  # to choose
+            spectral_model='first_solar',  # to choose
+            temperature_model='sapm',  # to choose
+            losses_model='pvwatts',  # to choose
+            name=None)
 
+# Running of the PV generation model
 chain1.run_model(weather=weatherdata1)
 
 
 # ------------ PVPS MODELING STEPS ------------------------
 
-pipes1 = pn.PipeNetwork(h_stat=10, l_tot=100, diam=0.08,
-                        material='plastic', optimism=True)
-reservoir1 = rv.Reservoir(1000000, 0)
-consumption1 = cs.Consumption(constant_flow=1, length=len(weatherdata1))
+pipes1 = pn.PipeNetwork(h_stat=10,  # to adapt: static head
+                        l_tot=100,  # to adapt: length of pipes
+                        diam=0.08,  # to adapt: diameter [m]
+                        material='plastic',  # to adapt
+                        fittings=None,  # Not available yet
+                        optimism=True)
 
-pvps1 = pvps.PVPumpSystem(chain1, pump_selected,
+reservoir1 = rv.Reservoir(size=1000000,  # to adapt: size [L]
+                          water_volume=0   # to adapt: initial water in it [L]
+                          )
+
+consumption1 = cs.Consumption(constant_flow=1,
+                              length=len(weatherdata1))
+
+pvps1 = pvps.PVPumpSystem(chain1,
+                          pump_selected,
                           coupling=coupling_method_selected,
                           pipes=pipes1,
                           consumption=consumption1,

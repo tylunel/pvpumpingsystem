@@ -5,6 +5,11 @@ Defines Consumption class.
 @author: Tanguy Lunel
 
 """
+# TODO: Implement models where it is easily possible to make the
+# repeated_flow change from a month to the other.
+
+# TODO: Implement dynamic models, where the water demand can be function of
+# the weather (irradiance (evapotranpiration) and precipitations)
 
 import pandas as pd
 import datetime
@@ -24,7 +29,7 @@ class Consumption(object):
         Parameter allowing to build consumption data with constant consumption
         through the flow_rates DataFrame.
 
-    constant_flow: 1D array-like
+    repeated_flow: 1D array-like
         Parameter allowing to build consumption data with a repeated
         consumption through the time.
     """

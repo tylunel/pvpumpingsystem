@@ -22,7 +22,7 @@ jobs:
       with:
         python-version: 3.7
 
-    - name: codecov  # Does not seems to work for now
+    - name: codecov  (Does not seems to actually work for now)
       uses: codecov/codecov-action@v1
       with:
         token: ${{ secrets.CODECOV_TOKEN }} #required

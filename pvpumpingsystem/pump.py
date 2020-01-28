@@ -22,7 +22,7 @@ from pvpumpingsystem import function_models
 
 class Pump:
     """
-    Class representing a pump.
+    Class representing a motor-pump.
 
     Attributes
     ----------
@@ -718,7 +718,7 @@ def get_data_pump(path):
 def specs_completeness(specs,
                        motor_electrical_architecture):
     """
-    Evaluates the completeness of the data of a pump.
+    Evaluates the data completeness of a pump.
 
     Returns
     -------
@@ -788,20 +788,23 @@ def _curves_coeffs_Arab06(specs, data_completeness):
     of PV motor-pump model for PV pumping system performance analysis", 2017
 
     """
-
-# TODO: make the regression directly on the compound function, as in
-# the theoretical case.
-    funct_mod_1 = function_models.compound_polynomial_1_3
-
     # TODO: add check on number of head available (for lin. reg. of coeffs)
-    if data_completeness['data_number'] >= 10 \
+
+    # Original model from [2]
+    if data_completeness['data_number'] >= 12 \
             and data_completeness['voltage_number'] >= 3:
+        funct_mod_1 = function_models.compound_polynomial_1_3
         funct_mod_2 = function_models.compound_polynomial_2_3
-#        funct_mod_2_order = 2
-    elif data_completeness['data_number'] >= 10 \
+    # Original model from [1]
+    if data_completeness['data_number'] >= 9 \
+            and data_completeness['voltage_number'] >= 3:
+        funct_mod_1 = function_models.compound_polynomial_1_2
+        funct_mod_2 = function_models.compound_polynomial_2_2
+    # New model to make accessible computation of pump with fewer data
+    elif data_completeness['data_number'] >= 8 \
             and data_completeness['voltage_number'] >= 2:
+        funct_mod_1 = function_models.compound_polynomial_1_2
         funct_mod_2 = function_models.compound_polynomial_1_3
-#        funct_mod_2_order = 1
     else:
         raise errors.InsufficientDataError('Lack of information on lpm, '
                                            'current or tdh for pump.')
@@ -854,9 +857,9 @@ def _curves_coeffs_Kou98(specs, data_completeness):
     Solar Energy
 
     """
-
-    if data_completeness['data_number'] >= 10 \
-            and data_completeness['voltage_number'] > 3:
+# TODO: change the condition data_number to head_number (better)
+    if data_completeness['voltage_number'] >= 4 \
+            and data_completeness['data_number'] >= 16:
         funct_mod = function_models.polynomial_multivar_3_3_4
     else:
         raise errors.InsufficientDataError('Lack of information on lpm, '
@@ -868,8 +871,6 @@ def _curves_coeffs_Kou98(specs, data_completeness):
     dataz = np.array(specs.current)
 
     param_f1, covmat_f1 = opt.curve_fit(funct_mod, dataxy, dataz)
-#            , bounds=([0, 0, -np.inf, -np.inf, -np.inf],
-#                    [np.inf, np.inf, 0, 0, 0]))
     # computing of statistical figures for f1
     stats_f1 = function_models.correlation_stats(funct_mod, param_f1,
                                                  dataxy, dataz)
@@ -971,8 +972,8 @@ def _curves_coeffs_theoretical(specs, data_completeness, elec_archi):
             'This model is not implemented yet for electrical architecture '
             'different from permanent magnet motor.')
 
-    if not data_completeness['data_number'] >= 10 \
-            and data_completeness['voltage_number'] > 3:
+    if not data_completeness['data_number'] >= 2 \
+            and data_completeness['voltage_number'] >= 2:
         raise errors.InsufficientDataError('Lack of information on lpm, '
                                            'current or tdh for pump.')
 
@@ -1018,62 +1019,6 @@ def _curves_coeffs_theoretical(specs, data_completeness, elec_archi):
             'rmse_f2': stats_f2['rmse'],
             'nrmse_f2': stats_f2['nrmse'],
             'r_squared_f2': stats_f2['r_squared']}
-
-
-def _curves_coeffs_Gualteros17(lpm, tdh, watts):
-    """
-    Sergio Gualteros method. In his method the pump is modeled only for the
-    static head of the hydraulic circuit.
-
-    Based on Hamidat & Benyoucef, 2008 ->
-    Model with polynomial_3rd_order P(Q) and then uses Newton-Raphson method
-
-    Compute curve-fitting coefficient from data for :
-        - tdh vs lpm
-        - power vs lpm
-        - power vs tdh
-
-    returns a dict of sub-dict :
-        -the first dict contains the 2 curves as keys : 'tdh','pow'
-        resp. for total dynamic head and power
-            -the sub-dicts contain the available voltage as keys, typically
-            '60','75','90','105','120'
-    These same 3 dictionnary are saved as attributes in the pump object,
-    under the name 'self.coeff_tdh', 'self.coeff_pow'
-    """
-#    raise NotImplementedError('Even though this function exists, it '
-#                              'cannot be used in later process')
-
-    func_model = function_models.polynomial_4
-
-    # this function allows to simplify the next equation
-#    coeff_pow_with_tdh = coeff_pow_with_tdh_at_static_head(static_head,
-#                                                           hydraulic_circuit)
-    coeff_pow_with_tdh = {}  # coeff from curve-fitting of power vs tdh
-
-    coeff_tdh_with_lpm = {}  # coeff from curve-fitting of tdh vs lpm
-    coeff_pow_with_lpm = {}  # coeff from curve-fitting of power vs lpm
-
-    for V in lpm:
-        # curve-fit of tdh vs lpm
-        coeffs_tdh, matcov = opt.curve_fit(
-            func_model, lpm[V], tdh[V],
-            p0=[10, -1, -1, 0, 0],
-            bounds=([0, -np.inf, -np.inf, -np.inf, -np.inf],
-                    [np.inf, 0, 0, 0, 0]))
-        coeff_tdh_with_lpm[V] = coeffs_tdh
-
-        # curve-fit of power vs lpm
-        coeffs_P, matcov = opt.curve_fit(func_model, lpm[V], watts[V])
-        coeff_pow_with_lpm[V] = coeffs_P
-
-        # curve-fit of power vs lpm
-        coeffs_P, matcov = opt.curve_fit(func_model, tdh[V], watts[V])
-        coeff_pow_with_tdh[V] = coeffs_P
-
-    return {'tdh_with_lpm': coeff_tdh_with_lpm,
-            'pow_with_lpm': coeff_pow_with_lpm,
-            'pow_with_tdh': coeff_pow_with_tdh}
 
 
 def _domain_I_H(specs, data_completeness):

@@ -27,39 +27,55 @@ from pvpumpingsystem import errors
 # direct-coupling goes with SDM. (if no check, error can be hard to fine
 # for user)
 
-# TODO: add a function "run_model" which would run everything like
-# for pvlib-python
-
 # TODO: add a way to choose pump model from this class
 
 class PVPumpSystem(object):
     """
     Class defining a PV pumping system made of:
-        modelchain : pvlib.ModelChain,
+
+    Attributes
+    ----------
+        modelchain: pvlib.ModelChain,
             //!\\ The weather file used here should not smooth the extreme
             conditions (avoid TMY or IWEC).
             /!\\ the modelchain.dc_model must be a Single Diode model if the
             system is directly-coupled
 
-        motorpump : pvpumpingsystem.Pump
+        motorpump: pvpumpingsystem.Pump
             The pump used in the system.
 
-        coupling: str, 'mppt' or 'direct'
-            represents the type of coupling between pv generator and pump
+        motorpump_model: str, default None
+            The modeling method used to model the motorpump. Can be:
+            'kou', 'arab', 'hamidat' or 'theoretical'.
+            Overwrite the motorpump.modeling_method attribute if not None.
 
-        pipes : pvpumpingsystem.PipeNetwork
+        coupling: str,
+            represents the type of coupling between pv generator and pump.
+            Can be 'mppt' or 'direct'
+
+        pipes: pvpumpingsystem.PipeNetwork
 
         reservoir: pvpumpingsystem.Reservoir
 
         consumption: pvpumpingsystem.Consumption
 
     """
-    def __init__(self, modelchain, motorpump, coupling='mppt', mppt=None,
-                 pipes=None, reservoir=None, consumption=None, idname=None):
+    def __init__(self, modelchain, motorpump,
+                 coupling='mppt',
+                 motorpump_model=None,
+                 mppt=None, pipes=None, reservoir=None,
+                 consumption=None, idname=None):
         self.modelchain = modelchain  # instance of PVArray
         self.motorpump = motorpump  # instance of Pump
         self.coupling = coupling
         self.mppt = mppt
+#        self.motorpump_model = motorpump_model
+
+        if motorpump_model is None:
+            self.motorpump_model = self.motorpump.modeling_method
+        else:
+            self.motorpump_model = motorpump_model
+            self.motorpump.modeling_method = motorpump_model
 
         if pipes is None:
             self.pipes = pn.PipeNetwork(0, 0, 0.1)  # system with null length
@@ -90,6 +106,25 @@ class PVPumpSystem(object):
             return infos
         else:
             return ('PV Pumping System :' + self.idname)
+
+    # TODO: turn it into a decorator
+    def define_motorpump_model(self, model):
+        if model != self.motorpump_model:
+            self.motorpump.modeling_method = model
+            self.motorpump_model = model
+        else:
+            return 'Already defined motorpump model'
+
+#    @property  # getter
+#    def motorpump_model(self):
+#        return self.motorpump_model
+#
+#    # setter: Permit to recalculate pump coeffs when changing the model
+#    @motorpump_model.setter
+#    def motorpump_model(self, model):
+#        if model != self.motorpump.modeling_method:
+#            self.motorpump.modeling_method = model
+#            self.motorpump_model = model
 
     def functioning_point_noiteration(self,
                                       plot=False, nb_pts=50, stop=8760):
@@ -256,7 +291,8 @@ class PVPumpSystem(object):
 # TODO: add computation of LCC
     def run_model(self):
         """
-        comprehesive modeling of the PVPS. Computes Loss of Power Supply
+        Comprehesive modeling of the PVPS. Computes Loss of Power Supply
+        and stores it as an attribute.
         """
         self.calc_efficiency()
         self.calc_reservoir()
@@ -791,6 +827,7 @@ if __name__ == '__main__':
 
     pvps1 = PVPumpSystem(chain1,
                          pump1,
+                         motorpump_model='arab',
                          coupling='direct',
                          pipes=pipes1,
                          consumption=consum1,

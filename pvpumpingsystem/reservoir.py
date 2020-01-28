@@ -9,6 +9,8 @@ import numpy as np
 import warnings
 
 
+# TODO: replace water_volume by state of charge SOC
+
 class Reservoir(object):
     """Class defining a reservoir.
 

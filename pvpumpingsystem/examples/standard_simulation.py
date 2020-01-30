@@ -20,36 +20,37 @@ import pvpumpingsystem.pvpumpsystem as pvps
 weather_montreal = (
     '../data/weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC_truncated.epw')
 
+# For entering new pump data:
+# 1) go in: "../data/pump_files/0_template_for_pump_specs.txt"
+# 2) write your specs (watch the units!),
+# 3) save it under a new name (like "name_of_pump.txt"),
+# 4) and close the file.
+#
+# To use it here then, download it with the path as follows:
 pump_sunpump = pp.Pump(path="../data/pump_files/SCB_10_150_120_BL.txt",
                        model='SCB_10',
                        modeling_method='arab')
-pump_shurflo = pp.Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163,
-                                 155, 136],
-                            24: [443, 432, 413, 401, 390, 382, 375, 371, 352,
-                                 345, 310]},
-                       tdh={12: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
-                                 54.9, 61.0, 70.1],
-                            24: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
-                                 54.9, 61.0, 70.1]},
-                       current={12: [1.2, 1.5, 1.8, 2.0, 2.1, 2.4, 2.7, 3.0,
-                                     3.3, 3.4, 3.9],
-                                24: [1.5, 1.7, 2.1, 2.4, 2.6, 2.8, 3.1, 3.3,
-                                     3.6, 3.8, 4.1]
-                                },
+pump_shurflo = pp.Pump("../data/pump_files/Shurflo_9325.txt",
                        model='Shurflo_9325',
                        motor_electrical_architecture='permanent_magnet',
                        modeling_method='arab')  # to adapt:
 
+# Retrieves PV module database
+# (Advanced parameter, do not change if not advanced user)
 CECMOD = pvlib.pvsystem.retrieve_sam('cecmod')
+
+# TODO: add function to get the right pvmodule from database with more
+# user friendly approach (like research from match between names)
+# TODO: or add way to give the pv module specs
 
 pv_module = CECMOD.Kyocera_Solar_KU270_6MCA  # to adapt: PV module
 weather_selected = weather_montreal  # to adapt:
 pump_selected = pump_sunpump  # to adapt:
-coupling_method_selected = 'mppt'  # to adapt:
+coupling_method_selected = 'mppt'  # to adapt: 'mppt' or 'direct'
 
 # ------------ PV MODELING STEPS -----------------------
 
-# PV module glazing parameters
+# PV module glazing parameters (not always given in specs)
 glass_params = {'K': 4,  # to adapt: extinction coefficient [1/m]
                 'L': 0.002,  # to adapt: thickness [m]
                 'n': 1.526}  # to adapt: refractive index
@@ -113,7 +114,7 @@ reservoir1 = rv.Reservoir(size=1000000,  # to adapt: size [L]
                           water_volume=0   # to adapt: initial water in it [L]
                           )
 
-consumption1 = cs.Consumption(constant_flow=1,
+consumption1 = cs.Consumption(constant_flow=8,
                               length=len(weatherdata1))
 
 pvps1 = pvps.PVPumpSystem(chain1,
@@ -134,9 +135,8 @@ pvps1 = pvps.PVPumpSystem(chain1,
 #                        'mppt': res2.Qlpm})
 #eff1 = pvps1.calc_efficiency()
 
-pvps1.calc_flow()
+pvps1.run_model()
 print(pvps1.flow[6:16])
-pvps1.calc_efficiency()
 
 
 # ------------ FIGURES -----------------------
@@ -152,7 +152,7 @@ pvps1.calc_efficiency()
 
 # ------------ WATER VOLUME AND FLOW RATE VS TIME ----------
 
-pvps1.calc_reservoir()
+
 
 fig, ax1 = plt.subplots()
 

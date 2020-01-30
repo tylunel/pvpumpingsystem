@@ -287,7 +287,7 @@ def sizing_maximize_flow(pv_database, pump_database,
                 output = output.append(pd.Series({'pv_module': pv_mod_name,
                                                   'M_s': M_s,
                                                   'M_p': 1,
-                                                  'pump': pump.model}))
+                                                  'pump': pump.idname}))
                 result = result.append(output, ignore_index=True)
 
     maximum_flow = result.Qlpm.max()

@@ -42,11 +42,11 @@ pvps_fixture = pvps.PVPumpSystem(None, None, coupling=coupling_method,
 
 # Pump database:
 pump_sunpump = pp.Pump(path="../data/pump_files/SCB_10_150_120_BL.txt",
-                       model='SCB_10',
+                       idname='SCB_10',
                        modeling_method=pump_modeling_method)
 
 pump_shurflo = pp.Pump(path="../data/pump_files/Shurflo_9325.txt",
-                       model='Shurflo_9325',
+                       idname='Shurflo_9325',
                        motor_electrical_architecture='permanent_magnet',
                        modeling_method=pump_modeling_method)
 # TODO: reform pump_database as DataFrame to be consistent with pv_database

@@ -26,50 +26,67 @@ class Pump:
 
     Attributes
     ----------
-        voltage_list: list
+        path: str, default=''
+            The path to the txt file with the pump specifications.
+
+        lpm: dict, default is None
+            Dictionary containing pump specs: voltage as keys and
+            flow rate as values.
+
+        tdh: dict, default is None
+            Dictionary containing pump specs: voltage as keys and
+            total dynamic head as values.
+
+        current: dict, default is None
+            Dictionary containing pump specs: voltage as keys and
+            current drawn by pump as values.
+
+        motor_electrical_architecture: str, default is None
+            'permanent_magnet', 'series_excited', 'shunt_excited',
+            'separately_excited'.
+
+        modeling_method: str, , default is 'arab'
+            name of the method used for modeling the pump.
+
+        pump_category: str, default is None
+            centrifugal or positive displacement
+
+        idname: str, default is None
+            name of the pump
+
+        price: numeric, default is None
+            The price of the pump
+
+        power_rating: numeric, default is None
+            Power rating of the pump
+
+        controller: str, default is None
+            Name of controller
+
+    Computed Attributes: (available after the object declaration)
+
+        voltage_list: list,
             list of voltage (the keys of preceding dictionaries) [V]
-        specs: pandas.DataFrame
+
+        specs: pandas.DataFrame,
             Dataframe with columns of following numeric:
                 'voltage': voltage at pump input [V]
                 'current': current at pump input [A]
                 'power': electrical power at pump input [W]]
                 'tdh': total dynamic head in the pipes at output [m]
                 'flow': pump output flow rate [liter per minute]
-        data_completeness: dict
+
+        data_completeness: dict,
             Provides some figures to assess the completeness of the data.
             (for more details, see pump.specs_completeness() )
-
-        optional attributes:
-
-        path: str,
-            The path to the txt file with specifications.
-        motor_electrical_architecture: str,
-            'permanent_magnet', 'series_excited', 'shunt_excited',
-            'separately_excited'.
-        modeling_method: str,
-            name of the method used for modeling the pump.
-        pump_category: str,
-            centrifugal or positive displacement
-        model: str
-            name of the pump
-        price: numeric
-            The price of the pump
-        power_rating: numeric
-            Power rating of the pump (in fact)
-        controller: str
-            Name of controller
 
     """
     _ids = count(1)
 
-
-# TODO: change attribute "model" by something else.
-# Confusing with "modeling_method2 attribute.
-
     def __init__(self, path='',
                  lpm=None, tdh=None, current=None,
                  motor_electrical_architecture=None,
-                 pump_category=None, model=None,
+                 pump_category=None, idname=None,
                  price=None, power_rating=None,
                  controller=None, diameter_output=None,
                  modeling_method='arab'):
@@ -78,7 +95,7 @@ class Pump:
 
         self.motor_electrical_architecture = motor_electrical_architecture
         self.pump_category = pump_category
-        self.model = model
+        self.idname = idname
         self.price = price
         self.power_rating = power_rating
         self.controller = controller
@@ -1210,7 +1227,7 @@ def _domain_P_H(specs, data_completeness):
 if __name__ == "__main__":
     # %% pump creation
     pump1 = Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
-                 model='SCB_10',
+                 idname='SCB_10',
                  modeling_method='arab',
                  motor_electrical_architecture='permanent_magnet')
 
@@ -1227,17 +1244,17 @@ if __name__ == "__main__":
                           24: [1.5, 1.7, 2.1, 2.4, 2.6, 2.8, 3.1, 3.3, 3.6,
                                3.8, 4.1]
                           },
-                 model='Shurflo_9325',
+                 idname='Shurflo_9325',
                  modeling_method='arab',
                  motor_electrical_architecture='permanent_magnet')
 
     pump3 = Pump(path="data/pump_files/Shurflo_9325.txt",
-                 model='Shurflo_9325',
+                 idname='Shurflo_9325',
                  modeling_method='arab',
                  motor_electrical_architecture='permanent_magnet')
 
     pump4 = Pump(path="data/pump_files/aquatec_swp_4000.txt",
-                 model='aquatec_swp_4000',
+                 idname='aquatec_swp_4000',
                  modeling_method='arab',
                  motor_electrical_architecture='permanent_magnet')
 

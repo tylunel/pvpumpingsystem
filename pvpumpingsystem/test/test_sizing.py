@@ -46,10 +46,10 @@ def test_sizing_maximise_flow():
     # pump databse
     pump_sunpump = pp.Pump(
         os.path.join(test_dir, "../data/pump_files/SCB_10_150_120_BL.txt"),
-        model='SCB_10')
+        idname='SCB_10')
     pump_shurflo = pp.Pump(
         os.path.join(test_dir, "../data/pump_files/Shurflo_9325.txt"),
-        model='Shurflo_9325')
+        idname='Shurflo_9325')
     pump_database = [pump_sunpump, pump_shurflo]
 
     # pv database

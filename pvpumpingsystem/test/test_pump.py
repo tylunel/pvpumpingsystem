@@ -25,7 +25,7 @@ def pumpset():
     pump_testfile = os.path.join(test_dir,
                                  '../data/pump_files/SCB_10_150_120_BL.txt')
     return pp.Pump(path=pump_testfile,
-                   model='SCB_10',
+                   idname='SCB_10',
                    modeling_method='arab',
                    motor_electrical_architecture='permanent_magnet')
 

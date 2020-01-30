@@ -28,10 +28,10 @@ weather_montreal = (
 #
 # To use it here then, download it with the path as follows:
 pump_sunpump = pp.Pump(path="../data/pump_files/SCB_10_150_120_BL.txt",
-                       model='SCB_10',
+                       idname='SCB_10',
                        modeling_method='arab')
 pump_shurflo = pp.Pump("../data/pump_files/Shurflo_9325.txt",
-                       model='Shurflo_9325',
+                       idname='Shurflo_9325',
                        motor_electrical_architecture='permanent_magnet',
                        modeling_method='arab')  # to adapt:
 

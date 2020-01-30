@@ -38,8 +38,8 @@ def compound_polynomial_1_2(input_val, a1, a2, a3, b1, b2, b3):
     equation on y.
     """
     x, y = input_val[0], input_val[1]
-    a = polynomial_3(y, a1, a2, a3)
-    b = polynomial_3(y, b1, b2, b3)
+    a = polynomial_2(y, a1, a2, a3)
+    b = polynomial_2(y, b1, b2, b3)
     return a + b*x
 
 
@@ -62,9 +62,9 @@ def compound_polynomial_2_2(input_val, a1, a2, a3, b1, b2, b3, c1, c2, c3):
     equation on y.
     """
     x, y = input_val[0], input_val[1]
-    a = polynomial_3(y, a1, a2, a3)
-    b = polynomial_3(y, b1, b2, b3)
-    c = polynomial_3(y, c1, c2, c3)
+    a = polynomial_2(y, a1, a2, a3)
+    b = polynomial_2(y, b1, b2, b3)
+    c = polynomial_2(y, c1, c2, c3)
     return a + b*x + c*x**2
 
 

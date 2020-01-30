@@ -62,6 +62,10 @@ class Pump:
     """
     _ids = count(1)
 
+
+# TODO: change attribute "model" by something else.
+# Confusing with "modeling_method2 attribute.
+
     def __init__(self, path='',
                  lpm=None, tdh=None, current=None,
                  motor_electrical_architecture=None,
@@ -297,7 +301,12 @@ class Pump:
         """
 
         coeffs = self.coeffs['coeffs_f1']
-        funct_mod = function_models.compound_polynomial_1_3
+
+        if self.data_completeness['data_number'] >= 12 \
+                and self.data_completeness['voltage_number'] >= 3:
+            funct_mod = function_models.compound_polynomial_1_3
+        else:
+            funct_mod = function_models.compound_polynomial_1_2
 
         # domain of V and tdh and gathering in one single variable
         dom = _domain_V_H(self.specs, self.data_completeness)
@@ -542,6 +551,8 @@ class Pump:
         coeffs = self.coeffs['coeffs_f2']
         if len(coeffs) == 12:
             funct_mod = function_models.compound_polynomial_2_3
+        elif len(coeffs) == 9:
+            funct_mod = function_models.compound_polynomial_2_2
         elif len(coeffs) == 8:
             funct_mod = function_models.compound_polynomial_1_3
 
@@ -796,7 +807,7 @@ def _curves_coeffs_Arab06(specs, data_completeness):
         funct_mod_1 = function_models.compound_polynomial_1_3
         funct_mod_2 = function_models.compound_polynomial_2_3
     # Original model from [1]
-    if data_completeness['data_number'] >= 9 \
+    elif data_completeness['data_number'] >= 9 \
             and data_completeness['voltage_number'] >= 3:
         funct_mod_1 = function_models.compound_polynomial_1_2
         funct_mod_2 = function_models.compound_polynomial_2_2

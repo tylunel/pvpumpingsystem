@@ -298,6 +298,8 @@ def sizing_maximize_flow(pv_database, pump_database,
     if len(preselection.index) > 1:
         minimum_p_unused = preselection.P_unused.min()
         selection = preselection[preselection.P_unused == minimum_p_unused]
+    else:
+        selection = preselection
 
     return (selection, result)
 

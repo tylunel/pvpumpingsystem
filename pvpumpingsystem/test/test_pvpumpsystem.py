@@ -117,5 +117,5 @@ def test_functioning_point_noiteration(pvps_set_up):
 
 
 if __name__ == '__main__':
-    # test all the tests in the module
+    # runs all the tests in this module
     pytest.main(['test_pvpumpsystem.py'])

@@ -71,11 +71,13 @@ class PVPumpSystem(object):
         self.mppt = mppt
 #        self.motorpump_model = motorpump_model
 
-        if motorpump_model is None:
+        if motorpump_model is None and motorpump is not None:
             self.motorpump_model = self.motorpump.modeling_method
-        else:
+        elif motorpump is not None:
             self.motorpump_model = motorpump_model
             self.motorpump.modeling_method = motorpump_model
+        else:  # motorpump is None (can happen in initialization of a sizing)
+            pass
 
         if pipes is None:
             self.pipes = pn.PipeNetwork(0, 0, 0.1)  # system with null length

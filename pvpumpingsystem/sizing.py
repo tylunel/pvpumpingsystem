@@ -16,49 +16,52 @@ import pvpumpingsystem.pipenetwork as pn
 import pvpumpingsystem.reservoir as rv
 import pvpumpingsystem.consumption as cs
 import pvpumpingsystem.pvpumpsystem as pvps
+import pvpumpingsystem.pvgeneration as pvgen
 # from pvpumpingsystem import errors
 
 
-def shrink_pv_database(provider, nb_elt_kept=10):
-    """
-    Reduce the size of database by keeping only pv modules made by
-    the given provider, and keep a certain number of pv modules spread
-    in the range of power available.
-
-    Parameters
-    ----------
-    provider: str, regex can be used
-        Name of the provider(s) wanted.
-        For example: "Canadian_Solar|Zytech"
-
-    nb_elt_kept: integer
-        Number of element kept in the shrunk database.
-
-    Returns
-    -------
-    * pandas.DataFrame: Dataframe with the pv modules kept.
-
-    """
-    # transpose DataFrame
-    CECMOD = pvlib.pvsystem.retrieve_sam('cecmod').transpose()
-
-    # keep only modules from specified provider
-    pv_database_provider = CECMOD[CECMOD.index.str.contains(provider)]
-    pv_database_provider_sorted = pv_database_provider.sort_values('STC')
-
-    # change the index to numbers (former index kept in column 'index')
-    pv_database_provider_sorted.reset_index(drop=False, inplace=True)
-    index_array = np.linspace(0, pv_database_provider_sorted.index.max(),
-                              num=nb_elt_kept).round()
-    pv_database_kept = pv_database_provider_sorted.iloc[index_array]
-    # re-change the index to pv module names
-    pv_database_kept.index = pv_database_kept['index']
-    del pv_database_kept['index']
-
-    # re-tranpose DataFrame
-    pv_database_kept = pv_database_kept.transpose()
-
-    return pv_database_kept
+# This function is not really useful anymore. Giving a list as pv database seems
+# simpler.
+#def shrink_pv_database(provider, nb_elt_kept=10):
+#    """
+#    Reduce the size of database by keeping only pv modules made by
+#    the given provider, and keep a certain number of pv modules spread
+#    in the range of power available.
+#
+#    Parameters
+#    ----------
+#    provider: str, regex can be used
+#        Name(s) of the provider(s) wanted.
+#        For example: "Canadian_Solar|Zytech"
+#
+#    nb_elt_kept: integer
+#        Number of element kept in the shrunk database.
+#
+#    Returns
+#    -------
+#    * pandas.DataFrame: Dataframe with the pv modules kept.
+#
+#    """
+#    # transpose DataFrame
+#    CECMOD = pvlib.pvsystem.retrieve_sam('cecmod').transpose()
+#
+#    # keep only modules from specified provider
+#    pv_database_provider = CECMOD[CECMOD.index.str.contains(provider)]
+#    pv_database_provider_sorted = pv_database_provider.sort_values('STC')
+#
+#    # change the index to numbers (former index kept in column 'index')
+#    pv_database_provider_sorted.reset_index(drop=False, inplace=True)
+#    index_array = np.linspace(0, pv_database_provider_sorted.index.max(),
+#                              num=nb_elt_kept).round()
+#    pv_database_kept = pv_database_provider_sorted.iloc[index_array]
+#    # re-change the index to pv module names
+#    pv_database_kept.index = pv_database_kept['index']
+#    del pv_database_kept['index']
+#
+#    # re-tranpose DataFrame
+#    pv_database_kept = pv_database_kept.transpose()
+#
+#    return pv_database_kept
 
 
 def shrink_weather(weather_data, nb_elt=48):
@@ -181,16 +184,16 @@ def run_pv_model(M_s, M_p, weather_data, weather_metadata, pv_module,
     return chain1
 
 
-def run_water_pumped(pv_modelchain, pump, coupling_method,
+def run_water_pumped(pvgeneration, pump, coupling_method,
                      consumption_data, pipes_network):
     """
     Compute output flow from the power produced by a pv generator.
 
     Parameters
     ----------
-    pv_modelchain: pvlib.modelchain.Modelchain,
+    pvgeneration: pvpumpingsystem.pvgeneration.PVGeneration,
         Object with the pv generator output characteristics (dc power,
-        diode_parameters, ...). Typically comes from sizing.run_pv_model().
+        diode_parameters, ...)..
 
     pump: pvpumpingsystem.pump.Pump,
         Pump to use for modelling the output.
@@ -211,10 +214,11 @@ def run_water_pumped(pv_modelchain, pump, coupling_method,
         and the total power unused by the pump 'P_unused'.
 
     """
+
     pipes1 = pipes_network
     reservoir1 = rv.Reservoir(1000000, 0)
 
-    pvps1 = pvps.PVPumpSystem(pv_modelchain, pump, coupling=coupling_method,
+    pvps1 = pvps.PVPumpSystem(pvgeneration, pump, coupling=coupling_method,
                               pipes=pipes1,
                               consumption=consumption_data,
                               reservoir=reservoir1)
@@ -270,24 +274,33 @@ def sizing_maximize_flow(pv_database, pump_database,
     # Factorial computations
     for pv_mod_name in tqdm.tqdm(pv_database,
                                  desc='Research of best combination: ',
-                                 total=len(pv_database.columns)):
+                                 total=len(pv_database)):
         # TODO add method to guess M_s from rated power of pump and of pv mod
-        for M_s in np.arange(1, 8):
+        for M_s in np.arange(1, 4):
             # TODO: add ways to look for the best tilt of arrays
-            pv_chain = run_pv_model(M_s, 1,
-                                    weather_data, weather_metadata,
-                                    pv_database[pv_mod_name],
-                                    pv_array_tilt=weather_metadata['latitude']
-                                    )
+#            pv_chain = run_pv_model(M_s, 1,
+#                                    weather_data, weather_metadata,
+#                                    pv_database[pv_mod_name],
+#                                    pv_array_tilt=weather_metadata['latitude']
+#                                    )
+            pvgen1 = pvgen.PVGeneration({'weatherdata': weather_data,
+                                         'metadata': weather_metadata},
+                                        pv_module_name=pv_mod_name,
+                                        modules_per_string=M_s,
+                                        strings_in_parallel=1)
+            pvgen1.run_model()
+
             for pump in pump_database:
-                output = run_water_pumped(pv_chain, pump,
+                output = run_water_pumped(pvgen1,
+                                          pump,
                                           coupling_method,
                                           consumption_data,
                                           pipes_network)
-                output = output.append(pd.Series({'pv_module': pv_mod_name,
-                                                  'M_s': M_s,
-                                                  'M_p': 1,
-                                                  'pump': pump.idname}))
+                output = output.append(pd.Series({
+                      'pv_module': pvgen1.pv_module.name,
+                      'M_s': M_s,
+                      'M_p': 1,
+                      'pump': pump.idname}))
                 result = result.append(output, ignore_index=True)
 
     maximum_flow = result.Qlpm.max()
@@ -304,18 +317,64 @@ def sizing_maximize_flow(pv_database, pump_database,
     return (selection, result)
 
 
-def sizing_minimize_cost(lpsp):
+def sizing_minimize_llp(pv_database, pump_database,
+                        weather_data, weather_metadata,
+                        pvps_fixture):
+    """
+    ....
+    """
+    result = pd.DataFrame()
+
+    for pv_mod_name in tqdm.tqdm(pv_database,
+                                 desc='Research of best combination: ',
+                                 total=len(pv_database)):
+        # initalization of variables
+        M_s = 0
+        llp = 1
+
+        # process
+        while llp > 0:
+            M_s += 1
+            pvgen1 = pvgen.PVGeneration({'weatherdata': weather_data,
+                                         'metadata': weather_metadata},
+                                        pv_module_name=pv_mod_name,
+                                        modules_per_string=M_s,
+                                        strings_in_parallel=1)
+            pvgen1.run_model()
+
+            pvps_fixture.pvgeneration = pvgen1
+
+            for pump in pump_database:
+                pvps_fixture.motorpump = pump
+                pvps_fixture.run_model()
+
+                result = result.append(pd.Series({
+                                       'pv_module': pvgen1.pv_module.name,
+                                       'M_s': M_s,
+                                       'M_p': 1,
+                                       'pump': pump.idname,
+                                       'llp': pvps_fixture.llp}),
+                                       ignore_index=True)
+            # take the smallest llp of all results
+            llp = result.llp.min()
+
+    return result
+
+
+
+
+def sizing_minimize_cost(llp):
     """
     Sizing procedure optimizing the cost of the pumping station.
 
     Parameter
     ---------
     lpsp: float between 0 and 1
-        Acceptable loss of power supply probability (LPSP) for the system,
+        Acceptable loss of load probability (LLP) for the system,
         that is to say the acceptable water shortage probability.
         If the system is aimed at giving drinking water, it should be 0.
         If it is for agriculture, the acceptable shortage probability
-        will depend on the type of culture.
+        will depend on the type of crop.
     """
     raise NotImplementedError
 
@@ -327,47 +386,47 @@ if __name__ == '__main__':
         'data/weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw')
     weather_data, weather_metadata = pvlib.iotools.epw.read_epw(
             weather_path, coerce_year=2005)
+    weather_short = shrink_weather(weather_data)
+
     # Consumption input
     consumption_data = cs.Consumption(constant_flow=1,
-                                      length=len(weather_data))
+                                      length=len(weather_short))
+
     # Pipes set-up
     pipes = pn.PipeNetwork(h_stat=20, l_tot=100, diam=0.08,
                            material='plastic', optimism=True)
-    # Modeling method choices
-    pump_modeling_method = 'arab'
-    coupling_method = 'mppt'
 
-    pvps1 = pvps.PVPumpSystem(None, None, coupling=coupling_method,
-                              pipes=pipes, consumption=consumption_data)
+    pvps1 = pvps.PVPumpSystem(None,
+                              None,
+                              coupling='mppt',
+                              motorpump_model='arab',
+                              pipes=pipes,
+                              consumption=consumption_data)
 
     # ------------ PUMP DATABASE ---------------------
     pump_sunpump = pp.Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
-                           model='SCB_10',
-                           modeling_method=pump_modeling_method)
+                           idname='SCB_10')
 
     pump_shurflo = pp.Pump(path="data/pump_files/Shurflo_9325.txt",
-                           model='Shurflo_9325',
-                           motor_electrical_architecture='permanent_magnet',
-                           modeling_method=pump_modeling_method)
+                           idname='Shurflo_9325',
+                           motor_electrical_architecture='permanent_magnet')
     # TODO: reform pump_database as DataFrame to be consistent with pv_database
-    pump_database = [pump_sunpump, pump_shurflo]
+    pump_database = [pump_sunpump,
+                     pump_shurflo]
 
     # ------------ PV DATABASE ---------------------
-    # use regex to add more than one provider
-    provider = "Canadian_Solar"
-    nb_elt_kept = 3
-    pv_database = shrink_pv_database(provider, nb_elt_kept)
 
+    pv_database = ['Canadian_solar 200',
+                   'Canadian_solar 340']
 
     # -- TESTS (Temporary) --
 
-    weather_short = shrink_weather(weather_data)
-#    print(pv_database)
-#    pv_mod = "Canadian_Solar_Inc__CS5C_80M"
-#    run_pv_model(2, 1, weather_data, weather_metadata, pv_mod)
+#    selection, total = sizing_maximize_flow(pv_database, pump_database,
+#                                            weather_short, weather_metadata,
+#                                            pvps1)
 
-    selection, total = sizing_maximize_flow(pv_database, pump_database,
+    total = sizing_minimize_llp(pv_database, pump_database,
                                             weather_short, weather_metadata,
                                             pvps1)
 
-    print(selection)
+    print(total)

@@ -137,7 +137,7 @@ class Pump:
         self.modeling_method = modeling_method
 
     def __repr__(self):
-        affich = "model: " + str(self.model) + \
+        affich = "name: " + str(self.idname) + \
                  "\npump_category: " + str(self.pump_category) + \
                  "\nprice: " + str(self.price) + \
                  "\npower rating (HP): " + str(self.power_rating) + \

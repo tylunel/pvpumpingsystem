@@ -20,6 +20,7 @@ import pvpumpingsystem.pump as pp
 import pvpumpingsystem.pipenetwork as pn
 import pvpumpingsystem.reservoir as rv
 import pvpumpingsystem.consumption as cs
+import pvpumpingsystem.pvgeneration as pvgen
 from pvpumpingsystem import errors
 
 
@@ -27,19 +28,17 @@ from pvpumpingsystem import errors
 # direct-coupling goes with SDM. (if no check, error can be hard to fine
 # for user)
 
-# TODO: add a way to choose pump model from this class
-
 class PVPumpSystem(object):
     """
     Class defining a PV pumping system made of:
 
     Attributes
     ----------
-        modelchain: pvlib.ModelChain,
+        pvgeneration: pvpumpingsystem.PVGeneration,
             //!\\ The weather file used here should not smooth the extreme
             conditions (avoid TMY or IWEC).
-            /!\\ the modelchain.dc_model must be a Single Diode model if the
-            system is directly-coupled
+            /!\\ the pvgeneration.modelchain.dc_model must be a Single Diode
+            model if the system is directly-coupled
 
         motorpump: pvpumpingsystem.Pump
             The pump used in the system.
@@ -60,12 +59,14 @@ class PVPumpSystem(object):
         consumption: pvpumpingsystem.Consumption
 
     """
-    def __init__(self, modelchain, motorpump,
+    def __init__(self,
+                 pvgeneration,
+                 motorpump,
                  coupling='mppt',
                  motorpump_model=None,
                  mppt=None, pipes=None, reservoir=None,
                  consumption=None, idname=None):
-        self.modelchain = modelchain  # instance of PVArray
+        self.pvgeneration = pvgeneration  # instance of PVArray
         self.motorpump = motorpump  # instance of Pump
         self.coupling = coupling
         self.mppt = mppt
@@ -103,8 +104,8 @@ class PVPumpSystem(object):
 
     def __repr__(self):
         if self.idname is None:
-            infos = ('PVPSystem made of : \n modelchain: {0} \npump: {1})'
-                     .format(self.modelchain, self.motorpump.model))
+            infos = ('PVPSystem made of : \n pvgeneration: {0} \npump: {1})'
+                     .format(self.pvgeneration, self.motorpump.model))
             return infos
         else:
             return ('PV Pumping System :' + self.idname)
@@ -157,9 +158,9 @@ class PVPumpSystem(object):
         -------------
         - takes ~10sec to compute 8760 iterations
         """
-        params = self.modelchain.diode_params[0:stop]
-        M_s = self.modelchain.system.modules_per_string
-        M_p = self.modelchain.system.strings_per_inverter
+        params = self.pvgeneration.modelchain.diode_params[0:stop]
+        M_s = self.pvgeneration.system.modules_per_string
+        M_p = self.pvgeneration.system.strings_per_inverter
 
         load_fctI, intervalsVH = self.motorpump.functIforVH()
 
@@ -168,31 +169,37 @@ class PVPumpSystem(object):
         tdh = self.pipes.h_stat
 
         pdresult = functioning_point_noiteration(
-                params, M_s, M_p, load_fctIfromVH=load_fctI,
+                params,
+                M_s, M_p,
+                load_fctIfromVH=load_fctI,
                 load_interval_V=intervalsVH['V'](tdh),
-                pv_interval_V=[0, self.modelchain.dc.v_oc.max() * M_s],
+                pv_interval_V=[
+                    0, self.pvgeneration.modelchain.dc.v_oc.max() * M_s],
                 tdh=tdh)
 
         if plot:
             plt.figure()
             # domain of interest on V
             # (*1.1 is for the case when conditions are better than stc)
-            v_high_boundary = self.modelchain.system.module.V_oc_ref * M_s*1.1
+            v_high_boundary = self.pvgeneration.system.module.V_oc_ref * \
+                M_s*1.1
             Vrange_pv = np.arange(0, v_high_boundary)
             # IV curve of PV array for good conditions
             IL, I0, Rs, Rsh, nNsVth = \
-                self.modelchain.system.calcparams_desoto(1000, 25)
-            Ivect_pv_good = self.modelchain.system.i_from_v(Rsh, Rs, nNsVth,
-                                                            Vrange_pv,
-                                                            I0, IL)
+                self.pvgeneration.system.calcparams_desoto(1000, 25)
+            Ivect_pv_good = self.pvgeneration.system.i_from_v(Rsh, Rs,
+                                                              nNsVth,
+                                                              Vrange_pv,
+                                                              I0, IL)
             plt.plot(Vrange_pv, Ivect_pv_good,
                      label='pv array with S = 1000 W and Tcell = 25°C')
             # IV curve of PV array for poor conditions
             IL, I0, Rs, Rsh, nNsVth = \
-                self.modelchain.system.calcparams_desoto(100, 60)
-            Ivect_pv_poor = self.modelchain.system.i_from_v(Rsh, Rs, nNsVth,
-                                                            Vrange_pv,
-                                                            I0, IL)
+                self.pvgeneration.system.calcparams_desoto(100, 60)
+            Ivect_pv_poor = self.pvgeneration.system.i_from_v(Rsh, Rs,
+                                                              nNsVth,
+                                                              Vrange_pv,
+                                                              I0, IL)
             plt.plot(Vrange_pv, Ivect_pv_poor,
                      label='pv array with S = 100 W and Tcell = 60°C')
             # IV curve of load (pump)
@@ -238,13 +245,13 @@ class PVPumpSystem(object):
         atol=0.1lpm
         """
         if self.coupling == 'mppt':
-            self.flow = calc_flow_mppt_coupled(self.modelchain,
+            self.flow = calc_flow_mppt_coupled(self.pvgeneration,
                                                self.motorpump,
                                                self.pipes,
                                                atol=atol, stop=stop,
                                                **kwargs)
         elif self.coupling == 'direct':
-            self.flow = calc_flow_directly_coupled(self.modelchain,
+            self.flow = calc_flow_directly_coupled(self.pvgeneration,
                                                    self.motorpump,
                                                    self.pipes,
                                                    atol=atol, stop=stop,
@@ -269,17 +276,18 @@ class PVPumpSystem(object):
 
         """
 
-        module_area = self.modelchain.system.module.A_c
-        M_s = self.modelchain.system.modules_per_string
-        M_p = self.modelchain.system.strings_per_inverter
+        module_area = self.pvgeneration.system.module.A_c
+        M_s = self.pvgeneration.system.modules_per_string
+        M_p = self.pvgeneration.system.strings_per_inverter
         pv_area = module_area * M_s * M_p
 
         if self.flow is None:
             self.calc_flow()
 
-        self.efficiency = calc_efficiency(self.flow,
-                                          self.modelchain.effective_irradiance,
-                                          pv_area)
+        self.efficiency = calc_efficiency(
+            self.flow,
+            self.pvgeneration.modelchain.effective_irradiance,
+            pv_area)
 
     def calc_reservoir(self):
         """Wrapper of pvlib.pvpumpsystem.calc_reservoir.
@@ -296,6 +304,10 @@ class PVPumpSystem(object):
         Comprehesive modeling of the PVPS. Computes Loss of Power Supply
         and stores it as an attribute.
         """
+        if not hasattr(self.pvgeneration.modelchain, 'diode_params'):
+            self.pvgeneration.run_model()
+
+        self.calc_flow()
         self.calc_efficiency()
         self.calc_reservoir()
 
@@ -303,7 +315,7 @@ class PVPumpSystem(object):
         total_water_lacking = -min(0, sum(self.water_stored.extra_water))
 
         # water shortage probability
-        self.lpsp = total_water_lacking / total_water_required
+        self.llp = total_water_lacking / total_water_required
 
 
 def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
@@ -407,7 +419,7 @@ def functioning_point_noiteration(params,
     ----------
     params: pd.Dataframe
         Dataframe containing the 5 diode parameters. Typically comes from
-        ModelChain.diode_params
+        PVGeneration.ModelChain.diode_params
 
     modules_per_string: numeric
         Number of modules in series in a string
@@ -496,7 +508,7 @@ def functioning_point_noiteration(params,
     return pdresult
 
 
-def calc_flow_directly_coupled(modelchain, motorpump, pipes,
+def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
                                atol=0.1,
                                stop=8760,
                                **kwargs):
@@ -505,8 +517,8 @@ def calc_flow_directly_coupled(modelchain, motorpump, pipes,
 
     Parameters
     ----------
-    modelchain: pvlib.modelchain.ModelChain object
-        Chain of modeling of the PV generator.
+    pvgeneration: pvpumpingsystem.pvgeneration.PVGeneration object
+        The PV generator object
 
     motorpump: pump.Pump object
         Pump associated with the PV generator
@@ -534,6 +546,7 @@ def calc_flow_directly_coupled(modelchain, motorpump, pipes,
     - takes ~15 sec for computing 8760 iterations with atol=0.1lpm
     """
     result = []
+    modelchain = pvgeneration.modelchain
     # retrieve specific functions of motorpump V(I,H) and Q(V,H)
     M_s = modelchain.system.modules_per_string
     M_p = modelchain.system.strings_per_inverter
@@ -603,7 +616,7 @@ def calc_flow_directly_coupled(modelchain, motorpump, pipes,
     return pdresult
 
 
-def calc_flow_mppt_coupled(modelchain, motorpump, pipes, mppt=None,
+def calc_flow_mppt_coupled(pvgeneration, motorpump, pipes, mppt=None,
                            atol=0.1,
                            stop=8760,
                            **kwargs):
@@ -611,8 +624,8 @@ def calc_flow_mppt_coupled(modelchain, motorpump, pipes, mppt=None,
 
     Parameters
     ----------
-    modelchain: pvlib.modelchain.ModelChain object
-        Chain of modeling of the PV generator.
+    pvgeneration: pvpumpingsystem.pvgeneration.PVGeneration
+        The PV generator.
 
     motorpump: pump.Pump object
         Pump associated with the PV generator
@@ -640,6 +653,7 @@ def calc_flow_mppt_coupled(modelchain, motorpump, pipes, mppt=None,
     - takes ~15 sec for computing 8760 iterations with atol=0.1lpm
     """
     result = []
+    modelchain = pvgeneration.modelchain
 
     fctQwithPH, sigma2 = motorpump.functQforPH()
 
@@ -759,7 +773,11 @@ def calc_reservoir(reservoir, Q_pumped, Q_consumption):
 
     # TODO: replace by process in Consumption class
     timezone = Q_pumped.index.tz
-    Q_consumption.index = Q_consumption.index.tz_localize(timezone)
+
+    # test if Q_consumption.index is naive iff:
+    if Q_consumption.index.tzinfo is None or \
+            Q_consumption.index.tzinfo.utcoffset(Q_consumption.index) is None:
+        Q_consumption.index = Q_consumption.index.tz_localize(timezone)
 
     # diff in volume
     Q_diff = Q_pumped - Q_consumption
@@ -778,56 +796,43 @@ def calc_reservoir(reservoir, Q_pumped, Q_consumption):
 
 if __name__ == '__main__':
     # %% set up
-    CECMOD = pvlib.pvsystem.retrieve_sam('cecmod')
 
-    glass_params = {'K': 4, 'L': 0.002, 'n': 1.526}
-    pvsys1 = pvlib.pvsystem.PVSystem(
+    pvgen1 = pvgen.PVGeneration(
+            pv_module_name='kyocera solar KU270 6MCA',
             surface_tilt=45,
             surface_azimuth=180,
             albedo=0,
-            surface_type=None,
-            module=CECMOD.Kyocera_Solar_KU270_6MCA,
-            module_parameters={**dict(CECMOD.Kyocera_Solar_KU270_6MCA),
-                               **glass_params},
             modules_per_string=3,
             strings_per_inverter=2,
-            inverter=None,
-            inverter_parameters={'pdc0': 700},
-            racking_model='open_rack_cell_glassback',
-            losses_parameters=None,
-            name=None
-            )
-
-    weatherdata1, metadata1 = pvlib.iotools.epw.read_epw(
-        'data/weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC_truncated.epw',
-        coerce_year=2005)
-    locat1 = pvlib.location.Location.from_epw(metadata1)
-
-    chain1 = pvlib.modelchain.ModelChain(
-             system=pvsys1, location=locat1,
-             orientation_strategy=None,
-             clearsky_model='ineichen',
-             transposition_model='haydavies',
-             solar_position_method='nrel_numpy',
-             airmass_model='kastenyoung1989',
-             dc_model='desoto',
-             ac_model='pvwatts',
-             aoi_model='physical',
-             spectral_model='first_solar',
-             temperature_model='sapm',
-             losses_model='pvwatts', name=None)
-
-    chain1.run_model(times=weatherdata1.index, weather=weatherdata1)
+            weather_data=('data/weather_files/CAN_PQ_Montreal.Intl.'
+                          'AP.716270_CWEC_truncated.epw'),
+            orientation_strategy=None,
+            clearsky_model='ineichen',
+            transposition_model='haydavies',
+            solar_position_method='nrel_numpy',
+            airmass_model='kastenyoung1989',
+            dc_model='desoto',
+            ac_model='pvwatts',
+            aoi_model='physical',
+            spectral_model='first_solar',
+            temperature_model='sapm',
+            losses_model='pvwatts')
 
     pump1 = pp.Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
                     modeling_method='arab',
                     motor_electrical_architecture='permanent_magnet')
-    pipes1 = pn.PipeNetwork(h_stat=10, l_tot=100, diam=0.08,
-                            material='plastic', optimism=True)
-    reserv1 = rv.Reservoir(1000000, 0)
-    consum1 = cs.Consumption(constant_flow=1, length=len(weatherdata1))
 
-    pvps1 = PVPumpSystem(chain1,
+    pipes1 = pn.PipeNetwork(h_stat=10,
+                            l_tot=100,
+                            diam=0.08,
+                            material='plastic',
+                            optimism=True)
+
+    reserv1 = rv.Reservoir(1000000, 0)
+    consum1 = cs.Consumption(constant_flow=1,
+                             length=len(pvgen1.weatherdata))
+
+    pvps1 = PVPumpSystem(pvgen1,
                          pump1,
                          motorpump_model='arab',
                          coupling='direct',
@@ -838,7 +843,7 @@ if __name__ == '__main__':
 # %% thing to try
     pvps1.run_model()
     print(pvps1.water_stored)
-    print(pvps1.lpsp)
+    print(pvps1.llp)
 
 #    warnings.filterwarnings("ignore")  # disable all warnings
 #    pvps1.calc_flow()

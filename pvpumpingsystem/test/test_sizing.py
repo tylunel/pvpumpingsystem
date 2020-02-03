@@ -22,15 +22,6 @@ def pvps_set_up():
     return None
 
 
-def test_shrink_pv_database():
-    pv_database_shrunk = siz.shrink_pv_database('Canadian_Solar',
-                                                nb_elt_kept=3)
-    expected_list = ['Canadian_Solar_Inc__CS5C_80M',
-                     'Canadian_Solar_Inc__CS6K_275P_AG',
-                     'Canadian_Solar_Inc__CS1U_430MS']
-    assert list(pv_database_shrunk) == expected_list
-
-
 def test_shrink_weather():
     weather_path = os.path.join(
         test_dir,
@@ -53,9 +44,9 @@ def test_sizing_maximise_flow():
     pump_database = [pump_sunpump, pump_shurflo]
 
     # pv database
-    provider = "Canadian_Solar"
-    nb_elt_kept = 3
-    pv_database = siz.shrink_pv_database(provider, nb_elt_kept)
+    pv_database = ['Canadian_Solar_Inc__CS5C_80M',
+                   'Canadian_Solar_Inc__CS6K_275P_AG',
+                   'Canadian_Solar_Inc__CS1U_430MS']
 
     # weather data
     weather_path = os.path.join(

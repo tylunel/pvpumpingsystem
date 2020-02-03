@@ -20,50 +20,6 @@ import pvpumpingsystem.pvgeneration as pvgen
 # from pvpumpingsystem import errors
 
 
-# This function is not really useful anymore. Giving a list as pv database seems
-# simpler.
-#def shrink_pv_database(provider, nb_elt_kept=10):
-#    """
-#    Reduce the size of database by keeping only pv modules made by
-#    the given provider, and keep a certain number of pv modules spread
-#    in the range of power available.
-#
-#    Parameters
-#    ----------
-#    provider: str, regex can be used
-#        Name(s) of the provider(s) wanted.
-#        For example: "Canadian_Solar|Zytech"
-#
-#    nb_elt_kept: integer
-#        Number of element kept in the shrunk database.
-#
-#    Returns
-#    -------
-#    * pandas.DataFrame: Dataframe with the pv modules kept.
-#
-#    """
-#    # transpose DataFrame
-#    CECMOD = pvlib.pvsystem.retrieve_sam('cecmod').transpose()
-#
-#    # keep only modules from specified provider
-#    pv_database_provider = CECMOD[CECMOD.index.str.contains(provider)]
-#    pv_database_provider_sorted = pv_database_provider.sort_values('STC')
-#
-#    # change the index to numbers (former index kept in column 'index')
-#    pv_database_provider_sorted.reset_index(drop=False, inplace=True)
-#    index_array = np.linspace(0, pv_database_provider_sorted.index.max(),
-#                              num=nb_elt_kept).round()
-#    pv_database_kept = pv_database_provider_sorted.iloc[index_array]
-#    # re-change the index to pv module names
-#    pv_database_kept.index = pv_database_kept['index']
-#    del pv_database_kept['index']
-#
-#    # re-tranpose DataFrame
-#    pv_database_kept = pv_database_kept.transpose()
-#
-#    return pv_database_kept
-
-
 def shrink_weather(weather_data, nb_elt=48):
     """
     Create a new weather_data object representing the range of weather that

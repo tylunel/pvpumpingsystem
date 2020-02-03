@@ -17,7 +17,7 @@ import pvpumpingsystem.reservoir as rv
 import pvpumpingsystem.consumption as cs
 import pvpumpingsystem.pvpumpsystem as pvps
 import pvpumpingsystem.pvgeneration as pvgen
-# from pvpumpingsystem import errors
+from pvpumpingsystem import errors
 
 
 def shrink_weather(weather_data, nb_elt=48):
@@ -234,11 +234,6 @@ def sizing_maximize_flow(pv_database, pump_database,
         # TODO add method to guess M_s from rated power of pump and of pv mod
         for M_s in np.arange(1, 4):
             # TODO: add ways to look for the best tilt of arrays
-#            pv_chain = run_pv_model(M_s, 1,
-#                                    weather_data, weather_metadata,
-#                                    pv_database[pv_mod_name],
-#                                    pv_array_tilt=weather_metadata['latitude']
-#                                    )
             pvgen1 = pvgen.PVGeneration({'weatherdata': weather_data,
                                          'metadata': weather_metadata},
                                         pv_module_name=pv_mod_name,
@@ -275,9 +270,48 @@ def sizing_maximize_flow(pv_database, pump_database,
 
 def sizing_minimize_llp(pv_database, pump_database,
                         weather_data, weather_metadata,
-                        pvps_fixture):
+                        pvps_fixture,
+                        llp_accepted=0.01,
+                        M_s_guess=1):
     """
-    ....
+    Function returning the configurations of PV modules and pump
+    that insure a Loss of Load Probability (llp) inferior to the one given.
+
+    Parameters
+    ----------
+    pv_database: list of strings,
+        List of pv module names to try. If name is not eact, it will search
+        a pv module database to find the best match.
+
+    pump_database: list of pvpumpingssytem.Pump objects
+        List of motor-pump to try.
+
+    weather_data: pd.DataFrame
+        Weather file of the location.
+        Typically comes from pvlib.iotools.epw.read_epw()
+
+    weather_metadata: dict
+        Weather file metadata of the location.
+        Typically comes from pvlib.iotools.epw.read_epw()
+
+    pvps_fixture: pvpumpingsystem.PVPumpSystem object
+        The PV pumping system to size.
+
+    llp_accepted: float, between 0 and 1
+        Maximum Loss of Load Probability that can be accepted.
+
+    M_S_guess: integer,
+        Estimated number of modules in series in the PV array. Will be sized
+        by the function.
+
+    Returns
+    -------
+    tuple with:
+        total: pd.Dataframe,
+            All configurations tested.
+
+        selection: pd.DataFrame,
+            The configurations that respect the maximum llp accepted.
     """
     result = pd.DataFrame()
 
@@ -285,12 +319,12 @@ def sizing_minimize_llp(pv_database, pump_database,
                                  desc='Research of best combination: ',
                                  total=len(pv_database)):
         # initalization of variables
-        M_s = 0
+        M_s = M_s_guess
         llp = 1
+        result_per_mod = pd.DataFrame()
 
-        # process
-        while llp > 0:
-            M_s += 1
+        # process for each module
+        while llp > llp_accepted:
             pvgen1 = pvgen.PVGeneration({'weatherdata': weather_data,
                                          'metadata': weather_metadata},
                                         pv_module_name=pv_mod_name,
@@ -302,21 +336,38 @@ def sizing_minimize_llp(pv_database, pump_database,
 
             for pump in pump_database:
                 pvps_fixture.motorpump = pump
-                pvps_fixture.run_model()
+                pvps_fixture.run_model(starting_soc='morning')
 
-                result = result.append(pd.Series({
-                                       'pv_module': pvgen1.pv_module.name,
-                                       'M_s': M_s,
-                                       'M_p': 1,
-                                       'pump': pump.idname,
-                                       'llp': pvps_fixture.llp}),
-                                       ignore_index=True)
+                result_per_mod = result_per_mod.append(
+                        pd.Series({'pv_module': pvgen1.pv_module.name,
+                                   'M_s': M_s,
+                                   'M_p': 1,
+                                   'pump': pump.idname,
+                                   'llp': pvps_fixture.llp}),
+                        ignore_index=True)
+
             # take the smallest llp of all results
-            llp = result.llp.min()
+            llp = result_per_mod.llp.min()
 
-    return result
+            if llp <= llp_accepted:
+                result = result.append(result_per_mod,
+                                       ignore_index=True)
+            elif M_s > (M_s_guess + 3):
+                # check that results are improving
+                # TODO: comparison on result obtained 3 iterations is not ideal
+                last_llp = result_per_mod[result_per_mod.M_s == M_s].llp
+                prev_llp = result_per_mod[result_per_mod.M_s == (M_s-3)].llp
+                if (last_llp.values == prev_llp.values).all():
+                    raise errors.NoConvergenceError(
+                        'The losse of load probability did not improve '
+                        'during last three iterations. Check llp_accepted '
+                        'or M_s_guess parameters')
+            # increment number of module for next round
+            M_s += 1
 
+    selection = result[result.llp <= llp_accepted]
 
+    return (result, selection)
 
 
 def sizing_minimize_cost(llp):
@@ -325,7 +376,7 @@ def sizing_minimize_cost(llp):
 
     Parameter
     ---------
-    lpsp: float between 0 and 1
+    llp: float between 0 and 1
         Acceptable loss of load probability (LLP) for the system,
         that is to say the acceptable water shortage probability.
         If the system is aimed at giving drinking water, it should be 0.
@@ -345,7 +396,7 @@ if __name__ == '__main__':
     weather_short = shrink_weather(weather_data)
 
     # Consumption input
-    consumption_data = cs.Consumption(constant_flow=1,
+    consumption_data = cs.Consumption(constant_flow=3,
                                       length=len(weather_short))
 
     # Pipes set-up
@@ -372,8 +423,8 @@ if __name__ == '__main__':
 
     # ------------ PV DATABASE ---------------------
 
-    pv_database = ['Canadian_solar 200',
-                   'Canadian_solar 340']
+    pv_database = ['Canadian_solar 340',
+                   'Canadian_solar 200']
 
     # -- TESTS (Temporary) --
 
@@ -381,8 +432,8 @@ if __name__ == '__main__':
 #                                            weather_short, weather_metadata,
 #                                            pvps1)
 
-    total = sizing_minimize_llp(pv_database, pump_database,
-                                            weather_short, weather_metadata,
-                                            pvps1)
+    total, selection = sizing_minimize_llp(pv_database, pump_database,
+                                           weather_short, weather_metadata,
+                                           pvps1, 0.05, 1)
 
     print(total)

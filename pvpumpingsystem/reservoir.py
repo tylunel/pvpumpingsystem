@@ -16,12 +16,12 @@ class Reservoir(object):
 
         Attributes:
         --------
-        size: numeric
-            default is inf, i.e. like if there was no reservoir, [L]
-        water_volume: numeric
-            default is 0, i.e. empty reservoir, [L]
-        material: str
-            default is None
+        size: float, default is inf, i.e. like if there was no reservoir
+            Volume of reservoir [L]
+        water_volume: float, default is 0
+            Volume of water in the reservoir [L]. 0 = empty
+        material: str, default is None
+            Material of the reservoir
     """
 
     def __init__(self, size=float("inf"), water_volume=0, material=None):

@@ -122,32 +122,32 @@ class PVGeneration:
                  # PV array parameters
                  pv_module_name,  # As precised as possible
                  price_per_module=200,  # in US dollars
-                 surface_tilt=0,  # to adapt: 0 = horizontal, 90 = vertical
-                 surface_azimuth=180,  # to adapt: 180 = South, 90 = East
-                 albedo=0,  # to adapt: between 0 and 1
-                 modules_per_string=1,  # to adapt
-                 strings_in_parallel=1,  # to adapt
-                 racking_model='open_rack',  # to adapt
+                 surface_tilt=0,  # 0 = horizontal, 90 = vertical
+                 surface_azimuth=180,  # 180 = South, 90 = East
+                 albedo=0,  # between 0 and 1
+                 modules_per_string=1,
+                 strings_in_parallel=1,
+                 racking_model='open_rack',
                  losses_parameters=None,
                  surface_type=None,
-                 module_type='glass_polymer',  # to adapt
+                 module_type='glass_polymer',
                  # PV module glazing parameters (not always given in specs)
-                 glass_params={'K': 4,  # to adapt: extinction coefficient[1/m]
-                               'L': 0.002,  # to adapt: thickness [m]
-                               'n': 1.526},  # to adapt: refractive index
+                 glass_params={'K': 4,  # extinction coefficient[1/m]
+                               'L': 0.002,  # thickness [m]
+                               'n': 1.526},  # refractive index
                  # PV database
                  pv_database_name='cecmod',  # for advanced user only
                  # Models used:
-                 orientation_strategy=None,  # to adapt: can be ...
-                 clearsky_model='ineichen',  # to choose
-                 transposition_model='isotropic',  # to choose
-                 solar_position_method='nrel_numpy',  # to choose
-                 airmass_model='kastenyoung1989',  # to choose
+                 orientation_strategy=None,
+                 clearsky_model='ineichen',
+                 transposition_model='isotropic',
+                 solar_position_method='nrel_numpy',
+                 airmass_model='kastenyoung1989',
                  dc_model='desoto',  # to choose between 'desoto' and 'cec'.
-                 ac_model='pvwatts',  # to choose
-                 aoi_model='physical',  # to choose
-                 spectral_model='first_solar',  # to choose
-                 temperature_model='sapm',  # to choose
+                 ac_model='pvwatts',
+                 aoi_model='physical',
+                 spectral_model='first_solar',
+                 temperature_model='sapm',
                  losses_model='pvwatts',
                  **kwargs
                  ):

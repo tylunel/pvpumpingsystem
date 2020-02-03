@@ -103,12 +103,9 @@ class PVPumpSystem(object):
         self.water_stored = None
 
     def __repr__(self):
-        if self.idname is None:
-            infos = ('PVPSystem made of : \n pvgeneration: {0} \npump: {1})'
-                     .format(self.pvgeneration, self.motorpump.model))
-            return infos
-        else:
-            return ('PV Pumping System :' + self.idname)
+        infos = ('PVPSystem made of: \npvgeneration: {0} \npump: {1})'
+                 .format(self.pvgeneration, self.motorpump.idname))
+        return infos
 
     # TODO: turn it into a decorator
     def define_motorpump_model(self, model):
@@ -289,9 +286,32 @@ class PVPumpSystem(object):
             self.pvgeneration.modelchain.effective_irradiance,
             pv_area)
 
-    def calc_reservoir(self):
+    def calc_reservoir(self, starting_soc='empty'):
         """Wrapper of pvlib.pvpumpsystem.calc_reservoir.
+
+        Parameter
+        ---------
+        starting_soc: str or float, default is 'empty'
+            State of Charge of the reservoir at the beginning of
+            the simulation [%]
+            Available strings are 'empty' and 'morning',
+            which respectively that there is no water or enough water the
+            consumption in one morning.
+
         """
+        if starting_soc == 'empty' or starting_soc == 0:
+            self.reservoir.water_volume = 0
+        elif starting_soc == 'morning':
+            # Water needed in the first morning (until 12am)
+            vol = float((self.consumption.flow_rate.iloc[0:12]*60).sum())
+            # initialization of water in reservoir
+            self.reservoir.water_volume = vol
+        elif isinstance(starting_soc, float) and self.reservoir.size != np.inf:
+            self.reservoir.water_volume = self.reservoir.size * starting_soc
+        else:
+            raise TypeError('starting_soc type is not correct, or is '
+                            'incoherent with reservoir.size')
+
         if self.flow is None:
             self.calc_flow()
 
@@ -299,17 +319,18 @@ class PVPumpSystem(object):
                                            self.consumption.flow_rate.Qlpm)
 
 # TODO: add computation of LCC
-    def run_model(self):
+    def run_model(self, **kwargs):
         """
         Comprehesive modeling of the PVPS. Computes Loss of Power Supply
-        and stores it as an attribute.
+        and stores it as an attribute. Re-run eveything even if already
+        computed before.
         """
         if not hasattr(self.pvgeneration.modelchain, 'diode_params'):
             self.pvgeneration.run_model()
 
         self.calc_flow()
         self.calc_efficiency()
-        self.calc_reservoir()
+        self.calc_reservoir(**kwargs)
 
         total_water_required = sum(self.consumption.flow_rate.Qlpm*60)
         total_water_lacking = -min(0, sum(self.water_stored.extra_water))

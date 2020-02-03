@@ -44,3 +44,9 @@ class InsufficientDataError(Exception):
     """Raised when the pump object lacks some informations.
     """
     pass
+
+
+class NoConvergenceError(Exception):
+    """Raised when the pump object lacks some informations.
+    """
+    pass

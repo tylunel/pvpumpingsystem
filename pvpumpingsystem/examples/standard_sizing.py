@@ -4,7 +4,6 @@ Example of a sizing with pvpumpingsystem package.
 
 @author: Tanguy Lunel
 """
-import pvlib
 
 import pvpumpingsystem.pump as pp
 import pvpumpingsystem.pipenetwork as pn

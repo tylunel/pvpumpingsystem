@@ -23,7 +23,7 @@ class Consumption(object):
     Parameters
     ----------
     flow_rate: pd.DataFrame
-        The consumption schedule in itself. It is given in liter per minute.
+        The consumption schedule in itself [L/min]
 
     constant_flow: numeric
         Parameter allowing to build consumption data with constant consumption

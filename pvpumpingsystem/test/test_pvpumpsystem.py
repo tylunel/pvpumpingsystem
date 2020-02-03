@@ -25,8 +25,9 @@ def pvps_set_up():
 
     pvgen1 = pvgen.PVGeneration(
             # Weather data
-            weather_data=('../data/weather_files/CAN_PQ_Montreal.Intl.'
-                          'AP.716270_CWEC_truncated.epw'),  # to adapt:
+            weather_data=(os.path.join(test_dir,
+                                       '../data/weather_files/CAN_PQ_Montreal'
+                                       '.Intl.AP.716270_CWEC_truncated.epw')),
 
             # PV array parameters
             pv_module_name='kyocera solar KU270 6MCA',

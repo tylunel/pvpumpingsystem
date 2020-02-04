@@ -21,6 +21,7 @@ import pvpumpingsystem.pipenetwork as pn
 import pvpumpingsystem.reservoir as rv
 import pvpumpingsystem.consumption as cs
 import pvpumpingsystem.mppt as mppt
+import pvpumpingsystem.finance as fin
 import pvpumpingsystem.pvgeneration as pvgen
 from pvpumpingsystem import errors
 
@@ -28,6 +29,10 @@ from pvpumpingsystem import errors
 # TODO: add check on dc_model and coupling_method to insure that
 # direct-coupling goes with SDM. (if no check, error can be hard to fine
 # for user)
+
+# TODO: add 'finance_params' parameters?? as dict?
+# it would typically include opex, discount_rate, lifespan_pv,
+# lifespan_pump, lifespan_mppt, labour_price_coefficient
 
 class PVPumpSystem(object):
     """
@@ -64,7 +69,7 @@ class PVPumpSystem(object):
 
         labour_price_coefficient: float, default is 0.20
             Ratio of the price of labour and secondary costs (wires,
-            racks (can be expensive!), transport of materials, etc) in total
+            racks (can be expensive!), transport of materials, etc) on initial
             investment. It is considered at 0.2 in Gualteros (2017),
             but is more around 0.40 in Tarpuy(Peru) case.
 
@@ -73,7 +78,7 @@ class PVPumpSystem(object):
             llp: float, between 0 and 1
                 Loss of Load Probability, i.e. Water shortage probability.
 
-            capex: float
+            inital_investment: float
                 Cost of the system at the installation [USD]
 
     """
@@ -359,22 +364,16 @@ class PVPumpSystem(object):
         # water shortage probability
         self.llp = total_water_lacking / total_water_required
 
-        # Price of motorpump, pv modules and reservoir
-        if self.coupling == 'mppt':
-            self.capex = (self.motorpump.price
-                          + self.pvgeneration.system.modules_per_string *
-                          self.pvgeneration.system.strings_per_inverter *
-                          self.pvgeneration.price_per_module
-                          + self.reservoir.price
-                          + self.mppt.price) \
-                          * (1 + self.labour_price_coefficient)
-        elif self.coupling == 'direct':
-            self.capex = (self.motorpump.price
-                          + self.pvgeneration.system.modules_per_string *
-                          self.pvgeneration.system.strings_per_inverter *
-                          self.pvgeneration.price_per_module
-                          + self.reservoir.price) \
-                          * (1 + self.labour_price_coefficient)
+        # Price of motorpump, pv modules, reservoir, mppt
+        self.initial_investment = fin.initial_investment(self)
+
+        self.npv = fin.net_present_value(self,
+                                         opex=500,
+                                         discount_rate=0.05,
+                                         lifespan_pv=30,
+                                         lifespan_pump=12,
+                                         lifespan_mppt=10)
+
 
 def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
                       M_s=1, M_p=1):
@@ -890,7 +889,9 @@ if __name__ == '__main__':
                             material='plastic',
                             optimism=True)
 
-    reserv1 = rv.Reservoir(1000000, 0)
+    reserv1 = rv.Reservoir(size=1000000,
+                           water_volume=0,
+                           price=1000)
     consum1 = cs.Consumption(constant_flow=1,
                              length=len(pvgen1.weatherdata))
 
@@ -910,7 +911,8 @@ if __name__ == '__main__':
     pvps1.run_model()
     print(pvps1.water_stored)
     print('LLP: ', pvps1.llp)
-    print('Capex: {0} USD'.format(pvps1.capex))
+    print('initial_investment: {0} USD'.format(pvps1.initial_investment))
+    print('NPV: {0} USD'.format(pvps1.npv))
 
 #    warnings.filterwarnings("ignore")  # disable all warnings
 #    pvps1.calc_flow()

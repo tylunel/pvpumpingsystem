@@ -7,19 +7,37 @@ Module for defining MPPT characteristic. Still at embryonic stage.
 Defines a MPPT
 """
 
+# TODO: develop voltage_rating attribute to insure that it fits with
+# the input voltage of the pump, and with the ouput voltage from PV array.
+
+# TODO: add way to have an efficiency depending on the input power
+
 
 class MPPT(object):
-    """Class defining a MPPT made of :
-            - voltage_rating: float
-                Voltage rating
-            - efficiency: numeric or array-like
-                Mean efficiency if float.
-                Efficiency according to power if array.
-
     """
-    def __init__(self, voltage_rating, efficiency):
-        self.voltage_rating = voltage_rating
+    Class defining a MPPT.
+
+    Attributes
+    ----------
+        efficiency: float
+            Mean efficiency if float.
+            Efficiency according to power if array.
+
+        price: float,
+            Price of the MPPT
+
+        voltage_rating: float
+            Voltage rating
+    """
+
+    def __init__(self,
+                 efficiency=0.96,
+                 price=float('nan'),
+                 voltage_rating=None):
+
         self.efficiency = efficiency
+        self.price = price
+        self.voltage_rating = voltage_rating
 
     def __repr__(self):
         return str(self.__dict__)

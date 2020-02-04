@@ -246,3 +246,4 @@ if __name__ == '__main__':
         '.716270_CWEC_truncated.epw',
         'Canada solar 270W'
         )
+    pv_power.run_model()

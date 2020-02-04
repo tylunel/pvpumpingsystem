@@ -20,6 +20,7 @@ import pvpumpingsystem.pump as pp
 import pvpumpingsystem.pipenetwork as pn
 import pvpumpingsystem.reservoir as rv
 import pvpumpingsystem.consumption as cs
+import pvpumpingsystem.mppt as mppt
 import pvpumpingsystem.pvgeneration as pvgen
 from pvpumpingsystem import errors
 
@@ -43,14 +44,17 @@ class PVPumpSystem(object):
         motorpump: pvpumpingsystem.Pump
             The pump used in the system.
 
+        coupling: str,
+            represents the type of coupling between pv generator and pump.
+            Can be 'mppt' or 'direct'
+
         motorpump_model: str, default None
             The modeling method used to model the motorpump. Can be:
             'kou', 'arab', 'hamidat' or 'theoretical'.
             Overwrite the motorpump.modeling_method attribute if not None.
 
-        coupling: str,
-            represents the type of coupling between pv generator and pump.
-            Can be 'mppt' or 'direct'
+        mppt: pvpumpingsystem.MPPT
+            Maximum power point tracker of the system.
 
         pipes: pvpumpingsystem.PipeNetwork
 
@@ -58,10 +62,17 @@ class PVPumpSystem(object):
 
         consumption: pvpumpingsystem.Consumption
 
+        labour_price_coefficient: float, default is 0.20
+            Ratio of the price of labour and secondary costs (wires,
+            racks (can be expensive!), transport of materials, etc) in total
+            investment. It is considered at 0.2 in Gualteros (2017),
+            but is more around 0.40 in Tarpuy(Peru) case.
+
         Computed attributes
         -------------------
             llp: float, between 0 and 1
                 Loss of Load Probability, i.e. Water shortage probability.
+
             capex: float
                 Cost of the system at the installation [USD]
 
@@ -71,13 +82,17 @@ class PVPumpSystem(object):
                  motorpump,
                  coupling='mppt',
                  motorpump_model=None,
-                 mppt=None, pipes=None, reservoir=None,
-                 consumption=None, idname=None):
+                 mppt=None,
+                 pipes=None,
+                 reservoir=None,
+                 consumption=None,
+                 labour_price_coefficient=0.20,  # TODO: realistic value?
+                 idname=None):
         self.pvgeneration = pvgeneration  # instance of PVArray
         self.motorpump = motorpump  # instance of Pump
         self.coupling = coupling
         self.mppt = mppt
-#        self.motorpump_model = motorpump_model
+        self.labour_price_coefficient = labour_price_coefficient
 
         if motorpump_model is None and motorpump is not None:
             self.motorpump_model = self.motorpump.modeling_method
@@ -252,6 +267,7 @@ class PVPumpSystem(object):
             self.flow = calc_flow_mppt_coupled(self.pvgeneration,
                                                self.motorpump,
                                                self.pipes,
+                                               self.mppt,
                                                atol=atol, stop=stop,
                                                **kwargs)
         elif self.coupling == 'direct':
@@ -293,17 +309,16 @@ class PVPumpSystem(object):
             self.pvgeneration.modelchain.effective_irradiance,
             pv_area)
 
-    def calc_reservoir(self, starting_soc='empty', **kwargs):
+    def calc_reservoir(self, starting_soc='morning', **kwargs):
         """Wrapper of pvlib.pvpumpsystem.calc_reservoir.
 
         Parameter
         ---------
-        starting_soc: str or float, default is 'empty'
+        starting_soc: str or float, default is 'morning'
             State of Charge of the reservoir at the beginning of
             the simulation [%]
-            Available strings are 'empty' and 'morning',
-            which respectively that there is no water or enough water the
-            consumption in one morning.
+            Available strings are 'empty' (no water in reservoir)
+            and 'morning' (enough water for one morning consumption).
 
         """
         if starting_soc == 'empty' or starting_soc == 0:
@@ -345,13 +360,21 @@ class PVPumpSystem(object):
         self.llp = total_water_lacking / total_water_required
 
         # Price of motorpump, pv modules and reservoir
-        # TODO: add price of MPPT, wiring, labour (USD/hour)
-        self.capex = (self.motorpump.price
-                      + self.pvgeneration.system.modules_per_string *
-                      self.pvgeneration.system.strings_per_inverter *
-                      self.pvgeneration.price_per_module
-                      + self.reservoir.price)
-
+        if self.coupling == 'mppt':
+            self.capex = (self.motorpump.price
+                          + self.pvgeneration.system.modules_per_string *
+                          self.pvgeneration.system.strings_per_inverter *
+                          self.pvgeneration.price_per_module
+                          + self.reservoir.price
+                          + self.mppt.price) \
+                          * (1 + self.labour_price_coefficient)
+        elif self.coupling == 'direct':
+            self.capex = (self.motorpump.price
+                          + self.pvgeneration.system.modules_per_string *
+                          self.pvgeneration.system.strings_per_inverter *
+                          self.pvgeneration.price_per_module
+                          + self.reservoir.price) \
+                          * (1 + self.labour_price_coefficient)
 
 def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
                       M_s=1, M_p=1):
@@ -651,7 +674,7 @@ def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
     return pdresult
 
 
-def calc_flow_mppt_coupled(pvgeneration, motorpump, pipes, mppt=None,
+def calc_flow_mppt_coupled(pvgeneration, motorpump, pipes, mppt,
                            atol=0.1,
                            stop=8760,
                            **kwargs):
@@ -689,11 +712,14 @@ def calc_flow_mppt_coupled(pvgeneration, motorpump, pipes, mppt=None,
     """
     result = []
     modelchain = pvgeneration.modelchain
+    if mppt is None:
+        power_available = modelchain.dc.p_mp[0:stop]
+    else:
+        power_available = modelchain.dc.p_mp[0:stop] * mppt.efficiency
 
     fctQwithPH, sigma2 = motorpump.functQforPH()
 
-    for i, power in tqdm.tqdm(enumerate(
-            modelchain.dc.p_mp[0:stop]),
+    for i, power in tqdm.tqdm(enumerate(power_available),
                               desc='Computing of Q',
                               total=stop,
                               **kwargs):
@@ -868,10 +894,14 @@ if __name__ == '__main__':
     consum1 = cs.Consumption(constant_flow=1,
                              length=len(pvgen1.weatherdata))
 
+    mppt1 = mppt.MPPT(efficiency=0.96,
+                      price=1000)
+
     pvps1 = PVPumpSystem(pvgen1,
                          pump1,
                          motorpump_model='arab',
-                         coupling='direct',
+                         coupling='mppt',
+                         mppt=mppt1,
                          pipes=pipes1,
                          consumption=consum1,
                          reservoir=reserv1)

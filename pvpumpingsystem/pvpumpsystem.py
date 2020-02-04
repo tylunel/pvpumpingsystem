@@ -58,6 +58,13 @@ class PVPumpSystem(object):
 
         consumption: pvpumpingsystem.Consumption
 
+        Computed attributes
+        -------------------
+            llp: float, between 0 and 1
+                Loss of Load Probability, i.e. Water shortage probability.
+            capex: float
+                Cost of the system at the installation [USD]
+
     """
     def __init__(self,
                  pvgeneration,
@@ -286,7 +293,7 @@ class PVPumpSystem(object):
             self.pvgeneration.modelchain.effective_irradiance,
             pv_area)
 
-    def calc_reservoir(self, starting_soc='empty'):
+    def calc_reservoir(self, starting_soc='empty', **kwargs):
         """Wrapper of pvlib.pvpumpsystem.calc_reservoir.
 
         Parameter
@@ -313,12 +320,11 @@ class PVPumpSystem(object):
                             'incoherent with reservoir.size')
 
         if self.flow is None:
-            self.calc_flow()
+            self.calc_flow(**kwargs)
 
         self.water_stored = calc_reservoir(self.reservoir, self.flow.Qlpm,
                                            self.consumption.flow_rate.Qlpm)
 
-# TODO: add computation of LCC
     def run_model(self, **kwargs):
         """
         Comprehesive modeling of the PVPS. Computes Loss of Power Supply
@@ -328,7 +334,7 @@ class PVPumpSystem(object):
         if not hasattr(self.pvgeneration.modelchain, 'diode_params'):
             self.pvgeneration.run_model()
 
-        self.calc_flow()
+        self.calc_flow(disable=True)  # 'disable' removes the progress bar
         self.calc_efficiency()
         self.calc_reservoir(**kwargs)
 
@@ -337,6 +343,14 @@ class PVPumpSystem(object):
 
         # water shortage probability
         self.llp = total_water_lacking / total_water_required
+
+        # Price of motorpump, pv modules and reservoir
+        # TODO: add price of MPPT, wiring, labour (USD/hour)
+        self.capex = (self.motorpump.price
+                      + self.pvgeneration.system.modules_per_string *
+                      self.pvgeneration.system.strings_per_inverter *
+                      self.pvgeneration.price_per_module
+                      + self.reservoir.price)
 
 
 def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
@@ -841,6 +855,7 @@ if __name__ == '__main__':
 
     pump1 = pp.Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
                     modeling_method='arab',
+                    price=1100,
                     motor_electrical_architecture='permanent_magnet')
 
     pipes1 = pn.PipeNetwork(h_stat=10,
@@ -864,7 +879,8 @@ if __name__ == '__main__':
 # %% thing to try
     pvps1.run_model()
     print(pvps1.water_stored)
-    print(pvps1.llp)
+    print('LLP: ', pvps1.llp)
+    print('Capex: {0} USD'.format(pvps1.capex))
 
 #    warnings.filterwarnings("ignore")  # disable all warnings
 #    pvps1.calc_flow()

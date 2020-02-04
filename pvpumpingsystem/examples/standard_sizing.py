@@ -5,6 +5,8 @@ Example of a sizing with pvpumpingsystem package.
 @author: Tanguy Lunel
 """
 
+import pvlib
+
 import pvpumpingsystem.pump as pp
 import pvpumpingsystem.pipenetwork as pn
 import pvpumpingsystem.consumption as cs
@@ -16,25 +18,29 @@ from pvpumpingsystem import sizing
 # ------------ MAIN INPUTS --------------------------------------------------
 
 # Weather input
-#weather_path = (
-#    '../data/weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw')
-#weather_data, weather_metadata = pvlib.iotools.epw.read_epw(
-#        weather_path, coerce_year=2005)
+weather_path = (
+    '../data/weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw')
+weather_data, weather_metadata = pvlib.iotools.epw.read_epw(
+        weather_path, coerce_year=2005)
+## short weather to compute faster
+#weather_short = sizing.shrink_weather(weather_data)
 
 # Consumption input
-consumption_data = cs.Consumption(constant_flow=1,
-                                  length=len(weather_data))
+consumption_data = cs.Consumption(constant_flow=5,  # in L/min
+                                  length=len(weather_short))
 
 # Pipes set-up
-pipes = pn.PipeNetwork(h_stat=20, l_tot=100, diam=0.08,
-                       material='plastic', optimism=True)
+pipes = pn.PipeNetwork(h_stat=20,  # vertical static head [m]
+                       l_tot=100,  # length of pipes [m]
+                       diam=0.08,  # diameter of pipes [m]
+                       material='plastic',
+                       optimism=True)
 
-
-
+# PV generator parameters
 pvgen1 = pvgen.PVGeneration(
             # Weather data
-            path_weather_data=('../data/weather_files/CAN_PQ_Montreal.Intl.'
-                               'AP.716270_CWEC.epw'),  # to adapt:
+            weather_data=('../data/weather_files/CAN_PQ_Montreal.Intl.'
+                          'AP.716270_CWEC.epw'),  # to adapt:
 
             # PV array parameters
             pv_module_name='kyocera solar KU270 6MCA',
@@ -84,23 +90,29 @@ pump_shurflo = pp.Pump(path="../data/pump_files/Shurflo_9325.txt",
                        motor_electrical_architecture='permanent_magnet')
 
 # TODO: reform pump_database as DataFrame to be consistent with pv_database
-pump_database = [pump_sunpump, pump_shurflo]
+pump_database = [pump_sunpump,
+                 pump_shurflo]
 
 # PV array database:
-# use regex to add more than one provider.
-# for example: provider = "Canadian_Solar|Zytech"
-provider = "Canadian_Solar"
-nb_elt_kept = 5
-pv_database = sizing.shrink_pv_database(provider, nb_elt_kept)
+pv_database = ['Canadian Solar 200',
+               'Canadian solar 300',
+               'Canadian solar 400']
 
 
 # ------------ RUN SIZING ---------------------------------------------------
 
-weather_short = sizing.shrink_weather(weather_data)
-selection, total = sizing.sizing_maximize_flow(pv_database,
-                                               pump_database,
-                                               weather_short,
-                                               weather_metadata,
-                                               pvps_fixture)
+#selection, total = sizing.sizing_maximize_flow(pv_database,
+#                                               pump_database,
+#                                               weather_short,
+#                                               weather_metadata,
+#                                               pvps_fixture)
+#print('configuration for maximum output flow:\n', selection)
 
-print(selection)
+selection, total = sizing.sizing_minimize_llp(pv_database,
+                                              pump_database,
+                                              weather_data,
+                                              weather_metadata,
+                                              pvps_fixture,
+                                              llp_accepted=0.05,
+                                              M_s_guess=5)
+print('configurations for llp of 0.05:\n', selection)

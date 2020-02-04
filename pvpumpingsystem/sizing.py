@@ -315,6 +315,14 @@ def sizing_minimize_llp(pv_database, pump_database,
     """
     result = pd.DataFrame()
 
+    # TODO: add way of guessing M_s_guess, for example by calculating the
+    # hydraulic power in water_demand and then finding the number of modules
+    # for same power with an efficiency coefficient
+
+    # TODO: add convergence method (bisection, or better?)
+    # It would be possible to consider the modeling as a function and to
+    # put it in scipy's root-finding algorithm to get the best number of
+
     for pv_mod_name in tqdm.tqdm(pv_database,
                                  desc='Research of best combination: ',
                                  total=len(pv_database)):
@@ -325,6 +333,7 @@ def sizing_minimize_llp(pv_database, pump_database,
 
         # process for each module
         while llp > llp_accepted:
+            print('pv_mod: {0}, and M_s = {1}'.format(pv_mod_name, M_s))
             pvgen1 = pvgen.PVGeneration({'weatherdata': weather_data,
                                          'metadata': weather_metadata},
                                         pv_module_name=pv_mod_name,
@@ -336,6 +345,8 @@ def sizing_minimize_llp(pv_database, pump_database,
 
             for pump in pump_database:
                 pvps_fixture.motorpump = pump
+                print('For pump: ', pump.idname)
+#                pvps_fixture.run_model(starting_soc='morning', disable=True)
                 pvps_fixture.run_model(starting_soc='morning')
 
                 result_per_mod = result_per_mod.append(
@@ -345,6 +356,7 @@ def sizing_minimize_llp(pv_database, pump_database,
                                    'pump': pump.idname,
                                    'llp': pvps_fixture.llp}),
                         ignore_index=True)
+                print('llp = ', pvps_fixture.llp)
 
             # take the smallest llp of all results
             llp = result_per_mod.llp.min()
@@ -356,18 +368,18 @@ def sizing_minimize_llp(pv_database, pump_database,
                 # check that results are improving
                 # TODO: comparison on result obtained 3 iterations is not ideal
                 last_llp = result_per_mod[result_per_mod.M_s == M_s].llp
-                prev_llp = result_per_mod[result_per_mod.M_s == (M_s-3)].llp
+                prev_llp = result_per_mod[result_per_mod.M_s == (M_s-1)].llp
                 if (last_llp.values == prev_llp.values).all():
                     raise errors.NoConvergenceError(
-                        'The losse of load probability did not improve '
-                        'during last three iterations. Check llp_accepted '
+                        'The loss of load probability did not improve '
+                        'during last 2 iterations. Check llp_accepted '
                         'or M_s_guess parameters')
             # increment number of module for next round
             M_s += 1
 
     selection = result[result.llp <= llp_accepted]
 
-    return (result, selection)
+    return (selection, result)
 
 
 def sizing_minimize_cost(llp):

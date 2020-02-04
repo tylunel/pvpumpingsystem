@@ -45,6 +45,9 @@ class PVGeneration:
 
     strings_in_parallel: integer, default is 1
         Number of PV module strings.
+        Note that 'strings_in_parallel' is called 'strings_per_inverter' in
+        pvlib.PVSystem. Name has been changed to simplify life of beginner
+        user, but will complicate life of intermediate user.
 
     racking_model: str, default is 'open_rack'
 
@@ -170,6 +173,8 @@ class PVGeneration:
         # Retrieve the pv module concerned from the pv database
         # convert in pandas.Series by selecting first column: iloc[:, 0]
         self.pv_module = pv_database[pv_idname].iloc[:, 0]
+        # TODO: add better default value, like depending on power with USD/W
+        self.price_per_module = price_per_module
 
         # Definition of PV generator
         self.system = pvlib.pvsystem.PVSystem(

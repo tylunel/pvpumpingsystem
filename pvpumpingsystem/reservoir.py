@@ -22,11 +22,17 @@ class Reservoir(object):
             Volume of water in the reservoir [L]. 0 = empty
         material: str, default is None
             Material of the reservoir
+        price: float, default is 0
+            Price of the reservoir
     """
 
-    def __init__(self, size=float("inf"), water_volume=0, material=None):
+    def __init__(self, size=float("inf"),
+                 water_volume=0,
+                 price=0,
+                 material=None):
         self.size = size
         self.water_volume = water_volume
+        self.price = price
         self.material = material
 
     def __repr__(self):

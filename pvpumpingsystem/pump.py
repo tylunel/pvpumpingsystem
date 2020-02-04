@@ -86,9 +86,12 @@ class Pump:
     def __init__(self, path='',
                  lpm=None, tdh=None, current=None,
                  motor_electrical_architecture=None,
-                 pump_category=None, idname=None,
-                 price=None, power_rating=None,
-                 controller=None, diameter_output=None,
+                 pump_category=None,
+                 idname=None,
+                 price=np.nan,
+                 power_rating=None,
+                 controller=None,
+                 diameter_output=None,
                  modeling_method='arab'):
 
         self.id = next(self._ids)

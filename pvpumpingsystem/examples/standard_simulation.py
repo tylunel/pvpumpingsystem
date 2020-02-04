@@ -25,10 +25,12 @@ import pvpumpingsystem.pvgeneration as pvgen
 #
 # To use it here then, download it with the path as follows:
 pump_sunpump = pp.Pump(path="../data/pump_files/SCB_10_150_120_BL.txt",
-                       idname='SCB_10',
+                       idname='SCB_10_150_120_BL',
+                       price=1100,  # USD
                        modeling_method='arab')
 pump_shurflo = pp.Pump("../data/pump_files/Shurflo_9325.txt",
                        idname='Shurflo_9325',
+                       price=640,  # USD
                        motor_electrical_architecture='permanent_magnet',
                        modeling_method='arab')  # to adapt:
 

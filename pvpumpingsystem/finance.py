@@ -57,7 +57,7 @@ def initial_investment(pvps, labour_price_coefficient=None):
     if labour_price_coefficient is None:
         labour_price_coefficient = pvps.labour_price_coefficient
 
-    if pvps.coupling == 'mppt':
+    if pvps.coupling == 'mppt' or pvps.coupling == 'mppt_no_iteration':
         result = (pvps.motorpump.price
                   + pv_modules_price
                   + pvps.reservoir.price

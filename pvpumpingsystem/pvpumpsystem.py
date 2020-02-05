@@ -345,7 +345,7 @@ class PVPumpSystem(object):
         self.water_stored = calc_reservoir(self.reservoir, self.flow.Qlpm,
                                            self.consumption.flow_rate.Qlpm)
 
-    def run_model(self, **kwargs):
+    def run_model(self, iteration=False, **kwargs):
         """
         Comprehesive modeling of the PVPS. Computes Loss of Power Supply
         and stores it as an attribute. Re-run eveything even if already
@@ -354,7 +354,8 @@ class PVPumpSystem(object):
         if not hasattr(self.pvgeneration.modelchain, 'diode_params'):
             self.pvgeneration.run_model()
 
-        self.calc_flow(disable=True)  # 'disable' removes the progress bar
+        # 'disable' removes the progress bar
+        self.calc_flow(disable=True, iteration=iteration)
         self.calc_efficiency()
         self.calc_reservoir(**kwargs)
 
@@ -566,6 +567,7 @@ def functioning_point_noiteration(params,
 
 
 def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
+                               iteration=False,
                                atol=0.1,
                                stop=8760,
                                **kwargs):
@@ -583,8 +585,15 @@ def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
     pipes: pipenetwork.PipeNetwork object
         Hydraulic network linked to the pump
 
+    iteration: boolean, default is False
+        Decide if the system takes into account the friction head due to the
+        flow rate of water pump (iteration = True) or if the system just
+        considers the static head of the system (iteration = False).
+        Often can be put to False if the pipes are well sized.
+
     atol: numeric
-        absolute tolerance on the uncertainty of the flow in l/min
+        absolute tolerance on the uncertainty of the flow in l/min.
+        Used if iteration = True.
 
     stop: numeric
         number of data on which the computation is run
@@ -609,8 +618,6 @@ def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
     M_p = modelchain.system.strings_per_inverter
 
     load_fctIfromVH, intervalsVH = motorpump.functIforVH()
-# useless !?:
-#    load_fctV, intervalsIH = motorpump.functVforIH()
     fctQwithPH, sigma2 = motorpump.functQforPH()
 
     for i, row in tqdm.tqdm(enumerate(
@@ -618,55 +625,77 @@ def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
                                       desc='Computing of Q',
                                       total=stop,
                                       **kwargs):
-
         params = row[1]
-        Qlpm = 1
-        Qlpmnew = 0
 
-        # variables used in case of non-convergence in while loop
-        t_init = time.time()
-        mem = []
+        if iteration is True:
+            Qlpm = 1
+            Qlpmnew = 0
 
-        while abs(Qlpm-Qlpmnew) > atol:  # loop to make Qlpm converge
-            Qlpm = Qlpmnew
-            # water temperature (arbitrary, should vary in future work)
-            temp_water = 10
-            # compute total head h_tot
-            h_tot = pipes.h_stat + \
-                pipes.dynamichead(Qlpm, T=temp_water)
+            # variables used in case of non-convergence in while loop
+            t_init = time.time()
+            mem = []
+
+            while abs(Qlpm-Qlpmnew) > atol:  # loop to make Qlpm converge
+                Qlpm = Qlpmnew
+                # water temperature (arbitrary, should vary in future work)
+                temp_water = 10
+                # compute total head h_tot
+                h_tot = pipes.h_stat + \
+                    pipes.dynamichead(Qlpm, T=temp_water)
+                # compute functioning point
+                iv_data = functioning_point_noiteration(
+                        params, M_s, M_p,
+                        load_fctIfromVH=load_fctIfromVH,
+                        load_interval_V=intervalsVH['V'](h_tot),
+                        pv_interval_V=[0, modelchain.dc.v_oc[i] * M_s],
+                        tdh=h_tot)
+                # consider losses
+                power = iv_data.V*iv_data.I * modelchain.losses
+                # type casting
+                power = float(power)
+                # compute flow
+                Qlpmnew = fctQwithPH(power, h_tot)['Q']
+
+                # code for exiting while loop if problem
+                mem.append(Qlpmnew)
+                if time.time()-t_init > 1000:
+                    print('\niv:', iv_data)
+                    print('Q:', mem)
+                    raise RuntimeError('Loop too long to execute')
+
+            P_unused = fctQwithPH(power, h_tot)['P_unused']
+
+            result.append({'Qlpm': Qlpmnew,
+                           'I': float(iv_data.I),
+                           'V': float(iv_data.V),
+                           'P': power,
+                           'P_unused': P_unused,
+                           'tdh': h_tot
+                           })
+        else:  # iteration is False
             # compute functioning point
             iv_data = functioning_point_noiteration(
                     params, M_s, M_p,
                     load_fctIfromVH=load_fctIfromVH,
-                    load_interval_V=intervalsVH['V'](h_tot),
+                    load_interval_V=intervalsVH['V'](pipes.h_stat),
                     pv_interval_V=[0, modelchain.dc.v_oc[i] * M_s],
-                    tdh=h_tot)
+                    tdh=pipes.h_stat)
             # consider losses
-            if modelchain.losses != 1:
-                power = iv_data.V*iv_data.I * modelchain.losses
-            else:
-                power = iv_data.V*iv_data.I
+            power = iv_data.V*iv_data.I * modelchain.losses
             # type casting
             power = float(power)
             # compute flow
-            Qlpmnew = fctQwithPH(power, h_tot)['Q']
+            res_dict = fctQwithPH(power, pipes.h_stat)
+            Qlpm = res_dict['Q']
+            P_unused = res_dict['P_unused']
 
-            # code for exiting while loop if problem
-            mem.append(Qlpmnew)
-            if time.time()-t_init > 1000:
-                print('\niv:', iv_data)
-                print('Q:', mem)
-                raise RuntimeError('Loop too long to execute')
-
-        P_unused = fctQwithPH(power, h_tot)['P_unused']
-
-        result.append({'Qlpm': Qlpmnew,
-                       'I': float(iv_data.I),
-                       'V': float(iv_data.V),
-                       'P': power,
-                       'P_unused': P_unused,
-                       'tdh': h_tot
-                       })
+            result.append({'Qlpm': Qlpm,
+                           'I': float(iv_data.I),
+                           'V': float(iv_data.V),
+                           'P': power,
+                           'P_unused': P_unused,
+                           'tdh': pipes.h_stat
+                           })
 
     pdresult = pd.DataFrame(result)
     pdresult.index = modelchain.diode_params[0:stop].index
@@ -674,6 +703,7 @@ def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
 
 
 def calc_flow_mppt_coupled(pvgeneration, motorpump, pipes, mppt,
+                           iteration=False,
                            atol=0.1,
                            stop=8760,
                            **kwargs):
@@ -690,8 +720,18 @@ def calc_flow_mppt_coupled(pvgeneration, motorpump, pipes, mppt,
     pipes: pipenetwork.PipeNetwork object
         Hydraulic network linked to the pump
 
+    mppt: mppt.MPPT object,
+        The maximum power point tracker of the system.
+
+    iteration: boolean, default is False
+        Decide if the system takes into account the friction head due to the
+        flow rate of water pump (iteration = True) or if the system just
+        considers the static head of the system (iteration = False).
+        Often can be put to False if the pipes are well sized.
+
     atol: numeric
-        absolute tolerance on the uncertainty of the flow in l/min
+        absolute tolerance on the uncertainty of the flow in l/min.
+        Used if iteration = True.
 
     stop: numeric
         number of data on which the computation is run
@@ -723,37 +763,49 @@ def calc_flow_mppt_coupled(pvgeneration, motorpump, pipes, mppt,
                               total=stop,
                               **kwargs):
 
-        Qlpm = 1
-        Qlpmnew = 0
+        if iteration is True:
+            Qlpm = 1
+            Qlpmnew = 0
 
-        # variables used in case of non-convergence in while loop
-        t_init = time.time()
-        mem = []
+            # variables used in case of non-convergence in while loop
+            t_init = time.time()
+            mem = []
 
-        while abs(Qlpm-Qlpmnew) > atol:  # loop to make Qlpm converge
-            Qlpm = Qlpmnew
-            # water temperature (random...)
-            temp_water = 10
-            # compute total head h_tot
-            h_tot = pipes.h_stat + \
-                pipes.dynamichead(Qlpm, T=temp_water)
-            # compute flow
-            Qlpmnew = fctQwithPH(power, h_tot)['Q']
+            while abs(Qlpm-Qlpmnew) > atol:  # loop to make Qlpm converge
+                Qlpm = Qlpmnew
+                # water temperature (random...)
+                temp_water = 10
+                # compute total head h_tot
+                h_tot = pipes.h_stat + \
+                    pipes.dynamichead(Qlpm, T=temp_water)
+                # compute flow
+                Qlpmnew = fctQwithPH(power, h_tot)['Q']
 
-            # code for exiting while loop if problem happens
-            mem.append(Qlpmnew)
-            if time.time() - t_init > 0.1:
-                warnings.warn('Loop too long to execute. NaN returned.')
-                Qlpmnew = np.nan
-                break
+                # code for exiting while loop if problem happens
+                mem.append(Qlpmnew)
+                if time.time() - t_init > 0.1:
+                    warnings.warn('Loop too long to execute. NaN returned.')
+                    Qlpmnew = np.nan
+                    break
 
-        P_unused = fctQwithPH(power, h_tot)['P_unused']
+            P_unused = fctQwithPH(power, h_tot)['P_unused']
 
-        result.append({'Qlpm': Qlpmnew,
-                       'P': float(power),
-                       'P_unused': P_unused,
-                       'tdh': h_tot
-                       })
+            result.append({'Qlpm': Qlpmnew,
+                           'P': float(power),
+                           'P_unused': P_unused,
+                           'tdh': h_tot
+                           })
+        else:  # iteration is False
+            # simply computes flow
+            res_dict = fctQwithPH(power, pipes.h_stat)
+            Qlpm = res_dict['Q']
+            P_unused = res_dict['P_unused']
+
+            result.append({'Qlpm': Qlpm,
+                           'P': float(power),
+                           'P_unused': P_unused,
+                           'tdh': pipes.h_stat
+                           })
 
     pdresult = pd.DataFrame(result)
     pdresult.index = modelchain.diode_params[0:stop].index
@@ -865,7 +917,7 @@ if __name__ == '__main__':
             modules_per_string=3,
             strings_per_inverter=2,
             weather_data=('data/weather_files/CAN_PQ_Montreal.Intl.'
-                          'AP.716270_CWEC_truncated.epw'),
+                          'AP.716270_CWEC.epw'),
             orientation_strategy=None,
             clearsky_model='ineichen',
             transposition_model='haydavies',
@@ -876,7 +928,9 @@ if __name__ == '__main__':
             aoi_model='physical',
             spectral_model='first_solar',
             temperature_model='sapm',
-            losses_model='pvwatts')
+            losses_model='pvwatts')  # takes around 1.4s for 8760 hours
+
+    pvgen1.run_model()  # takes around 0.18s for 8760 hours
 
     pump1 = pp.Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
                     modeling_method='arab',
@@ -906,9 +960,18 @@ if __name__ == '__main__':
                          pipes=pipes1,
                          consumption=consum1,
                          reservoir=reserv1)
+    # takes around 0.03s for 8760 hours
 
 # %% thing to try
-    pvps1.run_model()
+    t1 = time.time()
+
+    # takes around 15.4s for 8760 hours with iteration
+    # takes around 5.2s for 8760 hours without iteration
+    pvps1.run_model(iteration=True)
+
+    t2 = time.time() - t1
+    print('t2 = ', t2)
+
     print(pvps1.water_stored)
     print('LLP: ', pvps1.llp)
     print('initial_investment: {0} USD'.format(pvps1.initial_investment))

@@ -83,20 +83,34 @@ def test_calc_flow_mppt(pvps_set_up):
     """Test the computing of flows in the case coupled with mppt.
     """
     pvps_set_up.coupling = 'mppt'
-    pvps_set_up.calc_flow(atol=0.1, stop=24)
+    pvps_set_up.calc_flow(iteration=True, atol=0.1, stop=24)
     Q = pvps_set_up.flow.Qlpm.values
     Q_expected = np.array([0., 0., 0., 0., 0., 0., 0., 0.,
-                           32.77, 52.11, 58.80, 61.24,
-                           44.18, 41.47, 34.35, 0.,
+                           32.49, 52.50, 59.05, 61.18,
+                           44.40, 41.59, 34.15, 0.,
                            0., 0., 0., 0., 0., 0., 0., 0.])
-    np.testing.assert_allclose(Q, Q_expected, rtol=1)
+    np.testing.assert_allclose(Q, Q_expected, rtol=0.001)
+
+
+def test_calc_flow_mppt_no_iteration(pvps_set_up):
+    """Test the computing of flows in the case coupled with mppt, but
+    without iterations on the total dynamic head coming from the friction head.
+    """
+    pvps_set_up.coupling = 'mppt'
+    pvps_set_up.calc_flow(iteration=False, stop=24)
+    Q = pvps_set_up.flow.Qlpm.values
+    Q_expected = np.array([0., 0., 0., 0., 0., 0., 0., 0.,
+                           32.52, 52.54, 59.09, 61.23,
+                           44.44, 41.63, 34.18, 0.,
+                           0., 0., 0., 0., 0., 0., 0., 0.])
+    np.testing.assert_allclose(Q, Q_expected, rtol=0.001)
 
 
 def test_calc_flow_direct(pvps_set_up):
     """Test the computing of flows when pump and pv are directly coupled.
     """
     pvps_set_up.coupling = 'direct'
-    pvps_set_up.calc_flow(atol=0.1, stop=24)
+    pvps_set_up.calc_flow(iteration=True, atol=0.1, stop=24)
     Q = pvps_set_up.flow.Qlpm.values
     Q_expected = np.array([0., 0., 0., 0., 0., 0., 0., 0.,
                            26.7413, 28.6602, 29.1504, 29.5732,

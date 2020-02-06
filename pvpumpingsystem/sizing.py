@@ -16,6 +16,7 @@ import pvpumpingsystem.pipenetwork as pn
 import pvpumpingsystem.reservoir as rv
 import pvpumpingsystem.consumption as cs
 import pvpumpingsystem.pvpumpsystem as pvps
+import pvpumpingsystem.mppt as mppt
 import pvpumpingsystem.pvgeneration as pvgen
 from pvpumpingsystem import errors
 
@@ -268,6 +269,7 @@ def sizing_maximize_flow(pv_database, pump_database,
     return (selection, result)
 
 
+# TODO: to change? could be better with the same process as in minimize_npv
 def sizing_minimize_llp(pv_database, pump_database,
                         weather_data, weather_metadata,
                         pvps_fixture,
@@ -318,10 +320,6 @@ def sizing_minimize_llp(pv_database, pump_database,
     # TODO: add way of guessing M_s_guess, for example by calculating the
     # hydraulic power in water_demand and then finding the number of modules
     # for same power with an efficiency coefficient
-
-    # TODO: add convergence method (bisection, or better?)
-    # It would be possible to consider the modeling as a function and to
-    # put it in scipy's root-finding algorithm to get the best number of
 
     for pv_mod_name in tqdm.tqdm(pv_database,
                                  desc='Research of best combination: ',
@@ -382,20 +380,125 @@ def sizing_minimize_llp(pv_database, pump_database,
     return (selection, result)
 
 
-def sizing_minimize_cost(llp):
+def sizing_minimize_npv(pv_database, pump_database,
+                        weather_data, weather_metadata,
+                        pvps_fixture,
+                        llp_accepted=0.01,
+                        M_s_guess=1):
     """
-    Sizing procedure optimizing the cost of the pumping station.
+    Function returning the configurations of PV modules and pump
+    that will minimize the net present value of the system and will insure
+    the Loss of Load Probability (llp) is inferior to the one given.
 
-    Parameter
-    ---------
-    llp: float between 0 and 1
-        Acceptable loss of load probability (LLP) for the system,
-        that is to say the acceptable water shortage probability.
-        If the system is aimed at giving drinking water, it should be 0.
-        If it is for agriculture, the acceptable shortage probability
-        will depend on the type of crop.
+    //!\\ Works fine only for MPPT coupling for now.
+
+    Parameters
+    ----------
+    pv_database: list of strings,
+        List of pv module names to try. If name is not eact, it will search
+        a pv module database to find the best match.
+
+    pump_database: list of pvpumpingssytem.Pump objects
+        List of motor-pump to try.
+
+    weather_data: pd.DataFrame
+        Weather file of the location.
+        Typically comes from pvlib.iotools.epw.read_epw()
+
+    weather_metadata: dict
+        Weather file metadata of the location.
+        Typically comes from pvlib.iotools.epw.read_epw()
+
+    pvps_fixture: pvpumpingsystem.PVPumpSystem object
+        The PV pumping system to size.
+
+    llp_accepted: float, between 0 and 1
+        Maximum Loss of Load Probability that can be accepted.
+
+    M_S_guess: integer,
+        Estimated number of modules in series in the PV array. Will be sized
+        by the function.
+
+    Returns
+    -------
+    tuple with:
+        selection: pd.DataFrame,
+            The configurations that minimizes the net present value
+            of the system.
+
+        preselection: pd.Dataframe,
+            All configurations tested respecting the LLP.
     """
-    raise NotImplementedError
+
+    # TODO: add way of guessing M_s_guess, for example by calculating the
+    # hydraulic power in water_demand and then finding the number of modules
+    # for same power with an efficiency coefficient
+
+    # TODO: insure the functioning for 'direct' coupling cases
+
+    # TODO: check following for a discrete optimization:
+    # https://towardsdatascience.com/linear-programming-and-discrete-optimization-with-python-using-pulp-449f3c5f6e99
+
+    def funct_llp_for_Ms(pvps, M_s):
+        pvps.pvgeneration.system.modules_per_string = M_s
+        pvps.pvgeneration.run_model()
+        pvps.run_model(starting_soc='morning', iteration=False)
+        return pvps.llp
+    # initalization of variables
+    preselection = pd.DataFrame()
+
+    for pv_mod_name in tqdm.tqdm(pv_database,
+                                 desc='Research of best combination: ',
+                                 total=len(pv_database)):
+
+        for pump in pump_database:
+            pvgen1 = pvgen.PVGeneration({'weatherdata': weather_data,
+                                         'metadata': weather_metadata},
+                                        pv_module_name=pv_mod_name,
+                                        modules_per_string=M_s_guess,
+                                        strings_in_parallel=1)
+            pvps_fixture.pvgeneration = pvgen1
+            pvps_fixture.motorpump = pump
+
+            min_found = False
+            M_s = M_s_guess
+            llp_max = funct_llp_for_Ms(pvps_fixture, 0)
+            llp_prev = 1.1
+            while min_found is False:
+                print('module: {0} / pump: {1} / M_s: {2}'.format(pv_mod_name,
+                      pump.idname, M_s))
+                llp = funct_llp_for_Ms(pvps_fixture, M_s)
+                print('llp = ', llp)
+                if llp <= llp_accepted and llp_prev > 1 :  # first round
+                    M_s -= 1
+                elif llp <= llp_accepted and llp_prev <= llp_accepted:
+                    M_s -= 1
+                elif llp <= llp_accepted and 1 > llp_prev > llp_accepted \
+                        and llp != llp_max:
+                    min_found = True
+                elif llp > llp_accepted and llp_prev != llp:
+                    M_s += 1
+                elif llp > llp_accepted and llp_prev == llp and llp != llp_max:
+                    min_found = True
+                elif llp > llp_accepted and llp_prev == llp and llp == llp_max:
+                    M_s += 1
+                else:
+                    raise Exception('This case had not been figured out'
+                                    ' it could happen')
+                llp_prev = llp
+
+            preselection = preselection.append(
+                    pd.Series({'pv_module': pvgen1.pv_module.name,
+                               'M_s': M_s,
+                               'M_p': 1,
+                               'pump': pump.idname,
+                               'llp': pvps_fixture.llp,
+                               'npv': pvps_fixture.npv}),
+                    ignore_index=True)
+
+    selection = preselection[preselection.npv == preselection.npv.min()]
+
+    return (selection, preselection)
 
 
 if __name__ == '__main__':
@@ -415,28 +518,40 @@ if __name__ == '__main__':
     pipes = pn.PipeNetwork(h_stat=20, l_tot=100, diam=0.08,
                            material='plastic', optimism=True)
 
+    mppt1 = mppt.MPPT(efficiency=0.96,
+                      price=1000)
+
     pvps1 = pvps.PVPumpSystem(None,
                               None,
                               coupling='mppt',
+                              mppt=mppt1,
                               motorpump_model='arab',
                               pipes=pipes,
                               consumption=consumption_data)
 
     # ------------ PUMP DATABASE ---------------------
-    pump_sunpump = pp.Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
-                           idname='SCB_10')
+    pump_sunpump_120 = pp.Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
+                               idname='SCB_10_150_120_BL',
+                               price=1100)
+
+    pump_sunpump_180 = pp.Pump(path="data/pump_files/SCB_10_150_180_BL.txt",
+                               idname='SCB_10_150_180_BL',
+                               price=1200)
 
     pump_shurflo = pp.Pump(path="data/pump_files/Shurflo_9325.txt",
                            idname='Shurflo_9325',
+                           price=700,
                            motor_electrical_architecture='permanent_magnet')
-    # TODO: reform pump_database as DataFrame to be consistent with pv_database
-    pump_database = [pump_sunpump,
+
+    pump_database = [pump_sunpump_120,
+                     pump_sunpump_180,
                      pump_shurflo]
 
     # ------------ PV DATABASE ---------------------
 
     pv_database = ['Canadian_solar 340',
-                   'Canadian_solar 200']
+                   'Canadian_solar 200',
+                   'Canadian solar 280']
 
     # -- TESTS (Temporary) --
 
@@ -444,8 +559,11 @@ if __name__ == '__main__':
 #                                            weather_short, weather_metadata,
 #                                            pvps1)
 
-    total, selection = sizing_minimize_llp(pv_database, pump_database,
-                                           weather_short, weather_metadata,
-                                           pvps1, 0.05, 1)
+    selection, preselection = sizing_minimize_npv(
+           pv_database, pump_database,
+           weather_short, weather_metadata,
+           pvps1,
+           llp_accepted=0.05, M_s_guess=5)
 
-    print(total)
+    print(selection)
+    print(preselection)

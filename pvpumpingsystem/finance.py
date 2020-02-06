@@ -90,7 +90,11 @@ def net_present_value(pvps, opex, discount_rate,
     cashflow_list = [opex]
     cashflow_list *= lifespan_pv
 
-    cashflow_list[0] += (pvps.reservoir.price
+    pv_modules_price = (pvps.pvgeneration.system.modules_per_string
+                        * pvps.pvgeneration.system.strings_per_inverter
+                        * pvps.pvgeneration.price_per_module)
+
+    cashflow_list[0] += ((pvps.reservoir.price + pv_modules_price)
                          * (1 + pvps.labour_price_coefficient))
 
     # add cost of pump on each year it is expected to be replaced/bought

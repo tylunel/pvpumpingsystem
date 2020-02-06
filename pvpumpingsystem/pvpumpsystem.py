@@ -963,14 +963,10 @@ if __name__ == '__main__':
     # takes around 0.03s for 8760 hours
 
 # %% thing to try
-    t1 = time.time()
 
     # takes around 15.4s for 8760 hours with iteration
     # takes around 5.2s for 8760 hours without iteration
     pvps1.run_model(iteration=True)
-
-    t2 = time.time() - t1
-    print('t2 = ', t2)
 
     print(pvps1.water_stored)
     print('LLP: ', pvps1.llp)

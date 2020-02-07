@@ -360,7 +360,8 @@ class PVPumpSystem(object):
         self.calc_reservoir(**kwargs)
 
         total_water_required = sum(self.consumption.flow_rate.Qlpm*60)
-        total_water_lacking = -min(0, sum(self.water_stored.extra_water))
+        total_water_lacking = -sum(self.water_stored.extra_water[
+                self.water_stored.extra_water < 0])
 
         # water shortage probability
         self.llp = total_water_lacking / total_water_required
@@ -754,6 +755,7 @@ def calc_flow_mppt_coupled(pvgeneration, motorpump, pipes, mppt,
     result = []
     modelchain = pvgeneration.modelchain
     if mppt is None:
+        # note that dc already includes losses from modelchain.losses_model
         power_available = modelchain.dc.p_mp[0:stop]
     else:
         power_available = modelchain.dc.p_mp[0:stop] * mppt.efficiency

@@ -375,6 +375,8 @@ class PVPumpSystem(object):
                                          lifespan_pump=12,
                                          lifespan_mppt=10)
 
+#        if self.coupling == 'direct' and llp
+
 
 def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
                       M_s=1, M_p=1):
@@ -947,7 +949,7 @@ if __name__ == '__main__':
                            water_volume=0,
                            price=1000)
     consum1 = cs.Consumption(constant_flow=1,
-                             length=len(pvgen1.weatherdata))
+                             length=len(pvgen1.weather_data))
 
     mppt1 = mppt.MPPT(efficiency=0.96,
                       price=1000)

@@ -234,7 +234,7 @@ def sizing_maximize_flow(pv_database, pump_database,
         # TODO add method to guess M_s from rated power of pump and of pv mod
         for M_s in np.arange(1, 4):
             # TODO: add ways to look for the best tilt of arrays
-            pvgen1 = pvgen.PVGeneration({'weatherdata': weather_data,
+            pvgen1 = pvgen.PVGeneration({'weather_data': weather_data,
                                          'metadata': weather_metadata},
                                         pv_module_name=pv_mod_name,
                                         modules_per_string=M_s,
@@ -334,7 +334,7 @@ def sizing_minimize_llp(pv_database, pump_database,
         # process for each module
         while llp > llp_accepted:
             print('pv_mod: {0}, and M_s = {1}'.format(pv_mod_name, M_s))
-            pvgen1 = pvgen.PVGeneration({'weatherdata': weather_data,
+            pvgen1 = pvgen.PVGeneration({'weather_data': weather_data,
                                          'metadata': weather_metadata},
                                         pv_module_name=pv_mod_name,
                                         modules_per_string=M_s,

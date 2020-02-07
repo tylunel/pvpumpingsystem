@@ -24,7 +24,7 @@ class PVGeneration:
         The name of the PV module used. Should preferentially follow the form:
         '(company_name)_(reference_code)_(peak_power)'
 
-    weather_data: str or pvlib.weatherdata,
+    weather_data: str or dict (containing pd.DataFrame and dict),
         Path to the weather file if string recognized,
         or the weather data itself if not string.
 
@@ -197,11 +197,11 @@ class PVGeneration:
 
         # Import of weather
         if isinstance(weather_data, str):  # assumed to be the path of weather
-            self.weatherdata, metadata = pvlib.iotools.epw.read_epw(
+            self.weather_data, metadata = pvlib.iotools.epw.read_epw(
                     weather_data, coerce_year=2005)
             self.location = pvlib.location.Location.from_epw(metadata)
         else:  # assumed to be dict with weather data (pd.df) and metadata
-            self.weatherdata = weather_data['weatherdata']
+            self.weather_data = weather_data['weather_data']
             self.location = pvlib.location.Location.from_epw(
                     weather_data['metadata'])
 
@@ -236,7 +236,7 @@ class PVGeneration:
         Runs the modelchain of the PV generation.
         """
         # Running of the PV generation model
-        self.modelchain.run_model(weather=self.weatherdata)
+        self.modelchain.run_model(weather=self.weather_data)
 
 
 if __name__ == '__main__':

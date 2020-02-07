@@ -12,30 +12,11 @@ import pvpumpingsystem.pipenetwork as pn
 import pvpumpingsystem.reservoir as rv
 import pvpumpingsystem.consumption as cs
 import pvpumpingsystem.pvpumpsystem as pvps
+import pvpumpingsystem.mppt as mppt
 import pvpumpingsystem.pvgeneration as pvgen
 
 
-# ------------ DEFINITION OF FIXTURE -----------------
-
-# For entering new pump data:
-# 1) go in: "../data/pump_files/0_template_for_pump_specs.txt"
-# 2) write your specs (watch the units!),
-# 3) save it under a new name (like "name_of_pump.txt"),
-# 4) and close the file.
-#
-# To use it here then, download it with the path as follows:
-pump_sunpump = pp.Pump(path="../data/pump_files/SCB_10_150_120_BL.txt",
-                       idname='SCB_10_150_120_BL',
-                       price=1100,  # USD
-                       modeling_method='arab')
-pump_shurflo = pp.Pump("../data/pump_files/Shurflo_9325.txt",
-                       idname='Shurflo_9325',
-                       price=640,  # USD
-                       motor_electrical_architecture='permanent_magnet',
-                       modeling_method='arab')  # to adapt:
-
-
-# ------------ PV MODELING STEPS -----------------------
+# ------------ PV MODELING DEFINITION -----------------------
 
 pvgen1 = pvgen.PVGeneration(
             # Weather data
@@ -43,12 +24,12 @@ pvgen1 = pvgen.PVGeneration(
                           'AP.716270_CWEC_truncated.epw'),  # to adapt:
 
             # PV array parameters
-            pv_module_name='kyocera solar KU270 6MCA',
+            pv_module_name='Canadian solar 140',
             price_per_module=200,  # in US dollars
             surface_tilt=45,  # 0 = horizontal, 90 = vertical
             surface_azimuth=180,  # 180 = South, 90 = East
             albedo=0,  # between 0 and 1
-            modules_per_string=2,
+            modules_per_string=1,
             strings_in_parallel=1,
             # PV module glazing parameters (not always given in specs)
             glass_params={'K': 4,  # extinction coefficient [1/m]
@@ -70,11 +51,35 @@ pvgen1 = pvgen.PVGeneration(
             losses_model='pvwatts'
             )
 
-# Running of the PV generation model
+# Runs of the PV generation model
 pvgen1.run_model()
 
 
+# ------------ PUMP DEFINITION -----------------
+
+# For entering new pump data:
+# 1) go in: "../data/pump_files/0_template_for_pump_specs.txt"
+# 2) write your specs (watch the units!),
+# 3) save it under a new name (like "name_of_pump.txt"),
+# 4) and close the file.
+#
+# To use it here then, download it with the path as follows:
+pump_sunpump = pp.Pump(path="../data/pump_files/SCB_10_150_120_BL.txt",
+                       idname='SCB_10_150_120_BL',
+                       price=1100,  # USD
+                       modeling_method='arab')
+
+pump_shurflo = pp.Pump("../data/pump_files/Shurflo_9325.txt",
+                       idname='Shurflo_9325',
+                       price=640,  # USD
+                       motor_electrical_architecture='permanent_magnet',
+                       modeling_method='arab')  # to adapt:
+
+
 # ------------ PVPS MODELING STEPS ------------------------
+
+mppt1 = mppt.MPPT(efficiency=0.96,
+                  price=1000)
 
 pipes1 = pn.PipeNetwork(h_stat=10,  # static head [m]
                         l_tot=100,  # length of pipes [m]
@@ -83,50 +88,55 @@ pipes1 = pn.PipeNetwork(h_stat=10,  # static head [m]
                         fittings=None,  # Not available yet
                         optimism=True)
 
-reservoir1 = rv.Reservoir(size=1000000,  # size [L]
-                          water_volume=0   # initial water in reservoir [L]
-                          )
+reservoir1 = rv.Reservoir(size=1000,  # size [L]
+                          price=500)
 
 consumption1 = cs.Consumption(constant_flow=1,  # output flow rate [L/min]
-                              length=len(pvgen1.weatherdata))
+                              length=len(pvgen1.weather_data))
+consumption1 = cs.Consumption(repeated_flow=[0,   0,   0,   0,   0,   0,
+                                             0,   0,   0.2, 0.1, 0.1, 0.3,
+                                             0.3, 0.3, 0.3, 0.3, 0.3, 0.5,
+                                             0.3, 0.1, 0.1, 0,   0,   0],
+                              # output flow rate [L/min]
+                              length=len(pvgen1.weather_data))
 
 pvps1 = pvps.PVPumpSystem(pvgen1,
                           pump_shurflo,
-                          coupling='mppt',  # to adapt: 'mppt' or 'direct',
+                          coupling='direct',  # to adapt: 'mppt' or 'direct',
+                          mppt=mppt1,
                           pipes=pipes1,
                           consumption=consumption1,
                           reservoir=reservoir1)
 
 
-# ------------ COMPARISON MPPT VS DIRECT COUPLING -----------------
+# ------------ RUNNING MODEL -----------------
 
-#res1 = pvps.calc_flow_directly_coupled(chain1, pump1, pipes1, atol=0.01,
-#                                       stop=8760)
-#res2 = pvps.calc_flow_mppt_coupled(chain1, pump1, pipes1, atol=0.01,
-#                                   stop=8760)
-#compare = pd.DataFrame({'direct1': res1.Qlpm,
-#                        'mppt': res2.Qlpm})
-#eff1 = pvps1.calc_efficiency()
-
-pvps1.run_model()
-print(pvps1.flow[6:16])
+pvps1.run_model(iteration=True)
+#print(pvps1.flow[6:16])
+print(pvps1)
+print('LLP = ', pvps1.llp)
+print('Initial investment = {0} USD'.format(pvps1.initial_investment))
+print('NPV = {0} USD'.format(pvps1.npv))
+if pvps1.coupling == 'direct':
+    pvps1.functioning_point_noiteration(plot=True)
 
 
-# ------------ FIGURES -----------------------
+# ------------ GRAPHS -----------------------
 
+# effective irradiance on PV array
 #plt.figure()
-#plt.plot(pvps1.efficiency.index, pvps1.efficiency.electric_power)
-#plt.title('Electric power in vs time')
-#
-#plt.figure()
-#plt.plot(pvps1.efficiency.index, pvps1.modelchain.effective_irradiance)
+#plt.plot(pvps1.efficiency.index,
+#         pvps1.pvgeneration.modelchain.effective_irradiance)
 #plt.title('Effective irradiance vs time')
 
 
-# ------------ WATER VOLUME AND FLOW RATE VS TIME ----------
+# PV electric power
+plt.figure()
+plt.plot(pvps1.efficiency.index, pvps1.efficiency.electric_power)
+plt.title('Electric power in vs time')
 
 
-
+# Water volume in reservoir and output flow rate
 fig, ax1 = plt.subplots()
 
 ax1.set_xlabel('time')
@@ -147,23 +157,23 @@ plt.show()
 
 
 # ------------ POTENTIAL PATHS TO USE UNUSED ELECTRICITY  ---------------
-
-total_unused_power_Wh = pvps1.flow.P_unused.sum()
-total_pumped_water_L = (pvps1.flow.Qlpm).sum()*60
-
-# potabilization of freshwater polluted from pathogen us bacteria can
-# be obtained with MF-UF that requires low energy consumption: 1.2 kWh/m3
-# or 1.2 Wh/L according to :
-# 'Water Purification-Desalination with membrane technology supplied
-# with renewable energy', Massimo Pizzichini, Claudio Russo
-ratio_potabilized = ((total_unused_power_Wh / 1.2) /
-                                 total_pumped_water_L)
-# creuser avec ajout de cette machine sur installation:
-# https://lacentrale-eco.com/fr/traitement-eau-fr/eau-domestique/traitement-uv-maison/platine-uv/platine-dom-de-traitement-uv-kit-complet-30w-ou-55w-jusqua-2-55-m-h.html
-
-# with 4.2kJ/kg/K, water temperature can be increased of 50K with 58.5 Wh/L
-ratio_heated_50K = ((total_unused_power_Wh / 58.5) /
-                                   total_pumped_water_L)
-
-print('ratio potabilized: ', ratio_potabilized,
-      '\nratio heated +50C:', ratio_heated_50K)
+#
+#total_unused_power_Wh = pvps1.flow.P_unused.sum()
+#total_pumped_water_L = (pvps1.flow.Qlpm).sum()*60
+#
+## potabilization of freshwater polluted from pathogen us bacteria can
+## be obtained with MF-UF that requires low energy consumption: 1.2 kWh/m3
+## or 1.2 Wh/L according to :
+## 'Water Purification-Desalination with membrane technology supplied
+## with renewable energy', Massimo Pizzichini, Claudio Russo
+#ratio_potabilized = ((total_unused_power_Wh / 1.2) /
+#                     total_pumped_water_L)
+## creuser avec ajout de cette machine sur installation:
+## https://lacentrale-eco.com/fr/traitement-eau-fr/eau-domestique/traitement-uv-maison/platine-uv/platine-dom-de-traitement-uv-kit-complet-30w-ou-55w-jusqua-2-55-m-h.html
+#
+## with 4.2kJ/kg/K, water temperature can be increased of 50K with 58.5 Wh/L
+#ratio_heated_50K = ((total_unused_power_Wh / 58.5) /
+#                    total_pumped_water_L)
+#
+#print('ratio potabilized: ', ratio_potabilized,
+#      '\nratio heated +50C:', ratio_heated_50K)

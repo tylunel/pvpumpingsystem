@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri May 24 14:54:44 2019
-
-@author: Louis LAMARCHE,  Tanguy LUNEL
-
 Gives water properties in various physical conditions.
+
+
+@author: Louis Lamarche,  Tanguy Lunel
 """
 
 import numpy as np
+
+# TODO: translate in engligh
 
 
 class Switch(object):
@@ -220,14 +221,13 @@ def water_prop(nom,  T):
     label = ['temp', 'pres', 'vf', 'vg', 'hfg', 'Cpf', 'Cpg', 'muf', 'mug',
              'kf', 'kg', 'Prf', 'Prg', 'st', 'betaf']
 
-
     for case in Switch(nom):
         if case('temp'):
             y = properties_table[:, 0]
             x = properties_table[:, 1]
-            pmin = x[0];
+            pmin = x[0]
             pmax = x[x.size-1]
-            if T<pmin or T>pmax:
+            if T < pmin or T > pmax:
                 print('Warning: T is out of the table: data extrapolated')
             p = np.interp(T, x,  y)
             break
@@ -235,9 +235,9 @@ def water_prop(nom,  T):
             i = label.index(nom)
             y = properties_table[:, i]
             x = properties_table[:, 0]
-            Tmin = x[0];
+            Tmin = x[0]
             Tmax = x[x.size-1]
-            if T<Tmin or T>Tmax:
+            if T < Tmin or T > Tmax:
                 print('Warning: T is out of the table: data extrapolated')
             p = np.interp(T, x,  y)
             p = p*10**-6
@@ -247,9 +247,9 @@ def water_prop(nom,  T):
             i = label.index(nom1)
             y = properties_table[:, i]
             x = properties_table[:, 0]
-            Tmin = x[0];
+            Tmin = x[0]
             Tmax = x[x.size-1]
-            if T<Tmin or T>Tmax:
+            if T < Tmin or T > Tmax:
                 print('Warning: T is out of the table: data extrapolated')
             p1 = np.interp(T, x,  y)
             nom2 = 'vf'
@@ -263,9 +263,9 @@ def water_prop(nom,  T):
             i = label.index(nom1)
             y = properties_table[:, i]
             x = properties_table[:, 0]
-            Tmin = x[0];
+            Tmin = x[0]
             Tmax = x[x.size-1]
-            if T<Tmin or T>Tmax:
+            if T < Tmin or T > Tmax:
                 print('Warning: T is out of the table: data extrapolated')
             p1 = np.interp(T, x,  y)
             nom2 = 'vg'
@@ -279,9 +279,9 @@ def water_prop(nom,  T):
             i = label.index(nom1)
             y = properties_table[:, i]
             x = properties_table[:, 0]
-            Tmin = x[0];
+            Tmin = x[0]
             Tmax = x[x.size-1]
-            if T<Tmin or T>Tmax:
+            if T < Tmin or T > Tmax:
                 print('Warning: T is out of the table: data extrapolated')
             p1 = np.interp(T, x,  y)
             nom2 = 'vg'
@@ -291,7 +291,7 @@ def water_prop(nom,  T):
             nom3 = 'Cpg'
             i = label.index(nom2)
             y = properties_table[:, i]
-            p2 = np.interp(T, x,  y)
+            p3 = np.interp(T, x,  y)
             p = (p1*p2/p3)*10**-6
             break
         if case('alf'):
@@ -299,9 +299,9 @@ def water_prop(nom,  T):
             i = label.index(nom1)
             y = properties_table[:, i]
             x = properties_table[:, 0]
-            Tmin = x[0];
+            Tmin = x[0]
             Tmax = x[x.size-1]
-            if T<Tmin or T>Tmax:
+            if T < Tmin or T > Tmax:
                 print('Warning: T is out of the table: data extrapolated')
             p1 = np.interp(T, x,  y)
             nom2 = 'vf'
@@ -318,9 +318,9 @@ def water_prop(nom,  T):
             i = label.index(nom)
             y = properties_table[:, i]
             x = properties_table[:, 0]
-            Tmin = x[0];
+            Tmin = x[0]
             Tmax = x[x.size-1]
-            if T<Tmin or T>Tmax:
+            if T < Tmin or T > Tmax:
                 print('Warning: T is out of the table: data extrapolated')
             p = np.interp(T, x,  y)
             p = p*10**-3
@@ -329,9 +329,9 @@ def water_prop(nom,  T):
             i = label.index(nom)
             y = properties_table[:, i]
             x = properties_table[:, 0]
-            Tmin = x[0];
+            Tmin = x[0]
             Tmax = x[x.size-1]
-            if T<Tmin or T>Tmax:
+            if T < Tmin or T > Tmax:
                 print('Warning: T is out of the table: data extrapolated')
             p = np.interp(T, x,  y)
             p = p*10**3
@@ -340,9 +340,9 @@ def water_prop(nom,  T):
             i = label.index(nom)
             y = properties_table[:, i]
             x = properties_table[:, 0]
-            Tmin = x[0];
+            Tmin = x[0]
             Tmax = x[x.size-1]
-            if T<Tmin or T>Tmax:
+            if T < Tmin or T > Tmax:
                 print('Warning: T is out of the table: data extrapolated')
             p = np.interp(T, x,  y)
             p = p*10**-3
@@ -352,9 +352,9 @@ def water_prop(nom,  T):
             i = label.index(nom2)
             y = properties_table[:, i]
             x = properties_table[:, 0]
-            Tmin = x[0];
+            Tmin = x[0]
             Tmax = x[x.size-1]
-            if T<Tmin or T>Tmax:
+            if T < Tmin or T > Tmax:
                 print('Warning: T is out of the table: data extrapolated')
             p = np.interp(T, x,  y)
             p = 1000.0/p
@@ -364,9 +364,9 @@ def water_prop(nom,  T):
             i = label.index(nom2)
             y = properties_table[:, i]
             x = properties_table[:, 0]
-            Tmin = x[0];
+            Tmin = x[0]
             Tmax = x[x.size-1]
-            if T<Tmin or T>Tmax:
+            if T < Tmin or T > Tmax:
                 print('Warning: T is out of the table: data extrapolated')
             p = np.interp(T, x,  y)
             p = 1000.0/p
@@ -375,9 +375,9 @@ def water_prop(nom,  T):
             i = label.index(nom)
             y = properties_table[:, i]
             x = properties_table[:, 0]
-            Tmin = x[0];
+            Tmin = x[0]
             Tmax = x[x.size-1]
-            if T<Tmin or T>Tmax:
+            if T < Tmin or T > Tmax:
                 print('Warning: T is out of the table: data extrapolated')
             p = np.interp(T, x,  y)
             p = p*10**-6
@@ -385,9 +385,9 @@ def water_prop(nom,  T):
         i = label.index(nom)
         y = properties_table[:, i]
         x = properties_table[:, 0]
-        Tmin = x[0];
+        Tmin = x[0]
         Tmax = x[x.size-1]
-        if T<Tmin or T>Tmax:
+        if T < Tmin or T > Tmax:
             print('Warning: T is out of the table: data extrapolated')
         p = np.interp(T, x,  y)
     return p
@@ -402,8 +402,8 @@ def vap_p(Tk):
     return p
 
 
-if __name__=='__main__':
-    res=water_prop('rhof', 20+273)
+if __name__ == '__main__':
+    res = water_prop('rhof', 20+273)
     print(res)
 #    res2=water_prop('vf', 20+273)
 #    print(res2)

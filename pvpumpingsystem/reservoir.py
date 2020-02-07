@@ -1,30 +1,38 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Jul  3 17:34:56 2019
+Module for reservoir modeling.
 
-@author: AP78430
+@author: Tanguy Lunel
 """
 
 import numpy as np
 import warnings
 
 
+# TODO: replace water_volume by state of charge SOC
+
 class Reservoir(object):
     """Class defining a reservoir.
 
         Attributes:
         --------
-        size: numeric
-            default is inf, i.e. like if there was no reservoir, [L]
-        water_volume: numeric
-            default is 0, i.e. empty reservoir, [L]
-        material: str
-            default is None
+        size: float, default is inf, i.e. like if there was no reservoir
+            Volume of reservoir [L]
+        water_volume: float, default is 0
+            Volume of water in the reservoir [L]. 0 = empty
+        material: str, default is None
+            Material of the reservoir
+        price: float, default is 0
+            Price of the reservoir
     """
 
-    def __init__(self, size=float("inf"), water_volume=0, material=None):
+    def __init__(self, size=float("inf"),
+                 water_volume=0,
+                 price=0,
+                 material=None):
         self.size = size
         self.water_volume = water_volume
+        self.price = price
         self.material = material
 
     def __repr__(self):
@@ -43,7 +51,7 @@ class Reservoir(object):
                 (water_volume, extra (+) or lacking water(-))
         """
 
-        self.water_volume += quantity
+        self.water_volume = np.nansum([self.water_volume, quantity])
 
         if self.water_volume > self.size:
             extra_water = self.water_volume-self.size

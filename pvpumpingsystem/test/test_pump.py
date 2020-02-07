@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri May 17 12:21:16 2019
-
-@author: Tanguy
+@author: Tanguy Lunel
 """
 
 import numpy as np
 import pandas as pd
 import pytest
+import os
+import inspect
 
 import pvpumpingsystem.pump as pp
 from pvpumpingsystem import errors
@@ -16,47 +16,49 @@ from pvpumpingsystem import errors
 pytestmark = pytest.mark.filterwarnings(
     "ignore::scipy.optimize.OptimizeWarning")
 
+test_dir = os.path.dirname(
+    os.path.abspath(inspect.getfile(inspect.currentframe())))
+
 
 @pytest.fixture
-def pump_1():
-    return pp.Pump(path="../pumps_files/SCB_10_150_120_BL.txt",
-                   model='SCB_10', modeling_method='arab')
+def pumpset():
+    pump_testfile = os.path.join(test_dir,
+                                 '../data/pump_files/SCB_10_150_120_BL.txt')
+    return pp.Pump(path=pump_testfile,
+                   idname='SCB_10',
+                   modeling_method='arab',
+                   motor_electrical_architecture='permanent_magnet')
 
 
-def test_init(pump_1):
-    assert type(pump_1.specs_df) is pd.DataFrame
-    assert type(pump_1.coeffs['a']) is np.ndarray
+def test_init(pumpset):
+    assert type(pumpset.specs) is pd.DataFrame
+    assert type(pumpset.coeffs['coeffs_f1']) is np.ndarray
 
 
-def test_functVforIH(pump_1):
-    """Test if the output functV works
-    well, and if this function is able to correctly raise errors.
+def test_all_models_coeffs(pumpset):
+    """
+    Assert that all models manage to have a r_squared value of minimum 0.8
+    """
+    # Arab model
+    assert pumpset.coeffs['r_squared_f1'] > 0.8
+    # Kou model
+    pumpset.modeling_method = 'kou'
+    assert pumpset.coeffs['r_squared_f1'] > 0.8
+    # theoretical model
+    pumpset.modeling_method = 'theoretical'
+    assert pumpset.coeffs['r_squared_f1'] > 0.8
+    # Hamidat model
+    pumpset.modeling_method = 'hamidat'
+    assert pumpset.coeffs['r_squared_f2'] > 0.8
+
+
+def test_functIforVH(pumpset):
+    """
+    Test if the output functV works well,
+    and if this function is able to correctly raise errors.
     """
     # check standard deviation
-    functV, intervals = pump_1.functVforIH()
-
-    # check computing through functV
-    res = functV(5, 20)
-    res_expected = 101.112
-    np.testing.assert_allclose(res, res_expected,
-                               rtol=0.1)
-
-    # check the raising of errors
-    with pytest.raises(errors.CurrentError):
-        functV(1, 20)
-    with pytest.raises(errors.HeadError):
-        functV(6, 100)
-
-    # check desactivation of error raising (if not working, raises errors)
-    functV(7, 120, error_raising=False)
-
-
-def test_functIforVH(pump_1):
-    """Test if the output functV works
-    well, and if this function is able to correctly raise errors.
-    """
-    # check standard deviation
-    functI, intervals = pump_1.functIforVH()
+    functI, intervals = pumpset.functIforVH()
 
     # check computing through functV
     res = functI(80, 20)
@@ -72,52 +74,52 @@ def test_functIforVH(pump_1):
     functI(7, 120, error_raising=False)
 
 
-def test_functQforPH(pump_1):
-    """Test whether the output functV works
-    well, and if this function is able to correctly raise errors.
+def test_functQforPH(pumpset):
+    """
+    Test whether the output functV works well,
+    and if this function is able to correctly raise errors.
     """
     # check standard deviation
-    functQ, stddev = pump_1.functQforPH()
+    functQ, stddev = pumpset.functQforPH()
 
     # check computing through functV
-    res = functQ(400, 20)
-    res_expected = 36.91
+    res = functQ(400, 20)['Q']
+    res_expected = 36.27
     np.testing.assert_allclose(res, res_expected,
+                               rtol=0.1)
+
+    # check the processing of unused power when head is too high
+    res = functQ(560, 80)['P_unused']
+    res_expected = 560
+    np.testing.assert_allclose(res, res_expected,
+                               rtol=0.1)
+
+
+def test_iv_curve_data(pumpset):
+    """Test if the IV curve is as expected.
+    """
+    IV = pumpset.iv_curve_data(28)
+    IV_expected = (
+        [2.60514703, 2.70275489, 2.80036276, 2.89797062, 2.99557848,
+       3.09318635, 3.19079421, 3.28840207, 3.38600994, 3.4836178 ,
+       3.58122566, 3.67883353, 3.77644139, 3.87404925, 3.97165712,
+       4.06926498, 4.16687284, 4.26448071, 4.36208857, 4.45969643,
+       4.5573043 , 4.65491216, 4.75252002, 4.85012789, 4.94773575,
+       5.04534361, 5.14295148, 5.24055934, 5.3381672 , 5.43577507,
+       5.53338293, 5.63099079, 5.72859866, 5.82620652, 5.92381438,
+       6.02142225, 6.11903011, 6.21663797, 6.31424584, 6.4118537 ],
+        [73.11753597,  74.31965043,  75.52176489,  76.72387936,
+        77.92599382,  79.12810828,  80.33022274,  81.53233721,
+        82.73445167,  83.93656613,  85.13868059,  86.34079505,
+        87.54290952,  88.74502398,  89.94713844,  91.1492529 ,
+        92.35136737,  93.55348183,  94.75559629,  95.95771075,
+        97.15982522,  98.36193968,  99.56405414, 100.7661686 ,
+       101.96828307, 103.17039753, 104.37251199, 105.57462645,
+       106.77674091, 107.97885538, 109.18096984, 110.3830843 ,
+       111.58519876, 112.78731323, 113.98942769, 115.19154215,
+       116.39365661, 117.59577108, 118.79788554, 120.        ])
+    np.testing.assert_allclose((IV['I'], IV['V']), IV_expected,
                                rtol=1e-3)
-
-    # check the raising of errors
-    with pytest.raises(errors.PowerError):
-        functQ(20, 20)
-    with pytest.raises(errors.HeadError):
-        functQ(560, 80)
-
-
-#def test_IVcurvedata(pump_1):
-#    """Test if the IV curve is as expected.
-#    """
-#    IV = pump_1.IVcurvedata(28)
-#    IV_expected = ([2.18428526, 2.29238051, 2.40047576, 2.50857101,
-#                    2.61666626, 2.72476151, 2.83285676, 2.94095201,
-#                    3.04904726, 3.15714251, 3.26523776, 3.37333301,
-#                    3.48142825, 3.5895235, 3.69761875, 3.805714,
-#                    3.91380925, 4.0219045, 4.12999975, 4.238095,
-#                    4.34619025, 4.4542855, 4.56238075, 4.670476,
-#                    4.77857125, 4.8866665, 4.99476175, 5.102857,
-#                    5.21095225, 5.3190475, 5.42714275, 5.535238,
-#                    5.64333325, 5.7514285, 5.85952375, 5.967619,
-#                    6.07571425, 6.1838095, 6.29190475, 6.4],
-#                   [-1., 71.25751693, 72.38928364, 73.52953971,
-#                    74.67828513, 75.8355199, 77.00124402, 78.17545749,
-#                    79.35816031,  80.54935247,  81.74903399,  82.95720486,
-#                    84.17386508,  85.39901465,  86.63265357,  87.87478183,
-#                    89.12539945,  90.38450642,  91.65210274,  92.92818841,
-#                    94.21276342,  95.50582779,  96.80738151,  98.11742458,
-#                    99.43595699, 100.76297876, 102.09848988, 103.44249035,
-#                    104.79498017, 106.15595933, 107.52542785, 108.90338572,
-#                    110.28983294, 111.6847695, 113.08819542, 114.50011069,
-#                    115.9205153, 117.34940927, 118.78679259, 120.23266526])
-#    np.testing.assert_allclose((IV['I'], IV['V']), IV_expected,
-#                               rtol=1e-3)
 
 
 if __name__ == '__main__':

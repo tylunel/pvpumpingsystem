@@ -1,2 +1,2 @@
-.travis-frompvlib.yml
-requirements-pvlib-py37.yml
+requirements_template.txt
+conf_v1.py

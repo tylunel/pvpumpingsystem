@@ -1,0 +1,25 @@
+PUMP NAME: SCS_18_90_60_BL
+# '.' are mandatory inputs that should be replaced by specifications or the line should be removed. 
+# 'nan' are optional input.
+# Units for columns are in the order: 
+# [V]	[m]	[A]	[L/min]	[W]	[no unit]
+voltage	tdh	current	flow	power	efficiency
+45	0.0	8.50	102	383	0
+45	3.5	8.52	94	383	14
+45	7.0	8.49	86	382	26
+45	10.6	8.25	76	371	35
+45	14.1	7.89	65	355	42
+45	17.6	7.30	47	329	41
+45	22.5	4.69	0	211	0
+60	0.0	12.87	130	772	0
+60	3.5	12.87	124	772	9
+60	7.0	12.86	117	772	17
+60	10.6	12.83	110	770	25
+60	14.1	12.71	103	763	31
+60	17.6	12.54	96	752	37
+60	21.1	12.26	88	736	41
+60	24.6	11.84	78	710	44
+60	28.2	11.15	66	669	46
+60	31.7	10.25	52	615	44
+60	35.2	8.89	31	533	34
+60	38.7	6.88	0	413	0

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Jul  2 15:43:31 2019
+Module gathering errors relative to pv pumping system.
 
-@author: AP78430
+@author: Tanguy Lunel
 """
 
 
@@ -41,6 +41,12 @@ class LocationError(Exception):
 
 
 class InsufficientDataError(Exception):
+    """Raised when the pump object lacks some informations.
+    """
+    pass
+
+
+class NoConvergenceError(Exception):
     """Raised when the pump object lacks some informations.
     """
     pass

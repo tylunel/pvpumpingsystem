@@ -1,0 +1,24 @@
+PUMP NAME: template
+# '.' are mandatory inputs that should be replaced by specifications or the line should be removed. 
+# 'nan' are optional input.
+# Units for columns are in the order: 
+# [V]	[m]	[A]	[L/min]	[W]	[no unit]
+voltage	tdh	current	flow	power	efficiency
+12	.	.	.	nan	nan
+12	.	.	.	nan	nan
+12	.	.	.	nan	nan
+12	.	.	.	nan	nan
+12	.	.	.	nan	nan
+24	.	.	.	nan	nan
+24	.	.	.	nan	nan
+24	.	.	.	nan	nan
+24	.	.	.	nan	nan
+24	.	.	.	nan	nan
+30	.	.	.	nan	nan
+30	.	.	.	nan	nan
+30	.	.	.	nan	nan
+30	.	.	.	nan	nan
+30	.	.	.	nan	nan
+.
+.
+.

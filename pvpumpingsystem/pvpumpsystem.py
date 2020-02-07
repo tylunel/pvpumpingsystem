@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Created on Fri May 24 14:54:44 2019
-
-@author: Tanguy
-
 Defines a whole PVPS, with PV array, pump, pipes... and provide
 functions for computing main output (water discharge,...) from input
-(weather,...)
+(weather, pv array, water consumption)
+
+@author: Tanguy Lunel
+
 """
 import numpy as np
 import pandas as pd
@@ -15,32 +14,98 @@ import matplotlib.pyplot as plt
 import tqdm
 import time
 import pvlib
-from warnings import warn
+import warnings
 
 import pvpumpingsystem.pump as pp
 import pvpumpingsystem.pipenetwork as pn
 import pvpumpingsystem.reservoir as rv
 import pvpumpingsystem.consumption as cs
+import pvpumpingsystem.mppt as mppt
+import pvpumpingsystem.finance as fin
+import pvpumpingsystem.pvgeneration as pvgen
 from pvpumpingsystem import errors
 
 
+# TODO: add check on dc_model and coupling_method to insure that
+# direct-coupling goes with SDM. (if no check, error can be hard to fine
+# for user)
+
+# TODO: add 'finance_params' parameters?? as dict?
+# it would typically include opex, discount_rate, lifespan_pv,
+# lifespan_pump, lifespan_mppt, labour_price_coefficient
+
 class PVPumpSystem(object):
-    """Class defining a PV pumping system made of :
-            - modelchain : class pvlib.ModelChain
-            - motorpump : class Pump
-            - coupling: 'mppt' or 'direct'
-                represents the type of coupling between pv generator and pump
-            - pipes : class PipeNetwork
-            - reservoir: class Reservoir
-            - consumption: class Consumption
+    """
+    Class defining a PV pumping system made of:
+
+    Attributes
+    ----------
+        pvgeneration: pvpumpingsystem.PVGeneration,
+            //!\\ The weather file used here should not smooth the extreme
+            conditions (avoid TMY or IWEC).
+            /!\\ the pvgeneration.modelchain.dc_model must be a Single Diode
+            model if the system is directly-coupled
+
+        motorpump: pvpumpingsystem.Pump
+            The pump used in the system.
+
+        coupling: str,
+            represents the type of coupling between pv generator and pump.
+            Can be 'mppt' or 'direct'
+
+        motorpump_model: str, default None
+            The modeling method used to model the motorpump. Can be:
+            'kou', 'arab', 'hamidat' or 'theoretical'.
+            Overwrite the motorpump.modeling_method attribute if not None.
+
+        mppt: pvpumpingsystem.MPPT
+            Maximum power point tracker of the system.
+
+        pipes: pvpumpingsystem.PipeNetwork
+
+        reservoir: pvpumpingsystem.Reservoir
+
+        consumption: pvpumpingsystem.Consumption
+
+        labour_price_coefficient: float, default is 0.20
+            Ratio of the price of labour and secondary costs (wires,
+            racks (can be expensive!), transport of materials, etc) on initial
+            investment. It is considered at 0.2 in Gualteros (2017),
+            but is more around 0.40 in Tarpuy(Peru) case.
+
+        Computed attributes
+        -------------------
+            llp: float, between 0 and 1
+                Loss of Load Probability, i.e. Water shortage probability.
+
+            inital_investment: float
+                Cost of the system at the installation [USD]
 
     """
-    def __init__(self, modelchain, motorpump, coupling='mppt', mppt=None,
-                 pipes=None, reservoir=None, consumption=None, idname=None):
-        self.modelchain = modelchain  # instance of PVArray
+    def __init__(self,
+                 pvgeneration,
+                 motorpump,
+                 coupling='mppt',
+                 motorpump_model=None,
+                 mppt=None,
+                 pipes=None,
+                 reservoir=None,
+                 consumption=None,
+                 labour_price_coefficient=0.20,  # TODO: realistic value?
+                 idname=None):
+        self.pvgeneration = pvgeneration  # instance of PVArray
         self.motorpump = motorpump  # instance of Pump
         self.coupling = coupling
         self.mppt = mppt
+        self.labour_price_coefficient = labour_price_coefficient
+
+        if motorpump_model is None and motorpump is not None:
+            self.motorpump_model = self.motorpump.modeling_method
+        elif motorpump is not None:
+            self.motorpump_model = motorpump_model
+            self.motorpump.modeling_method = motorpump_model
+        else:  # motorpump is None (can happen in initialization of a sizing)
+            pass
 
         if pipes is None:
             self.pipes = pn.PipeNetwork(0, 0, 0.1)  # system with null length
@@ -65,22 +130,38 @@ class PVPumpSystem(object):
         self.water_stored = None
 
     def __repr__(self):
-        if self.idname is None:
-            infos = ('PVPSystem made of : \n modelchain: {0} \npump: {1})'
-                     .format(self.modelchain, self.motorpump.model))
-            return infos
+        infos = ('PVPSystem made of: \npvgeneration: {0} \npump: {1})'
+                 .format(self.pvgeneration, self.motorpump.idname))
+        return infos
+
+    # TODO: turn it into a decorator
+    def define_motorpump_model(self, model):
+        if model != self.motorpump_model:
+            self.motorpump.modeling_method = model
+            self.motorpump_model = model
         else:
-            return ('PV Pumping System :'+self.idname)
+            return 'Already defined motorpump model'
+
+#    @property  # getter
+#    def motorpump_model(self):
+#        return self.motorpump_model
+#
+#    # setter: Permit to recalculate pump coeffs when changing the model
+#    @motorpump_model.setter
+#    def motorpump_model(self, model):
+#        if model != self.motorpump.modeling_method:
+#            self.motorpump.modeling_method = model
+#            self.motorpump_model = model
 
     def functioning_point_noiteration(self,
                                       plot=False, nb_pts=50, stop=8760):
-        """Finds the IV functioning point(s) of the PV array and the load.
+        """Finds the IV functioning point(s) of the PV array and the pump
+        (load).
 
         cf pvlib_pvpumpsystem.functioning_point_noiteration for more details
 
         Parameters
         ----------
-
         plot: Boolean
             Allows or not the printing of IV curves of PV system and of
             the load.
@@ -99,41 +180,50 @@ class PVPumpSystem(object):
 
         Note / Issues
         -------------
-        - takes ~5sec for computing 8760 iterations
+        - takes ~10sec to compute 8760 iterations
         """
-        params = self.modelchain.diode_params[0:stop]
-        M_s = self.modelchain.system.modules_per_string
-        M_p = self.modelchain.system.strings_per_inverter
+        params = self.pvgeneration.modelchain.diode_params[0:stop]
+        M_s = self.pvgeneration.system.modules_per_string
+        M_p = self.pvgeneration.system.strings_per_inverter
 
-        load_fctI, ectyp, intervalsVH = self.motorpump.functIforVH()
-        load_fctV, ectyp, intervalsIH = self.motorpump.functVforIH()
+        load_fctI, intervalsVH = self.motorpump.functIforVH()
+
         fctQwithVH, sigma2 = self.motorpump.functQforVH()
 
         tdh = self.pipes.h_stat
 
         pdresult = functioning_point_noiteration(
-                params, M_s, M_p, load_fctV, load_fctI, intervalsVH['V'], tdh)
+                params,
+                M_s, M_p,
+                load_fctIfromVH=load_fctI,
+                load_interval_V=intervalsVH['V'](tdh),
+                pv_interval_V=[
+                    0, self.pvgeneration.modelchain.dc.v_oc.max() * M_s],
+                tdh=tdh)
 
         if plot:
             plt.figure()
             # domain of interest on V
             # (*1.1 is for the case when conditions are better than stc)
-            v_high_boundary = self.modelchain.system.module.V_oc_ref * M_s*1.1
+            v_high_boundary = self.pvgeneration.system.module.V_oc_ref * \
+                M_s*1.1
             Vrange_pv = np.arange(0, v_high_boundary)
             # IV curve of PV array for good conditions
             IL, I0, Rs, Rsh, nNsVth = \
-                self.modelchain.system.calcparams_desoto(1000, 25)
-            Ivect_pv_good = self.modelchain.system.i_from_v(Rsh, Rs, nNsVth,
-                                                            Vrange_pv,
-                                                            I0, IL)
+                self.pvgeneration.system.calcparams_desoto(1000, 25)
+            Ivect_pv_good = self.pvgeneration.system.i_from_v(Rsh, Rs,
+                                                              nNsVth,
+                                                              Vrange_pv,
+                                                              I0, IL)
             plt.plot(Vrange_pv, Ivect_pv_good,
                      label='pv array with S = 1000 W and Tcell = 25°C')
             # IV curve of PV array for poor conditions
             IL, I0, Rs, Rsh, nNsVth = \
-                self.modelchain.system.calcparams_desoto(100, 60)
-            Ivect_pv_poor = self.modelchain.system.i_from_v(Rsh, Rs, nNsVth,
-                                                            Vrange_pv,
-                                                            I0, IL)
+                self.pvgeneration.system.calcparams_desoto(100, 60)
+            Ivect_pv_poor = self.pvgeneration.system.i_from_v(Rsh, Rs,
+                                                              nNsVth,
+                                                              Vrange_pv,
+                                                              I0, IL)
             plt.plot(Vrange_pv, Ivect_pv_poor,
                      label='pv array with S = 100 W and Tcell = 60°C')
             # IV curve of load (pump)
@@ -150,7 +240,7 @@ class PVPumpSystem(object):
 
         return pdresult
 
-    def calc_flow(self, atol=0.1, stop=8760):
+    def calc_flow(self, atol=0.1, stop=8760, **kwargs):
         """Function computing the flow at the output of the PVPS.
         cf pvlib_pvpumpsystem.calc_flow_directly_coupled for more details
 
@@ -173,18 +263,24 @@ class PVPumpSystem(object):
 
         Note / Issues
         ---------
-        - takes ~15 sec for computing 8760 iterations with atol=0.1lpm
+        - takes ~20 sec for computing 8760 iterations with mppt coupling and
+        atol=0.1lpm
+        - takes ~60 sec for computing 8760 iterations with direct coupling and
+        atol=0.1lpm
         """
         if self.coupling == 'mppt':
-            self.flow = calc_flow_mppt_coupled(self.modelchain,
+            self.flow = calc_flow_mppt_coupled(self.pvgeneration,
                                                self.motorpump,
                                                self.pipes,
-                                               atol=atol, stop=stop)
+                                               self.mppt,
+                                               atol=atol, stop=stop,
+                                               **kwargs)
         elif self.coupling == 'direct':
-            self.flow = calc_flow_directly_coupled(self.modelchain,
+            self.flow = calc_flow_directly_coupled(self.pvgeneration,
                                                    self.motorpump,
                                                    self.pipes,
-                                                   atol=atol, stop=stop)
+                                                   atol=atol, stop=stop,
+                                                   **kwargs)
         else:
             raise ValueError("Inappropriate value for argument coupling." +
                              "It should be 'mppt' or 'direct'.")
@@ -205,26 +301,79 @@ class PVPumpSystem(object):
 
         """
 
-        module_area = self.modelchain.system.module.A_c
-        M_s = self.modelchain.system.modules_per_string
-        M_p = self.modelchain.system.strings_per_inverter
+        module_area = self.pvgeneration.system.module.A_c
+        M_s = self.pvgeneration.system.modules_per_string
+        M_p = self.pvgeneration.system.strings_per_inverter
         pv_area = module_area * M_s * M_p
 
         if self.flow is None:
             self.calc_flow()
 
-        self.efficiency = calc_efficiency(self.flow,
-                                          self.modelchain.effective_irradiance,
-                                          pv_area)
+        self.efficiency = calc_efficiency(
+            self.flow,
+            self.pvgeneration.modelchain.effective_irradiance,
+            pv_area)
 
-    def calc_reservoir(self):
+    def calc_reservoir(self, starting_soc='morning', **kwargs):
         """Wrapper of pvlib.pvpumpsystem.calc_reservoir.
+
+        Parameter
+        ---------
+        starting_soc: str or float, default is 'morning'
+            State of Charge of the reservoir at the beginning of
+            the simulation [%]
+            Available strings are 'empty' (no water in reservoir)
+            and 'morning' (enough water for one morning consumption).
+
         """
+        if starting_soc == 'empty' or starting_soc == 0:
+            self.reservoir.water_volume = 0
+        elif starting_soc == 'morning':
+            # Water needed in the first morning (until 12am)
+            vol = float((self.consumption.flow_rate.iloc[0:12]*60).sum())
+            # initialization of water in reservoir
+            self.reservoir.water_volume = vol
+        elif isinstance(starting_soc, float) and self.reservoir.size != np.inf:
+            self.reservoir.water_volume = self.reservoir.size * starting_soc
+        else:
+            raise TypeError('starting_soc type is not correct, or is '
+                            'incoherent with reservoir.size')
+
         if self.flow is None:
-            self.calc_flow()
+            self.calc_flow(**kwargs)
 
         self.water_stored = calc_reservoir(self.reservoir, self.flow.Qlpm,
                                            self.consumption.flow_rate.Qlpm)
+
+    def run_model(self, iteration=False, **kwargs):
+        """
+        Comprehesive modeling of the PVPS. Computes Loss of Power Supply
+        and stores it as an attribute. Re-run eveything even if already
+        computed before.
+        """
+        if not hasattr(self.pvgeneration.modelchain, 'diode_params'):
+            self.pvgeneration.run_model()
+
+        # 'disable' removes the progress bar
+        self.calc_flow(disable=True, iteration=iteration)
+        self.calc_efficiency()
+        self.calc_reservoir(**kwargs)
+
+        total_water_required = sum(self.consumption.flow_rate.Qlpm*60)
+        total_water_lacking = -min(0, sum(self.water_stored.extra_water))
+
+        # water shortage probability
+        self.llp = total_water_lacking / total_water_required
+
+        # Price of motorpump, pv modules, reservoir, mppt
+        self.initial_investment = fin.initial_investment(self)
+
+        self.npv = fin.net_present_value(self,
+                                         opex=500,
+                                         discount_rate=0.05,
+                                         lifespan_pv=30,
+                                         lifespan_pump=12,
+                                         lifespan_mppt=10)
 
 
 def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
@@ -290,8 +439,9 @@ def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
     [1] Petrone & al (2017), "Photovoltaic Sources Modeling", Wiley, p.5.
         URL: http://doi.wiley.com/10.1002/9781118755877
     """
-    warn("'function_i_from_v' deprecated. Use pvlib.pvsystem.i_from_v instead",
-         DeprecationWarning)
+    warnings.warn(
+        "'function_i_from_v' deprecated. Use pvlib.pvsystem.i_from_v instead",
+        DeprecationWarning)
 
     if (M_s, M_p) != (1, 1):
         I_L = M_p * I_L
@@ -308,16 +458,18 @@ def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
     sol = opt.root(I_pv_fct, x0=Iguess)
 
     if (sol.x).any() < 0:
-        warn('A current is negative. The PV module may be '
-             'absorbing energy and it can lead to unusual degradation.')
+        warnings.warn('A current is negative. The PV module may be absorbing '
+                      'energy and it can lead to unusual degradation.')
 
     return sol.x
 
 
-def functioning_point_noiteration(params, modules_per_string,
+def functioning_point_noiteration(params,
+                                  modules_per_string,
                                   strings_per_inverter,
-                                  load_fctV, load_fctI=None,
-                                  load_intervalV=None,
+                                  load_fctIfromVH=None,
+                                  load_interval_V=[-np.inf, np.inf],
+                                  pv_interval_V=[-np.inf, np.inf],
                                   tdh=0):
     """Finds the IV functioning point(s) of the PV array and the load.
 
@@ -325,7 +477,7 @@ def functioning_point_noiteration(params, modules_per_string,
     ----------
     params: pd.Dataframe
         Dataframe containing the 5 diode parameters. Typically comes from
-        ModelChain.diode_params
+        PVGeneration.ModelChain.diode_params
 
     modules_per_string: numeric
         Number of modules in series in a string
@@ -333,15 +485,8 @@ def functioning_point_noiteration(params, modules_per_string,
     strings_per_inverter: numeric
         Number of strings in parallel
 
-    load_fctV: function
-        The function V=f(I) of the load directly coupled with the array.
-
-    load_fctI: function
-        The function I=f(V) of the load directly coupled with the array.
-        Only useful if plot = True.
-
-    load_intervalV: array-like
-        Domain of V in load_fctI. Only useful if plot = True.
+    load_fctIfromVH: function
+        The function I=f(V, H) of the load directly coupled with the array.
 
     tdh: numeric
         Total dynamic head
@@ -350,11 +495,12 @@ def functioning_point_noiteration(params, modules_per_string,
     -------
     IV : pandas.DataFrame
         Current ('I') and voltage ('V') at the functioning point between
-        load and pv array.
+        load and pv array. I and V are float. It is 0 when there is no
+        irradiance, and np.nan when pv array and load don't match.
 
     Note / Issues
     ---------
-    - takes ~5sec for computing 8760 iterations
+    - takes ~10sec for computing 8760 iterations
     """
     result = []
 
@@ -381,34 +527,38 @@ def functioning_point_noiteration(params, modules_per_string,
             R_sh = (M_s/M_p) * R_sh
 
         if np.isnan(I_L):
-            result.append({'I': 0, 'V': 0})
+            Vm = 0
+            Im = 0
         else:
-            # def of equation of Single Diode Model with previous params:
-            def I_pv_fct(I):
-                """Returns the electrical equation of single-diode model in
-                a way that it returns 0 when the equation is respected
-                (i.e. the I is the good one)
-                """
-                V = load_fctV(I, tdh, error_raising=False)
-                In = I_L - I_o*(np.exp((V + I*R_s)/nNsVth) - 1) - \
-                    (V + I*R_s)/R_sh
-                y = In - I
-                return y
+            # attempt to use only load_fctI here
+            def pv_fctI(V):  # does not work
+                return pvlib.pvsystem.i_from_v(R_sh, R_s, nNsVth, V,
+                                               I_o, I_L, method='lambertw')
 
-            # solver
+            def load_fctI(V):
+                return load_fctIfromVH(V, tdh, error_raising=False)
+
+            # finds intersection. 10 is starting estimate, could be improved
+#            Vm = opt.fsolve(lambda v: pv_fctI(v) - load_fctI(v), 10)
             try:
-                Im = opt.brentq(I_pv_fct, 0, I_L)
-                Im = max(Im, 0)
-                Vm = load_fctV(Im, tdh, error_raising=True)
-            except ValueError:
-                Im = float('nan')
-                Vm = float('nan')
-            except (errors.CurrentError, errors.HeadError):
-                Im = float('nan')
-                Vm = float('nan')
+                Vm = opt.brentq(lambda v: pv_fctI(v) - load_fctI(v),
+                                load_interval_V[0], pv_interval_V[1])
+            except ValueError as e:
+                if 'f(a) and f(b) must have different signs' in str(e):
+                    # basically means that there is no functioning point
+                    Im = np.nan
+                    Vm = np.nan
+                else:
+                    raise
+            try:
+                Im = load_fctIfromVH(Vm, tdh, error_raising=True)
+            except (errors.VoltageError, errors.HeadError):
+                Im = np.nan
+                Vm = np.nan
 
-            result.append({'I': Im,
-                           'V': Vm})
+        result.append({'I': Im,
+                       'V': Vm})
+
     # conversion in pd.DataFrame
     pdresult = pd.DataFrame(result)
     pdresult.index = params.index
@@ -416,59 +566,18 @@ def functioning_point_noiteration(params, modules_per_string,
     return pdresult
 
 
-def calc_flow_noiteration(fct_Q_from_inputs, input_1, static_head):
-    """Function computing the flow at the output of the PVPS according
-    to the input_1 at functioning point.
-
-    Parameters
-    ----------
-    fct_Q_from_inputs: function
-        Function computing flow rate of the pump in liter/minute.
-        Should preferentially come from 'Pump.fct_Q_from_inputs()'
-
-    input_1: numeric
-        Voltage or Power at the functioning point.
-
-    static_head: numeric
-        Static head of the hydraulic network
-
-    Returns
-    ---------
-    Q: water discharge in liter/timestep of input_1 data (typically
-                                                           hours)
-    """
-    if not type(input_1) is float:
-        input_1 = float(input_1)
-
-    if input_1 == 0:
-        Qlpm = 0
-    else:
-        # compute total head h_tot
-        h_tot = static_head
-        # compute discharge Q
-        try:
-            Qlpm = fct_Q_from_inputs(input_1, h_tot)
-        except (errors.VoltageError, errors.PowerError):
-            Qlpm = 0
-    if Qlpm < 0:
-        Qlpm = 0
-
-    discharge = Qlpm  # temp: 60 should be replaced by timestep
-
-    return discharge
-
-
-def calc_flow_directly_coupled(modelchain, motorpump, pipes,
+def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
+                               iteration=False,
                                atol=0.1,
-                               stop=8760):
-    """DEBUG VERSION of 'calc_flow_directly_coupled'
-
+                               stop=8760,
+                               **kwargs):
+    """
     Function computing the flow at the output of the PVPS.
 
     Parameters
     ----------
-    modelchain: pvlib.modelchain.ModelChain object
-        Chain of modeling of the PV generator.
+    pvgeneration: pvpumpingsystem.pvgeneration.PVGeneration object
+        The PV generator object
 
     motorpump: pump.Pump object
         Pump associated with the PV generator
@@ -476,8 +585,15 @@ def calc_flow_directly_coupled(modelchain, motorpump, pipes,
     pipes: pipenetwork.PipeNetwork object
         Hydraulic network linked to the pump
 
+    iteration: boolean, default is False
+        Decide if the system takes into account the friction head due to the
+        flow rate of water pump (iteration = True) or if the system just
+        considers the static head of the system (iteration = False).
+        Often can be put to False if the pipes are well sized.
+
     atol: numeric
-        absolute tolerance on the uncertainty of the flow in l/min
+        absolute tolerance on the uncertainty of the flow in l/min.
+        Used if iteration = True.
 
     stop: numeric
         number of data on which the computation is run
@@ -496,75 +612,107 @@ def calc_flow_directly_coupled(modelchain, motorpump, pipes,
     - takes ~15 sec for computing 8760 iterations with atol=0.1lpm
     """
     result = []
+    modelchain = pvgeneration.modelchain
     # retrieve specific functions of motorpump V(I,H) and Q(V,H)
     M_s = modelchain.system.modules_per_string
     M_p = modelchain.system.strings_per_inverter
 
-    load_fctI, intervalsVH = motorpump.functIforVH()
-    load_fctV, intervalsIH = motorpump.functVforIH()
+    load_fctIfromVH, intervalsVH = motorpump.functIforVH()
     fctQwithPH, sigma2 = motorpump.functQforPH()
 
     for i, row in tqdm.tqdm(enumerate(
             modelchain.diode_params[0:stop].iterrows()),
                                       desc='Computing of Q',
-                                      total=stop):
-
+                                      total=stop,
+                                      **kwargs):
         params = row[1]
-        Qlpm = 1
-        Qlpmnew = 0
 
-        # variables used in case of non-convergence in while loop
-        t_init = time.time()
-        mem = []
+        if iteration is True:
+            Qlpm = 1
+            Qlpmnew = 0
 
-        while abs(Qlpm-Qlpmnew) > atol:  # loop to make Qlpm converge
-            Qlpm = Qlpmnew
-            # water temperature (random...)
-            temp_water = 10
-            # compute total head h_tot
-            h_tot = pipes.h_stat + \
-                pipes.dynamichead(Qlpm, T=temp_water)
-            # compute functioning point
-            iv_data = functioning_point_noiteration(params, M_s, M_p,
-                                                    load_fctV, None, None,
-                                                    h_tot)
-            # consider losses
-            if modelchain.losses != 1:
+            # variables used in case of non-convergence in while loop
+            t_init = time.time()
+            mem = []
+
+            while abs(Qlpm-Qlpmnew) > atol:  # loop to make Qlpm converge
+                Qlpm = Qlpmnew
+                # water temperature (arbitrary, should vary in future work)
+                temp_water = 10
+                # compute total head h_tot
+                h_tot = pipes.h_stat + \
+                    pipes.dynamichead(Qlpm, T=temp_water)
+                # compute functioning point
+                iv_data = functioning_point_noiteration(
+                        params, M_s, M_p,
+                        load_fctIfromVH=load_fctIfromVH,
+                        load_interval_V=intervalsVH['V'](h_tot),
+                        pv_interval_V=[0, modelchain.dc.v_oc[i] * M_s],
+                        tdh=h_tot)
+                # consider losses
                 power = iv_data.V*iv_data.I * modelchain.losses
-            else:
-                power = iv_data.V*iv_data.I
-            # compute flow
-            Qlpmnew = calc_flow_noiteration(fctQwithPH,
-                                            power,
-                                            h_tot)
+                # type casting
+                power = float(power)
+                # compute flow
+                Qlpmnew = fctQwithPH(power, h_tot)['Q']
 
-            # code for exiting while loop if problem
-            mem.append(Qlpmnew)
-            if time.time()-t_init > 1:
-                print('\niv:', iv_data)
-                print('Q:', mem)
-                raise ValueError('Loop too long to execute')
-        result.append({'Qlpm': Qlpmnew,
-                       'I': float(iv_data.I),
-                       'V': float(iv_data.V),
-                       'P': float(power),
-                       'tdh': h_tot
-                       })
+                # code for exiting while loop if problem
+                mem.append(Qlpmnew)
+                if time.time()-t_init > 1000:
+                    print('\niv:', iv_data)
+                    print('Q:', mem)
+                    raise RuntimeError('Loop too long to execute')
+
+            P_unused = fctQwithPH(power, h_tot)['P_unused']
+
+            result.append({'Qlpm': Qlpmnew,
+                           'I': float(iv_data.I),
+                           'V': float(iv_data.V),
+                           'P': power,
+                           'P_unused': P_unused,
+                           'tdh': h_tot
+                           })
+        else:  # iteration is False
+            # compute functioning point
+            iv_data = functioning_point_noiteration(
+                    params, M_s, M_p,
+                    load_fctIfromVH=load_fctIfromVH,
+                    load_interval_V=intervalsVH['V'](pipes.h_stat),
+                    pv_interval_V=[0, modelchain.dc.v_oc[i] * M_s],
+                    tdh=pipes.h_stat)
+            # consider losses
+            power = iv_data.V*iv_data.I * modelchain.losses
+            # type casting
+            power = float(power)
+            # compute flow
+            res_dict = fctQwithPH(power, pipes.h_stat)
+            Qlpm = res_dict['Q']
+            P_unused = res_dict['P_unused']
+
+            result.append({'Qlpm': Qlpm,
+                           'I': float(iv_data.I),
+                           'V': float(iv_data.V),
+                           'P': power,
+                           'P_unused': P_unused,
+                           'tdh': pipes.h_stat
+                           })
 
     pdresult = pd.DataFrame(result)
     pdresult.index = modelchain.diode_params[0:stop].index
     return pdresult
 
 
-def calc_flow_mppt_coupled(modelchain, motorpump, pipes, mppt=None,
+def calc_flow_mppt_coupled(pvgeneration, motorpump, pipes, mppt,
+                           iteration=False,
                            atol=0.1,
-                           stop=8760):
+                           stop=8760,
+                           **kwargs):
     """Function computing the flow at the output of the PVPS.
 
     Parameters
     ----------
-    modelchain: pvlib.modelchain.ModelChain object
-        Chain of modeling of the PV generator.
+    pvgeneration: pvpumpingsystem.pvgeneration.PVGeneration
+        The PV generator.
 
     motorpump: pump.Pump object
         Pump associated with the PV generator
@@ -572,8 +720,18 @@ def calc_flow_mppt_coupled(modelchain, motorpump, pipes, mppt=None,
     pipes: pipenetwork.PipeNetwork object
         Hydraulic network linked to the pump
 
+    mppt: mppt.MPPT object,
+        The maximum power point tracker of the system.
+
+    iteration: boolean, default is False
+        Decide if the system takes into account the friction head due to the
+        flow rate of water pump (iteration = True) or if the system just
+        considers the static head of the system (iteration = False).
+        Often can be put to False if the pipes are well sized.
+
     atol: numeric
-        absolute tolerance on the uncertainty of the flow in l/min
+        absolute tolerance on the uncertainty of the flow in l/min.
+        Used if iteration = True.
 
     stop: numeric
         number of data on which the computation is run
@@ -592,46 +750,62 @@ def calc_flow_mppt_coupled(modelchain, motorpump, pipes, mppt=None,
     - takes ~15 sec for computing 8760 iterations with atol=0.1lpm
     """
     result = []
+    modelchain = pvgeneration.modelchain
+    if mppt is None:
+        power_available = modelchain.dc.p_mp[0:stop]
+    else:
+        power_available = modelchain.dc.p_mp[0:stop] * mppt.efficiency
 
-    load_fctI, intervalsVH = motorpump.functIforVH()
-    load_fctV, intervalsIH = motorpump.functVforIH()
     fctQwithPH, sigma2 = motorpump.functQforPH()
 
-    for i, power in tqdm.tqdm(enumerate(
-            modelchain.dc.p_mp[0:stop]),
+    for i, power in tqdm.tqdm(enumerate(power_available),
                               desc='Computing of Q',
-                              total=stop):
+                              total=stop,
+                              **kwargs):
 
-        Qlpm = 1
-        Qlpmnew = 0
+        if iteration is True:
+            Qlpm = 1
+            Qlpmnew = 0
 
-        # variables used in case of non-convergence in while loop
-        t_init = time.time()
-        mem = []
+            # variables used in case of non-convergence in while loop
+            t_init = time.time()
+            mem = []
 
-        while abs(Qlpm-Qlpmnew) > atol:  # loop to make Qlpm converge
-            Qlpm = Qlpmnew
-            # water temperature (random...)
-            temp_water = 10
-            # compute total head h_tot
-            h_tot = pipes.h_stat + \
-                pipes.dynamichead(Qlpm, T=temp_water)
-            # compute flow
-            Qlpmnew = calc_flow_noiteration(fctQwithPH,
-                                            power,
-                                            h_tot)
+            while abs(Qlpm-Qlpmnew) > atol:  # loop to make Qlpm converge
+                Qlpm = Qlpmnew
+                # water temperature (random...)
+                temp_water = 10
+                # compute total head h_tot
+                h_tot = pipes.h_stat + \
+                    pipes.dynamichead(Qlpm, T=temp_water)
+                # compute flow
+                Qlpmnew = fctQwithPH(power, h_tot)['Q']
 
-            # code for exiting while loop if problem
-            mem.append(Qlpmnew)
-            if time.time() - t_init > 1:
-                print('\nP:', power)
-                print('Q:', mem)
-                raise ValueError('Loop too long to execute.')
+                # code for exiting while loop if problem happens
+                mem.append(Qlpmnew)
+                if time.time() - t_init > 0.1:
+                    warnings.warn('Loop too long to execute. NaN returned.')
+                    Qlpmnew = np.nan
+                    break
 
-        result.append({'Qlpm': Qlpmnew,
-                       'P': float(power),
-                       'tdh': h_tot
-                       })
+            P_unused = fctQwithPH(power, h_tot)['P_unused']
+
+            result.append({'Qlpm': Qlpmnew,
+                           'P': float(power),
+                           'P_unused': P_unused,
+                           'tdh': h_tot
+                           })
+        else:  # iteration is False
+            # simply computes flow
+            res_dict = fctQwithPH(power, pipes.h_stat)
+            Qlpm = res_dict['Q']
+            P_unused = res_dict['P_unused']
+
+            result.append({'Qlpm': Qlpm,
+                           'P': float(power),
+                           'P_unused': P_unused,
+                           'tdh': pipes.h_stat
+                           })
 
     pdresult = pd.DataFrame(result)
     pdresult.index = modelchain.diode_params[0:stop].index
@@ -691,10 +865,10 @@ def calc_reservoir(reservoir, Q_pumped, Q_consumption):
     Parameters
     ----------
     Q_pumped: pd.DataFrame
-        Dataframe containing the reservoir input flow-rate in liter per minute
+        Dataframe containing the reservoir input flow-rate [L/min]
 
     Q_consumption: pd.DataFrame
-        Dataframe containing the reservoir output flow-rate in liter per minute
+        Dataframe containing the reservoir output flow-rate [L/min]
 
     reservoir: Reservoir object
         The reservoir of the system.
@@ -705,13 +879,17 @@ def calc_reservoir(reservoir, Q_pumped, Q_consumption):
         Dataframe with water_volume in tank, and extra or lacking water.
     """
     level = []
-    # timestep of in flowrate dataframe Q_lpm_df
-    timestep = Q_pumped.index[1]-Q_pumped.index[0]
+    # timestep of flowrate dataframe Q_lpm_df
+    timestep = Q_pumped.index[1] - Q_pumped.index[0]
     timestep_minute = timestep.seconds/60
 
-    # TODO: temporary: should be replaced by process in Consumption class
+    # TODO: replace by process in Consumption class
     timezone = Q_pumped.index.tz
-    Q_consumption.index = Q_consumption.index.tz_localize(timezone)
+
+    # test if Q_consumption.index is naive iff:
+    if Q_consumption.index.tzinfo is None or \
+            Q_consumption.index.tzinfo.utcoffset(Q_consumption.index) is None:
+        Q_consumption.index = Q_consumption.index.tz_localize(timezone)
 
     # diff in volume
     Q_diff = Q_pumped - Q_consumption
@@ -726,3 +904,86 @@ def calc_reservoir(reservoir, Q_pumped, Q_consumption):
     level_df.index = Q_pumped.index
 
     return level_df
+
+
+if __name__ == '__main__':
+    # %% set up
+
+    pvgen1 = pvgen.PVGeneration(
+            pv_module_name='kyocera solar KU270 6MCA',
+            surface_tilt=45,
+            surface_azimuth=180,
+            albedo=0,
+            modules_per_string=3,
+            strings_per_inverter=2,
+            weather_data=('data/weather_files/CAN_PQ_Montreal.Intl.'
+                          'AP.716270_CWEC.epw'),
+            orientation_strategy=None,
+            clearsky_model='ineichen',
+            transposition_model='haydavies',
+            solar_position_method='nrel_numpy',
+            airmass_model='kastenyoung1989',
+            dc_model='desoto',
+            ac_model='pvwatts',
+            aoi_model='physical',
+            spectral_model='first_solar',
+            temperature_model='sapm',
+            losses_model='pvwatts')  # takes around 1.4s for 8760 hours
+
+    pvgen1.run_model()  # takes around 0.18s for 8760 hours
+
+    pump1 = pp.Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
+                    modeling_method='arab',
+                    price=1100,
+                    motor_electrical_architecture='permanent_magnet')
+
+    pipes1 = pn.PipeNetwork(h_stat=10,
+                            l_tot=100,
+                            diam=0.08,
+                            material='plastic',
+                            optimism=True)
+
+    reserv1 = rv.Reservoir(size=1000000,
+                           water_volume=0,
+                           price=1000)
+    consum1 = cs.Consumption(constant_flow=1,
+                             length=len(pvgen1.weatherdata))
+
+    mppt1 = mppt.MPPT(efficiency=0.96,
+                      price=1000)
+
+    pvps1 = PVPumpSystem(pvgen1,
+                         pump1,
+                         motorpump_model='arab',
+                         coupling='mppt',
+                         mppt=mppt1,
+                         pipes=pipes1,
+                         consumption=consum1,
+                         reservoir=reserv1)
+    # takes around 0.03s for 8760 hours
+
+# %% thing to try
+    t1 = time.time()
+
+    # takes around 15.4s for 8760 hours with iteration
+    # takes around 5.2s for 8760 hours without iteration
+    pvps1.run_model(iteration=True)
+
+    t2 = time.time() - t1
+    print('t2 = ', t2)
+
+    print(pvps1.water_stored)
+    print('LLP: ', pvps1.llp)
+    print('initial_investment: {0} USD'.format(pvps1.initial_investment))
+    print('NPV: {0} USD'.format(pvps1.npv))
+
+#    warnings.filterwarnings("ignore")  # disable all warnings
+#    pvps1.calc_flow()
+#    warnings.simplefilter("always")  # enable all warnings
+#    pvps1.calc_efficiency()
+#
+#    pvps1.functioning_point_noiteration(plot=True)
+#    # TODO: pb here. The graph represents the I-V relation for only
+#    # one module, not the full array.
+#
+#    print(pvps1.flow[11:19][['I', 'V']])

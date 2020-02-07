@@ -948,6 +948,7 @@ def _curves_coeffs_Hamidat08(specs, data_completeness):
     [1] Hamidat A., ..., 2008, Renewable Energy
 
     """
+    # FIXME: the checks on data_completeness are correct? check thesis
     # TODO: add check on number of head available (for lin. reg. of coeffs)
     if data_completeness['data_number'] >= 10 \
             and data_completeness['voltage_number'] >= 4:

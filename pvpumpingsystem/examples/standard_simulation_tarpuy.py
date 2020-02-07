@@ -65,7 +65,7 @@ pvgen1.run_model()
 # 4) and close the file.
 #
 # To use it here then, download it with the path as follows:
-pump_sunpump = pp.Pump(path="../data/pump_files/rosen_SC33-158-D380-9200.txt",
+pump_rosen = pp.Pump(path="../data/pump_files/rosen_SC33-158-D380-9200.txt",
                        idname='rosen_SC33-158',
                        motor_electrical_architecture='permanent_magnet',
                        price=4000,  # USD
@@ -107,7 +107,7 @@ consumption_continuous = cs.Consumption(constant_flow=104,
 
 
 pvps1 = pvps.PVPumpSystem(pvgen1,
-                          pump_sunpump,
+                          pump_rosen,
                           coupling='mppt',  # to adapt: 'mppt' or 'direct',
                           mppt=mppt1,
                           pipes=pipes1,
@@ -129,10 +129,10 @@ if pvps1.coupling == 'direct':
 # ------------ GRAPHS -----------------------
 
 # effective irradiance on PV array
-#plt.figure()
-#plt.plot(pvps1.efficiency.index,
-#         pvps1.pvgeneration.modelchain.effective_irradiance)
-#plt.title('Effective irradiance vs time')
+plt.figure()
+plt.plot(pvps1.efficiency.index,
+         pvps1.pvgeneration.modelchain.effective_irradiance)
+plt.title('Effective irradiance vs time')
 
 
 # PV electric power

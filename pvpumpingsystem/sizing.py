@@ -4,6 +4,7 @@ Module implementing sizing procedure to facilitate pv pumping station sizing.
 
 @author: Tanguy Lunel
 """
+import time
 
 import numpy as np
 import pandas as pd
@@ -269,15 +270,17 @@ def sizing_maximize_flow(pv_database, pump_database,
     return (selection, result)
 
 
-# TODO: to change? could be better with the same process as in minimize_npv
-def sizing_minimize_llp(pv_database, pump_database,
-                        weather_data, weather_metadata,
-                        pvps_fixture,
-                        llp_accepted=0.01,
-                        M_s_guess=1):
+def subset_respecting_llp(pv_database, pump_database,
+                          weather_data, weather_metadata,
+                          pvps_fixture,
+                          llp_accepted=0.01,
+                          M_s_guess=1):
     """
     Function returning the configurations of PV modules and pump
-    that insure a Loss of Load Probability (llp) inferior to the one given.
+    that will minimize the net present value of the system and will insure
+    the Loss of Load Probability (llp) is inferior to the one given.
+
+    //!\\ Works fine only for MPPT coupling for now.
 
     Parameters
     ----------
@@ -308,76 +311,75 @@ def sizing_minimize_llp(pv_database, pump_database,
 
     Returns
     -------
-    tuple with:
-        total: pd.Dataframe,
-            All configurations tested.
-
-        selection: pd.DataFrame,
-            The configurations that respect the maximum llp accepted.
+    preselection: pd.Dataframe,
+        All configurations tested respecting the LLP.
     """
-    result = pd.DataFrame()
 
     # TODO: add way of guessing M_s_guess, for example by calculating the
     # hydraulic power in water_demand and then finding the number of modules
     # for same power with an efficiency coefficient
 
+    # TODO: insure the functioning for 'direct' coupling cases
+
+    def funct_llp_for_Ms(pvps, M_s):
+        pvps.pvgeneration.system.modules_per_string = M_s
+        pvps.pvgeneration.run_model()
+        pvps.run_model(starting_soc='morning', iteration=False)
+        return pvps.llp
+
+    # initalization of variables
+    preselection = pd.DataFrame()
+
     for pv_mod_name in tqdm.tqdm(pv_database,
                                  desc='Research of best combination: ',
                                  total=len(pv_database)):
-        # initalization of variables
-        M_s = M_s_guess
-        llp = 1
-        result_per_mod = pd.DataFrame()
+        pvgen1 = pvgen.PVGeneration({'weather_data': weather_data,
+                                     'metadata': weather_metadata},
+                                    pv_module_name=pv_mod_name,
+                                    modules_per_string=M_s_guess,
+                                    strings_in_parallel=1)
+        pvps_fixture.pvgeneration = pvgen1
 
-        # process for each module
-        while llp > llp_accepted:
-            print('pv_mod: {0}, and M_s = {1}'.format(pv_mod_name, M_s))
-            pvgen1 = pvgen.PVGeneration({'weather_data': weather_data,
-                                         'metadata': weather_metadata},
-                                        pv_module_name=pv_mod_name,
-                                        modules_per_string=M_s,
-                                        strings_in_parallel=1)
-            pvgen1.run_model()
+        for pump in pump_database:
 
-            pvps_fixture.pvgeneration = pvgen1
+            pvps_fixture.motorpump = pump
+            min_found = False
+            M_s = M_s_guess
+            llp_max = funct_llp_for_Ms(pvps_fixture, 0)
+            llp_prev = 1.1
+            while min_found is False:
+                print('module: {0} / pump: {1} / M_s: {2}'.format(pv_mod_name,
+                      pump.idname, M_s))
+                llp = funct_llp_for_Ms(pvps_fixture, M_s)
+                print('llp = ', llp)
+                if llp <= llp_accepted and llp_prev > 1:  # first round
+                    M_s -= 1
+                elif llp <= llp_accepted and llp_prev <= llp_accepted:
+                    M_s -= 1
+                elif llp <= llp_accepted and 1 > llp_prev > llp_accepted \
+                        and llp != llp_max:
+                    min_found = True
+                elif llp > llp_accepted and llp_prev != llp:
+                    M_s += 1
+                elif llp > llp_accepted and llp_prev == llp and llp != llp_max:
+                    min_found = True
+                elif llp > llp_accepted and llp_prev == llp and llp == llp_max:
+                    M_s += 1
+                else:
+                    raise Exception('This case had not been figured out'
+                                    ' it could happen')
+                llp_prev = llp
 
-            for pump in pump_database:
-                pvps_fixture.motorpump = pump
-                print('For pump: ', pump.idname)
-#                pvps_fixture.run_model(starting_soc='morning', disable=True)
-                pvps_fixture.run_model(starting_soc='morning')
+            preselection = preselection.append(
+                    pd.Series({'pv_module': pvgen1.pv_module.name,
+                               'M_s': M_s,
+                               'M_p': 1,
+                               'pump': pump.idname,
+                               'llp': pvps_fixture.llp,
+                               'npv': pvps_fixture.npv}),
+                    ignore_index=True)
 
-                result_per_mod = result_per_mod.append(
-                        pd.Series({'pv_module': pvgen1.pv_module.name,
-                                   'M_s': M_s,
-                                   'M_p': 1,
-                                   'pump': pump.idname,
-                                   'llp': pvps_fixture.llp}),
-                        ignore_index=True)
-                print('llp = ', pvps_fixture.llp)
-
-            # take the smallest llp of all results
-            llp = result_per_mod.llp.min()
-
-            if llp <= llp_accepted:
-                result = result.append(result_per_mod,
-                                       ignore_index=True)
-            elif M_s > (M_s_guess + 3):
-                # check that results are improving
-                # TODO: comparison on result obtained 3 iterations is not ideal
-                last_llp = result_per_mod[result_per_mod.M_s == M_s].llp
-                prev_llp = result_per_mod[result_per_mod.M_s == (M_s-1)].llp
-                if (last_llp.values == prev_llp.values).all():
-                    raise errors.NoConvergenceError(
-                        'The loss of load probability did not improve '
-                        'during last 2 iterations. Check llp_accepted '
-                        'or M_s_guess parameters')
-            # increment number of module for next round
-            M_s += 1
-
-    selection = result[result.llp <= llp_accepted]
-
-    return (selection, result)
+    return preselection
 
 
 def sizing_minimize_npv(pv_database, pump_database,
@@ -439,66 +441,22 @@ def sizing_minimize_npv(pv_database, pump_database,
     # TODO: check following for a discrete optimization:
     # https://towardsdatascience.com/linear-programming-and-discrete-optimization-with-python-using-pulp-449f3c5f6e99
 
-    def funct_llp_for_Ms(pvps, M_s):
-        pvps.pvgeneration.system.modules_per_string = M_s
-        pvps.pvgeneration.run_model()
-        pvps.run_model(starting_soc='morning', iteration=False)
-        return pvps.llp
-    # initalization of variables
-    preselection = pd.DataFrame()
-
-    for pv_mod_name in tqdm.tqdm(pv_database,
-                                 desc='Research of best combination: ',
-                                 total=len(pv_database)):
-
-        for pump in pump_database:
-            pvgen1 = pvgen.PVGeneration({'weatherdata': weather_data,
-                                         'metadata': weather_metadata},
-                                        pv_module_name=pv_mod_name,
-                                        modules_per_string=M_s_guess,
-                                        strings_in_parallel=1)
-            pvps_fixture.pvgeneration = pvgen1
-            pvps_fixture.motorpump = pump
-
-            min_found = False
-            M_s = M_s_guess
-            llp_max = funct_llp_for_Ms(pvps_fixture, 0)
-            llp_prev = 1.1
-            while min_found is False:
-                print('module: {0} / pump: {1} / M_s: {2}'.format(pv_mod_name,
-                      pump.idname, M_s))
-                llp = funct_llp_for_Ms(pvps_fixture, M_s)
-                print('llp = ', llp)
-                if llp <= llp_accepted and llp_prev > 1 :  # first round
-                    M_s -= 1
-                elif llp <= llp_accepted and llp_prev <= llp_accepted:
-                    M_s -= 1
-                elif llp <= llp_accepted and 1 > llp_prev > llp_accepted \
-                        and llp != llp_max:
-                    min_found = True
-                elif llp > llp_accepted and llp_prev != llp:
-                    M_s += 1
-                elif llp > llp_accepted and llp_prev == llp and llp != llp_max:
-                    min_found = True
-                elif llp > llp_accepted and llp_prev == llp and llp == llp_max:
-                    M_s += 1
-                else:
-                    raise Exception('This case had not been figured out'
-                                    ' it could happen')
-                llp_prev = llp
-
-            preselection = preselection.append(
-                    pd.Series({'pv_module': pvgen1.pv_module.name,
-                               'M_s': M_s,
-                               'M_p': 1,
-                               'pump': pump.idname,
-                               'llp': pvps_fixture.llp,
-                               'npv': pvps_fixture.npv}),
-                    ignore_index=True)
+    preselection = subset_respecting_llp(pv_database, pump_database,
+                                         weather_data, weather_metadata,
+                                         pvps_fixture,
+                                         llp_accepted=llp_accepted,
+                                         M_s_guess=M_s_guess)
 
     selection = preselection[preselection.npv == preselection.npv.min()]
 
     return (selection, preselection)
+
+
+def sizing_Ms_vs_tank_size():
+    """
+    Function optimizing M_s and reservoir size as in Bouzidi.
+    """
+    raise NotImplementedError
 
 
 if __name__ == '__main__':
@@ -558,12 +516,22 @@ if __name__ == '__main__':
 #    selection, total = sizing_maximize_flow(pv_database, pump_database,
 #                                            weather_short, weather_metadata,
 #                                            pvps1)
+    t1 = time.time()
 
-    selection, preselection = sizing_minimize_npv(
+    selection, preselection1 = sizing_minimize_npv(
            pv_database, pump_database,
            weather_short, weather_metadata,
            pvps1,
            llp_accepted=0.05, M_s_guess=5)
 
+    t2 = time.time()
+
+    preselection2 = subset_respecting_llp(
+           pv_database, pump_database,
+           weather_short, weather_metadata,
+           pvps1,
+           llp_accepted=0.05, M_s_guess=5)
+
+    t3 = time.time()
+
     print(selection)
-    print(preselection)

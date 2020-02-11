@@ -4,7 +4,6 @@ Module implementing sizing procedure to facilitate pv pumping station sizing.
 
 @author: Tanguy Lunel
 """
-import time
 
 import numpy as np
 import pandas as pd
@@ -21,6 +20,9 @@ import pvpumpingsystem.mppt as mppt
 import pvpumpingsystem.pvgeneration as pvgen
 from pvpumpingsystem import errors
 
+
+# TODO: write a function finding the worst month, and srinking the weather
+# to this worst month so as to divide computation time by 12 after
 
 def shrink_weather(weather_data, nb_elt=48):
     """
@@ -348,10 +350,9 @@ def subset_respecting_llp(pv_database, pump_database,
             llp_max = funct_llp_for_Ms(pvps_fixture, 0)
             llp_prev = 1.1
             while min_found is False:
-                print('module: {0} / pump: {1} / M_s: {2}'.format(pv_mod_name,
-                      pump.idname, M_s))
                 llp = funct_llp_for_Ms(pvps_fixture, M_s)
-                print('llp = ', llp)
+                print('module: {0} / pump: {1} / M_s: {2} / llp: {3}'.format(
+                        pv_mod_name, pump.idname, M_s, llp))
                 if llp <= llp_accepted and llp_prev > 1:  # first round
                     M_s -= 1
                 elif llp <= llp_accepted and llp_prev <= llp_accepted:
@@ -365,6 +366,8 @@ def subset_respecting_llp(pv_database, pump_database,
                     min_found = True
                 elif llp > llp_accepted and llp_prev == llp and llp == llp_max:
                     M_s += 1
+                # TODO: add case in which llp cannot be better because
+                # of limitation from pump
                 else:
                     raise Exception('This case had not been figured out'
                                     ' it could happen')
@@ -516,7 +519,6 @@ if __name__ == '__main__':
 #    selection, total = sizing_maximize_flow(pv_database, pump_database,
 #                                            weather_short, weather_metadata,
 #                                            pvps1)
-    t1 = time.time()
 
     selection, preselection1 = sizing_minimize_npv(
            pv_database, pump_database,
@@ -524,14 +526,10 @@ if __name__ == '__main__':
            pvps1,
            llp_accepted=0.05, M_s_guess=5)
 
-    t2 = time.time()
-
     preselection2 = subset_respecting_llp(
            pv_database, pump_database,
            weather_short, weather_metadata,
            pvps1,
            llp_accepted=0.05, M_s_guess=5)
-
-    t3 = time.time()
 
     print(selection)

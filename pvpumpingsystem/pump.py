@@ -151,7 +151,7 @@ class Pump:
     def modeling_method(self):
         return self._modeling_method
 
-    # setter: Permit to recalculate attribute coeffs when changing the method
+    # setter: allows to recalculate attribute coeffs when changing the method
     @modeling_method.setter
     def modeling_method(self, model):
         if model.lower() == 'kou':
@@ -797,6 +797,7 @@ def specs_completeness(specs,
             'data_number': data_number}
 
 
+# TODO: add way to use it with only very few data point in the case of mppt
 def _curves_coeffs_Arab06(specs, data_completeness):
     """
     Compute curve-fitting coefficient with method of Hadj Arab [1] and
@@ -948,6 +949,7 @@ def _curves_coeffs_Hamidat08(specs, data_completeness):
     [1] Hamidat A., ..., 2008, Renewable Energy
 
     """
+    # FIXME: the checks on data_completeness are correct? check thesis
     # TODO: add check on number of head available (for lin. reg. of coeffs)
     if data_completeness['data_number'] >= 10 \
             and data_completeness['voltage_number'] >= 4:
@@ -977,6 +979,7 @@ def _curves_coeffs_Hamidat08(specs, data_completeness):
             'r_squared_f2': stats_f2['r_squared']}
 
 
+# TODO: add way to use it with only one data point in the case of mppt
 def _curves_coeffs_theoretical(specs, data_completeness, elec_archi):
     """Compute curve-fitting coefficient following theoretical analysis of
     motor architecture.
@@ -1004,7 +1007,7 @@ def _curves_coeffs_theoretical(specs, data_completeness, elec_archi):
             'different from permanent magnet motor.')
 
     if not data_completeness['data_number'] >= 2 \
-            and data_completeness['voltage_number'] >= 2:
+            and not data_completeness['voltage_number'] >= 2:
         raise errors.InsufficientDataError('Lack of information on lpm, '
                                            'current or tdh for pump.')
 

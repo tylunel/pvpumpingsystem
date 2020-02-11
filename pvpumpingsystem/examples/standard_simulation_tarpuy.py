@@ -20,17 +20,18 @@ import pvpumpingsystem.pvgeneration as pvgen
 
 pvgen1 = pvgen.PVGeneration(
             # Weather data
-            weather_data=('../data/weather_files/CAN_PQ_Montreal.Intl.'
-                          'AP.716270_CWEC_truncated.epw'),  # to adapt:
+            # check 'Hogar Escuela Tarpuy' for more precise location
+            weather_data=('../data/weather_files/PER_Arequipa.847520_IWEC.epw'),
+#            weather_data=('../data/weather_files/PER_Lima.846280_IWEC.epw'),
 
             # PV array parameters
-            pv_module_name='Canadian solar 140',
+            pv_module_name='Canadian solar 370P',
             price_per_module=200,  # in US dollars
             surface_tilt=45,  # 0 = horizontal, 90 = vertical
             surface_azimuth=180,  # 180 = South, 90 = East
             albedo=0,  # between 0 and 1
-            modules_per_string=1,
-            strings_in_parallel=1,
+            modules_per_string=13,
+            strings_in_parallel=3,
             # PV module glazing parameters (not always given in specs)
             glass_params={'K': 4,  # extinction coefficient [1/m]
                           'L': 0.002,  # thickness [m]
@@ -38,7 +39,7 @@ pvgen1 = pvgen.PVGeneration(
             racking_model='open_rack',  # or'close_mount' or 'insulated_back'
 
             # Models used (check pvlib.modelchain for all available models)
-            orientation_strategy=None,  # or 'flat' or 'south_at_latitude_tilt'
+            orientation_strategy='south_at_latitude_tilt',  # or 'flat'
             clearsky_model='ineichen',
             transposition_model='haydavies',
             solar_position_method='nrel_numpy',
@@ -48,7 +49,7 @@ pvgen1 = pvgen.PVGeneration(
             aoi_model='physical',
             spectral_model='first_solar',
             temperature_model='sapm',
-            losses_model='pvwatts'
+            losses_model='no_loss'  # already considered via mppt object
             )
 
 # Runs of the PV generation model
@@ -64,16 +65,11 @@ pvgen1.run_model()
 # 4) and close the file.
 #
 # To use it here then, download it with the path as follows:
-pump_sunpump = pp.Pump(path="../data/pump_files/SCB_10_150_120_BL.txt",
-                       idname='SCB_10_150_120_BL',
-                       price=1100,  # USD
-                       modeling_method='arab')
-
-pump_shurflo = pp.Pump("../data/pump_files/Shurflo_9325.txt",
-                       idname='Shurflo_9325',
-                       price=640,  # USD
+pump_rosen = pp.Pump(path="../data/pump_files/rosen_SC33-158-D380-9200.txt",
+                       idname='rosen_SC33-158',
                        motor_electrical_architecture='permanent_magnet',
-                       modeling_method='arab')  # to adapt:
+                       price=4000,  # USD
+                       modeling_method='theoretical')
 
 
 # ------------ PVPS MODELING STEPS ------------------------
@@ -81,38 +77,47 @@ pump_shurflo = pp.Pump("../data/pump_files/Shurflo_9325.txt",
 mppt1 = mppt.MPPT(efficiency=0.96,
                   price=1000)
 
-pipes1 = pn.PipeNetwork(h_stat=10,  # static head [m]
-                        l_tot=100,  # length of pipes [m]
-                        diam=0.08,  # diameter [m]
+pipes1 = pn.PipeNetwork(h_stat=80,  # static head [m]
+                        l_tot=400,  # length of pipes [m]
+                        diam=0.15,  # diameter [m]
                         material='plastic',
                         fittings=None,  # Not available yet
                         optimism=True)
 
-reservoir1 = rv.Reservoir(size=1000,  # size [L]
+reservoir1 = rv.Reservoir(size=150000,  # size [L]
                           price=500)
 
-consumption1 = cs.Consumption(constant_flow=1,  # output flow rate [L/min]
-                              length=len(pvgen1.weather_data))
-consumption1 = cs.Consumption(repeated_flow=[0,   0,   0,   0,   0,   0,
-                                             0,   0,   0.2, 0.1, 0.1, 0.3,
-                                             0.3, 0.3, 0.3, 0.3, 0.3, 0.5,
-                                             0.3, 0.1, 0.1, 0,   0,   0],
-                              # output flow rate [L/min]
-                              length=len(pvgen1.weather_data))
+consumption_night = cs.Consumption(repeated_flow=[0, 0, 0, 0, 0, 0,
+                                                  0, 0, 0, 0, 0, 0,
+                                                  0, 0, 0, 0, 0, 0,
+                                                  420, 420, 420, 420, 420, 420,
+                                                  ],
+                                   # output flow rate [L/min]
+                                   length=len(pvgen1.weather_data))
+consumption_day = cs.Consumption(repeated_flow=[0, 0, 0, 0, 0, 0,
+                                                0,   0,   0,   0,   0, 420,
+                                                420, 420, 420, 420, 420, 0,
+                                                0, 0, 0, 0, 0, 0
+                                                ],
+                                 # output flow rate [L/min]
+                                 length=len(pvgen1.weather_data))
+consumption_continuous = cs.Consumption(constant_flow=104,
+                                        # output flow rate [L/min]
+                                        length=len(pvgen1.weather_data))
+
 
 pvps1 = pvps.PVPumpSystem(pvgen1,
-                          pump_shurflo,
-                          coupling='direct',  # to adapt: 'mppt' or 'direct',
+                          pump_rosen,
+                          coupling='mppt',  # to adapt: 'mppt' or 'direct',
                           mppt=mppt1,
                           pipes=pipes1,
-                          consumption=consumption1,
+                          consumption=consumption_continuous,
                           reservoir=reservoir1)
 
 
 # ------------ RUNNING MODEL -----------------
 
-pvps1.run_model(iteration=True)
-#print(pvps1.flow[6:16])
+pvps1.run_model()
 print(pvps1)
 print('LLP = ', pvps1.llp)
 print('Initial investment = {0} USD'.format(pvps1.initial_investment))
@@ -124,35 +129,54 @@ if pvps1.coupling == 'direct':
 # ------------ GRAPHS -----------------------
 
 # effective irradiance on PV array
-#plt.figure()
-#plt.plot(pvps1.efficiency.index,
-#         pvps1.pvgeneration.modelchain.effective_irradiance)
-#plt.title('Effective irradiance vs time')
+plt.figure()
+plt.plot(pvps1.efficiency.index,
+         pvps1.pvgeneration.modelchain.effective_irradiance)
+plt.title('Effective irradiance vs time')
 
 
 # PV electric power
-plt.figure()
-plt.plot(pvps1.efficiency.index, pvps1.efficiency.electric_power)
-plt.title('Electric power in vs time')
+#plt.figure()
+#plt.plot(pvps1.efficiency.index, pvps1.efficiency.electric_power)
+#plt.title('Electric power in vs time')
+
+
+# used for following data visualization in graphs
+def align_yaxis(ax1, v1, ax2, v2):
+    """adjust ax2 ylimit so that v2 in ax2 is aligned to v1 in ax1"""
+    _, y1 = ax1.transData.transform((0, v1))
+    _, y2 = ax2.transData.transform((0, v2))
+    inv = ax2.transData.inverted()
+    _, dy = inv.transform((0, 0)) - inv.transform((0, y1-y2))
+    miny, maxy = ax2.get_ylim()
+    ax2.set_ylim(miny+dy, maxy+dy)
 
 
 # Water volume in reservoir and output flow rate
 fig, ax1 = plt.subplots()
 
 ax1.set_xlabel('time')
-ax1.set_ylabel('Water volume in tank [L]', color='r')
+ax1.set_ylabel('Water volume [L]', color='r')
+
 ax1.plot(pvps1.water_stored.index, pvps1.water_stored.volume, color='r',
-         linewidth=1)
+         linewidth=1, label='Reservoir level')
+
+ax1.plot(pvps1.efficiency.index, pvps1.water_stored.extra_water,
+         linewidth=1, label='Extra/lacking water')
+
 ax1.tick_params(axis='y', labelcolor='r')
 
-ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
 
-ax2.set_ylabel('Pump output flow-rate [L/min]', color='b')
+ax2 = ax1.twinx()  # instantiate a second axe that shares the same x-axis
+
+ax2.set_ylabel('flow-rate [L/min]', color='b')
 ax2.plot(pvps1.efficiency.index, pvps1.flow.Qlpm, color='b',
-         linewidth=1)
+         linewidth=1, label='Pump output')
 ax2.tick_params(axis='y', labelcolor='b')
 
+align_yaxis(ax1, 0, ax2, 0)
 fig.tight_layout()  # otherwise the right y-label is slightly clipped
+plt.legend()
 plt.show()
 
 

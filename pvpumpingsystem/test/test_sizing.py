@@ -47,13 +47,13 @@ def databases():
     return None
 
 
-def test_shrink_weather():
+def test_shrink_weather_representative():
     weather_path = os.path.join(
         test_dir,
         '../data/weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw')
     weather_data, weather_metadata = pvlib.iotools.epw.read_epw(
             weather_path, coerce_year=2005)
-    weather_shrunk = siz.shrink_weather(weather_data)
+    weather_shrunk = siz.shrink_weather_representative(weather_data)
     expected_shape = (48, 35)
     assert expected_shape == weather_shrunk.shape
 
@@ -70,7 +70,7 @@ def test_sizing_minimize_npv(databases):
         '../data/weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw')
     weather_data, weather_metadata = pvlib.iotools.epw.read_epw(
             weather_path, coerce_year=2005)
-    weather_shrunk = siz.shrink_weather(weather_data)
+    weather_shrunk = siz.shrink_weather_representative(weather_data)
 
     # rest of pumping system
     pipes = pn.PipeNetwork(h_stat=20, l_tot=100, diam=0.08,

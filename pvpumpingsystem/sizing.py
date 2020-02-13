@@ -18,13 +18,9 @@ import pvpumpingsystem.consumption as cs
 import pvpumpingsystem.pvpumpsystem as pvps
 import pvpumpingsystem.mppt as mppt
 import pvpumpingsystem.pvgeneration as pvgen
-from pvpumpingsystem import errors
 
 
-# TODO: write a function finding the worst month, and srinking the weather
-# to this worst month so as to divide computation time by 12 after
-
-def shrink_weather(weather_data, nb_elt=48):
+def shrink_weather_representative(weather_data, nb_elt=48):
     """
     Create a new weather_data object representing the range of weather that
     can be found in the weather_data given. It allows to reduce
@@ -75,6 +71,40 @@ def shrink_weather(weather_data, nb_elt=48):
     final_df.index = pd.date_range(time, periods=nb_elt, freq='h')
 
     return final_df
+
+
+def shrink_weather_worst_month(weather_data):
+    """
+    Create a new weather_data object with only the worst month of the
+    weather_data given, according to the irradiance data.
+
+    Parameters
+    ----------
+    weather_data: pandas.DataFrame
+        The hourly data on irradiance, temperature, and others
+        meteorological parameters.
+        Typically comes from pvlib.epw.read_epw() or pvlib.tmy.read.tmy().
+
+    Returns
+    -------
+    * pandas.DataFrame: weather object of nb_elt lines
+
+    """
+    # DataFrame for results
+    sum_irradiance = pd.DataFrame()
+
+    for month in weather_data.month.drop_duplicates():
+        weather_month = weather_data[weather_data.month == month]
+        total_ghi = weather_month.ghi.sum()
+        sum_irradiance = sum_irradiance.append({'month': month,
+                                                'ghi': total_ghi},
+                                               ignore_index=True)
+    worst_month = sum_irradiance[sum_irradiance.ghi ==
+                                 sum_irradiance.ghi.min()].month.iloc[0]
+
+    weather_worst_month = weather_data[weather_data.month == worst_month]
+
+    return weather_worst_month
 
 
 def subset_respecting_llp(pv_database, pump_database,
@@ -276,7 +306,8 @@ if __name__ == '__main__':
         'data/weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw')
     weather_data, weather_metadata = pvlib.iotools.epw.read_epw(
             weather_path, coerce_year=2005)
-    weather_short = shrink_weather(weather_data)
+    weather_short = shrink_weather_representative(weather_data)
+    weather_worst_month = shrink_weather_worst_month(weather_data)
 
     # Consumption input
     consumption_data = cs.Consumption(constant_flow=3,
@@ -323,20 +354,16 @@ if __name__ == '__main__':
 
     # -- TESTS (Temporary) --
 
-#    selection, total = sizing_maximize_flow(pv_database, pump_database,
-#                                            weather_short, weather_metadata,
-#                                            pvps1)
+#    selection, preselection1 = sizing_minimize_npv(
+#           pv_database, pump_database,
+#           weather_short, weather_metadata,
+#           pvps1,
+#           llp_accepted=0.05, M_s_guess=5)
+#
+#    preselection2 = subset_respecting_llp(
+#           pv_database, pump_database,
+#           weather_short, weather_metadata,
+#           pvps1,
+#           llp_accepted=0.05, M_s_guess=5)
 
-    selection, preselection1 = sizing_minimize_npv(
-           pv_database, pump_database,
-           weather_short, weather_metadata,
-           pvps1,
-           llp_accepted=0.05, M_s_guess=5)
-
-    preselection2 = subset_respecting_llp(
-           pv_database, pump_database,
-           weather_short, weather_metadata,
-           pvps1,
-           llp_accepted=0.05, M_s_guess=5)
-
-    print(selection)
+    print(weather_worst_month)

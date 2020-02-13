@@ -23,7 +23,7 @@ weather_path = (
 weather_data, weather_metadata = pvlib.iotools.epw.read_epw(
         weather_path, coerce_year=2005)
 ## short weather to compute faster
-#weather_short = sizing.shrink_weather(weather_data)
+#weather_short = sizing.shrink_weather_representative(weather_data)
 
 # Consumption input
 consumption_data = cs.Consumption(constant_flow=5,  # in L/min

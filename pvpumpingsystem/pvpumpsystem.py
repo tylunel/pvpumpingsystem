@@ -889,14 +889,20 @@ def calc_reservoir(reservoir, Q_pumped, Q_consumption):
 
     # TODO: replace by process in Consumption class
     timezone = Q_pumped.index.tz
-
     # test if Q_consumption.index is naive iff:
     if Q_consumption.index.tzinfo is None or \
             Q_consumption.index.tzinfo.utcoffset(Q_consumption.index) is None:
         Q_consumption.index = Q_consumption.index.tz_localize(timezone)
 
+    # get intersection of index
+    intersect = Q_pumped.index.intersection(Q_consumption.index)
+    if intersect.empty is True:
+        raise ValueError('The consumption data and the water pumped data '
+                         'are not relying on the same dates.')
+    Q_consumption_relevant = Q_consumption.loc[intersect]
+
     # diff in volume
-    Q_diff = Q_pumped - Q_consumption
+    Q_diff = Q_pumped - Q_consumption_relevant
 
     # total change in volume during the timestep in liters
     volume_diff = Q_diff * timestep_minute
@@ -950,8 +956,7 @@ if __name__ == '__main__':
     reserv1 = rv.Reservoir(size=1000000,
                            water_volume=0,
                            price=1000)
-    consum1 = cs.Consumption(constant_flow=1,
-                             length=len(pvgen1.weather_data))
+    consum1 = cs.Consumption(constant_flow=1)
 
     mppt1 = mppt.MPPT(efficiency=0.96,
                       price=1000)

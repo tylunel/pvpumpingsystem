@@ -12,6 +12,8 @@ import pvpumpingsystem.pipenetwork as pn
 import pvpumpingsystem.consumption as cs
 import pvpumpingsystem.pvpumpsystem as pvps
 import pvpumpingsystem.pvgeneration as pvgen
+import pvpumpingsystem.reservoir as rv
+import pvpumpingsystem.mppt as mppt
 from pvpumpingsystem import sizing
 
 
@@ -22,12 +24,11 @@ weather_path = (
     '../data/weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw')
 weather_data, weather_metadata = pvlib.iotools.epw.read_epw(
         weather_path, coerce_year=2005)
-## short weather to compute faster
-#weather_short = sizing.shrink_weather_representative(weather_data)
+# short weather to compute faster
+weather_data = sizing.shrink_weather_worst_month(weather_data)
 
 # Consumption input
-consumption_data = cs.Consumption(constant_flow=5,  # in L/min
-                                  length=len(weather_short))
+consumption_data = cs.Consumption(constant_flow=5)  # in L/min
 
 # Pipes set-up
 pipes = pn.PipeNetwork(h_stat=20,  # vertical static head [m]
@@ -35,6 +36,15 @@ pipes = pn.PipeNetwork(h_stat=20,  # vertical static head [m]
                        diam=0.08,  # diameter of pipes [m]
                        material='plastic',
                        optimism=True)
+
+# Reservoir
+reserv1 = rv.Reservoir(size=1000000,
+                       water_volume=0,
+                       price=1000)
+
+# MPPT
+mppt1 = mppt.MPPT(efficiency=0.96,
+                  price=1000)
 
 # PV generator parameters
 pvgen1 = pvgen.PVGeneration(
@@ -75,6 +85,8 @@ pvps_fixture = pvps.PVPumpSystem(None,
                                  None,
                                  motorpump_model='arab',
                                  coupling='mppt',
+                                 mppt=mppt1,
+                                 reservoir=reserv1,
                                  pipes=pipes,
                                  consumption=consumption_data)
 
@@ -83,10 +95,12 @@ pvps_fixture = pvps.PVPumpSystem(None,
 
 # Pump database:
 pump_sunpump = pp.Pump(path="../data/pump_files/SCB_10_150_120_BL.txt",
+                       price=1100,
                        idname='SCB_10')
 
 pump_shurflo = pp.Pump(path="../data/pump_files/Shurflo_9325.txt",
                        idname='Shurflo_9325',
+                       price=700,
                        motor_electrical_architecture='permanent_magnet')
 
 # TODO: reform pump_database as DataFrame to be consistent with pv_database
@@ -95,7 +109,6 @@ pump_database = [pump_sunpump,
 
 # PV array database:
 pv_database = ['Canadian Solar 200',
-               'Canadian solar 300',
                'Canadian solar 400']
 
 
@@ -108,11 +121,12 @@ pv_database = ['Canadian Solar 200',
 #                                               pvps_fixture)
 #print('configuration for maximum output flow:\n', selection)
 
-selection, total = sizing.sizing_minimize_llp(pv_database,
+selection, total = sizing.sizing_minimize_npv(pv_database,
                                               pump_database,
                                               weather_data,
                                               weather_metadata,
                                               pvps_fixture,
                                               llp_accepted=0.05,
                                               M_s_guess=5)
+
 print('configurations for llp of 0.05:\n', selection)

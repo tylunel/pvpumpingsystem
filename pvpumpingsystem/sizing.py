@@ -8,6 +8,7 @@ Module implementing sizing procedure to facilitate pv pumping station sizing.
 import numpy as np
 import pandas as pd
 import tqdm
+import warnings
 
 import pvlib
 
@@ -287,7 +288,12 @@ def sizing_minimize_npv(pv_database, pump_database,
                                          llp_accepted=llp_accepted,
                                          M_s_guess=M_s_guess)
 
-    selection = preselection[preselection.npv == preselection.npv.min()]
+    if np.isnan(preselection.npv).any():
+        warnings.warn('The NPV could not be calculated, so optimized '
+                      'sizing could not be found.')
+        selection = preselection
+    else:
+        selection = preselection[preselection.npv == preselection.npv.min()]
 
     return (selection, preselection)
 

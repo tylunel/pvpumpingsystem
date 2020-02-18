@@ -1,0 +1,15 @@
+PUMP NAME: rosen_SC33-158-D380-9200
+# permanent magnet pump
+# '.' are mandatory inputs that should be replaced by specifications or the line should be removed. 
+# 'nan' are optional input.
+# Units for columns are in the order: 
+# [V]	[m]	[A]	[L/min]	[W]	[no unit]
+voltage	tdh	current	flow	power	efficiency
+540	132	24	210	nan	nan
+540	122	24.4	250	nan	nan
+540	112	24.7	290	nan	nan
+540	102	25.1	320	nan	nan
+540	90	25.5	385	nan	nan
+540	77	25.3	415	nan	nan
+540	62	25.2	460	nan	nan
+540	46	25.0	500	nan	nan

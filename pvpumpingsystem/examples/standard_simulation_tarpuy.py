@@ -30,7 +30,7 @@ pvgen1 = pvgen.PVGeneration(
             surface_tilt=45,  # 0 = horizontal, 90 = vertical
             surface_azimuth=180,  # 180 = South, 90 = East
             albedo=0,  # between 0 and 1
-            modules_per_string=13,
+            modules_per_string=25,
             strings_in_parallel=3,
             # PV module glazing parameters (not always given in specs)
             glass_params={'K': 4,  # extinction coefficient [1/m]
@@ -65,7 +65,7 @@ pvgen1.run_model()
 # 4) and close the file.
 #
 # To use it here then, download it with the path as follows:
-pump_rosen = pp.Pump(path="../data/pump_files/rosen_SC33-158-D380-9200_modified.txt",
+pump_rosen = pp.Pump(path="../data/pump_files/rosen_SC33-158-D380-9200.txt",
                        idname='rosen_SC33-158',
                        motor_electrical_architecture='permanent_magnet',
                        price=4000,  # USD

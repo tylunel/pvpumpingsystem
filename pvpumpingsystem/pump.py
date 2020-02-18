@@ -149,12 +149,12 @@ class Pump:
                     raise ValueError('The rated efficiency is found to be '
                                      'out of the range [0, 1].')
                 # arbitrary coeff
-                coeff = 0.9
+                coeff = 1
                 global_efficiency = coeff * rated_efficiency
                 self.specs['efficiency'] = global_efficiency
                 warnings.warn('Power and current data will be redetermined'
                               'from efficiency.')
-                self.specs.power = hydrau_power * global_efficiency
+                self.specs.power = hydrau_power / global_efficiency
                 self.specs.current = self.specs.power / self.specs.voltage
             else:
                 self.specs['efficiency'] = ((self.specs.flow/60000)
@@ -689,9 +689,15 @@ class Pump:
         [1]
         """
 
-        def funct_mod(input_values, a, b, c, d):
-            P, H = input_values
-            return (a + b*H) * (c + d*P)
+        if self.data_completeness['data_number'] >= 4 \
+                and self.data_completeness['voltage_number'] >= 2:
+            def funct_mod(input_values, a, b, c, d):
+                P, H = input_values
+                return (a + b*H) * (c + d*P)
+        else:
+            def funct_mod(input_values, mean_efficiency):
+                P, H = input_values
+                return mean_efficiency * (60000 * P) / (H * 9.81 * 1000)
 
         coeffs = self.coeffs['coeffs_f2']
 
@@ -1042,10 +1048,10 @@ def _curves_coeffs_theoretical(specs, data_completeness, elec_archi):
             'This model is not implemented yet for electrical architecture '
             'different from permanent magnet motor.')
 
-    if not data_completeness['data_number'] >= 2 \
-            and not data_completeness['voltage_number'] >= 2:
-        raise errors.InsufficientDataError('Lack of information on lpm, '
-                                           'current or tdh for pump.')
+#    if not data_completeness['data_number'] >= 2 \
+#            and not data_completeness['voltage_number'] >= 2:
+#        raise errors.InsufficientDataError('Lack of information on lpm, '
+#                                           'current or tdh for pump.')
 
     # f1: V(I, H) - To change in I(V, H) afterward
     def funct_mod_1(input_values, R_a, beta_0, beta_1, beta_2):
@@ -1064,103 +1070,74 @@ def _curves_coeffs_theoretical(specs, data_completeness, elec_archi):
     stats_f1 = function_models.correlation_stats(funct_mod_1, param_f1,
                                                  dataxy, dataz)
 
-    # gives f2; Q=f2(P, H)
-    # TODO: equivalent to developped form with cross term,
-    # -> take from function_models
-    def funct_mod_2(input_values, a, b, c, d):
-        P, H = input_values
-        return (a + b*H) * (c + d*P)
-        # theoretically it should be the following formula, but doesn't work
-        # return (a + b*H + c*H**2) * P/H
+    # f2:; Q=f2(P, H)
+    if data_completeness['data_number'] >= 4 \
+            and data_completeness['voltage_number'] >= 2:
+        # TODO: equivalent to developped form with cross term,
+        # -> take from function_models
+        def funct_mod_2(input_values, a, b, c, d):
+            P, H = input_values
+            return (a + b*H) * (c + d*P)
+            # theoretically it should be the following formula, but doesn't work
+            # return (a + b*H + c*H**2) * P/H
 
-    dataxy = [np.array(specs.power),
-              np.array(specs.tdh)]
-    dataz = np.array(specs.flow)
+        dataxy = [np.array(specs.power),
+                  np.array(specs.tdh)]
+        dataz = np.array(specs.flow)
 
-    param_f2, matcov = opt.curve_fit(funct_mod_2, dataxy, dataz, maxfev=10000)
-    # computing of statistical figures for f2
-    stats_f2 = function_models.correlation_stats(funct_mod_2, param_f2,
-                                                 dataxy, dataz)
+        param_f2, matcov = opt.curve_fit(funct_mod_2, dataxy, dataz,
+                                         maxfev=10000)
+        # computing of statistical figures for f2
+        stats_f2 = function_models.correlation_stats(funct_mod_2, param_f2,
+                                                     dataxy, dataz)
+    else:
+        warnings.warn('Simplistic model of constant efficiency applied.')
+        # Simple constant efficiency
+        param_f2 = [0.7 * specs.efficiency.max()]
 
-    # alternative vraiment pas terrible
+        def funct_Q_for_PH(input_values, efficiency):
+            P, H = input_values
+            return efficiency * (60000 * P) / (H * 9.81 * 1000)
 
-#    def funct_mod_2_alter(input_values, a, b, c):
-#        P_on_H = input_values
-#        return a + b * P_on_H + c * P_on_H**2
+    #    dataxy_alter = [np.array(specs.power[specs.tdh = 0]),
+    #                    np.array(specs.tdh[specs.tdh != 0])]
+    #    dataz_alter = np.array(specs.flow[specs.tdh != 0])
+        # TODO: remove the extreme parts of the domain as here
+        dataxy = [np.array(specs.power[specs.tdh > 7]),
+                  np.array(specs.tdh[specs.tdh > 7])]
+        dataz = np.array(specs.flow[specs.tdh > 7])
 
-#    dataxy_alter = np.array(specs.power[specs.tdh != 0] /
-#                            specs.tdh[specs.tdh != 0])
-#    dataz_alter = np.array(specs.flow[specs.tdh != 0])
-#    param_f2_alter, matcov = opt.curve_fit(funct_mod_2_alter,
-#                                           dataxy_alter,
-#                                           dataz_alter)
-#    # computing of statistical figures for f2
-#    stats_f2_alter = function_models.correlation_stats(funct_mod_2_alter,
-#                                                       param_f2_alter,
-#                                                       dataxy_alter,
-#                                                       dataz_alter)
+#        # computing of statistical figures for f2
+#        stats_f2 = function_models.correlation_stats(funct_Q_for_PH,
+#                                                     param_f2,
+#                                                     dataxy,
+#                                                     dataz)
+        # statistical figures for f2 don't make sense in this case:
+        stats_f2 = {'rmse': np.nan,
+                    'nrmse': np.nan,
+                    'r_squared': np.nan,
+                    'adjusted_r_squared': np.nan,
+                    'nb_data': data_completeness['data_number']}
 
     # affinity law with constant efficiency - if power data is all the same
-
+    # Use Martiré & al, 2008
 #    def funct_P_for_tdh(input_values, a, b, c):
 #        H = input_values
 #        return a + b * H + c * H**2
-
-    # get alpha(tdh) for P = alpha(tdh) * Q**3
+#    # get alpha(tdh) for P = alpha(tdh) * Q**3
 #    alpha = specs.power / (specs.flow**3)
-#
 #    def funct_alpha(H, a, b, c):
 #        return (a + b * H + c * H**2)
-#
 #    dataH = np.array(specs.tdh[specs.tdh != 0])
 #    dataA = np.array(alpha[specs.tdh != 0])
 #    param_alpha, matcov = opt.curve_fit(funct_alpha,
 #                                        dataH,
 #                                        dataA)
-#
 #    # apply affinity law
 #    def funct_Q_for_PH(P, H):
 #        alpha = funct_alpha(H, *param_alpha)
 #        return (P/alpha)**(1/3)
     # TO CONTINUE
-
-    # Simple efficiency
-    mean_efficiency = specs.efficiency.mean()
-
-    def funct_Q_for_PH(input_values, **kwargs):
-        P, H = input_values
-        return mean_efficiency * (60000 * P) / (H * 9.81 * 1000)
-
-    dataxy_alter = [np.array(specs.power[specs.tdh != 0]),
-                    np.array(specs.tdh[specs.tdh != 0])]
-    dataz_alter = np.array(specs.flow[specs.tdh != 0])
-#    param_f2_alter, matcov = opt.curve_fit(funct_Q_for_PH,
-#                                           dataxy_alter,
-#                                           dataz_alter)
-    # computing of statistical figures for f2
-    stats_f2_alter = function_models.correlation_stats(funct_Q_for_PH,
-                                                       [],
-                                                       dataxy_alter,
-                                                       dataz_alter)
-
-    # TODO: alternative martiré - if power is not all the same - WORK NEEDED
-#
-#    def funct_mod_2_alter(input_values, a, b, c, d, e, f):
-#        P_1, P_2, P_3, P_4, P_5 = input_values
-#        return a + b*P_1 + c*P_2 + d*P_3 * e*P_4 * f*P_5
-
-#    funct_mod_2_alter = function_models.polynomial_5
-#
-#    dataxy_alter = np.array(specs.flow[specs.tdh != 0])
-#    dataz_alter = np.array(specs.efficiency[specs.tdh != 0])
-#    param_f2_alter, matcov = opt.curve_fit(funct_mod_2_alter,
-#                                           dataxy_alter,
-#                                           dataz_alter)
-#    # computing of statistical figures for f2
-#    stats_f2_alter = function_models.correlation_stats(funct_mod_2_alter,
-#                                                       param_f2_alter,
-#                                                       dataxy_alter,
-#                                                       dataz_alter)
 
     return {'coeffs_f1': param_f1,
             'rmse_f1': stats_f1['rmse'],
@@ -1351,10 +1328,10 @@ def _domain_P_H(specs, data_completeness):
 
 if __name__ == "__main__":
     # %% pump creation
-    pump1 = Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
-                 idname='SCB_10',
-                 modeling_method='theoretical',
-                 motor_electrical_architecture='permanent_magnet')
+#    pump1 = Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
+#                 idname='SCB_10',
+#                 modeling_method='theoretical',
+#                 motor_electrical_architecture='permanent_magnet')
 
 #    pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
 #                           136],
@@ -1414,28 +1391,30 @@ if __name__ == "__main__":
 #    print('I for VH=(80, 25): {0:.2f}'.format(f2(80, 25)))
 
 # %% plot of functQforPH
-#    pump_concerned = pump1
-#    f4, intervals = pump_concerned.functQforPH()
-#    lpm_check = []
-#
-#    for index, row in pump_concerned.specs.iterrows():
-#        try:
-#            Q = f4(row.power, row.tdh)
-#        except (errors.PowerError, errors.HeadError):
-#            Q = 0
-#        lpm_check.append(Q['Q'])
-#    fig = plt.figure()
-#    ax = fig.add_subplot(111, projection='3d',
-#                         title='Flow Q depending on P and H')
-#    ax.scatter(pump_concerned.specs.power, pump_concerned.specs.tdh,
-#               pump_concerned.specs.flow,
-#               label='from data')
-#    ax.scatter(pump_concerned.specs.power, pump_concerned.specs.tdh,
-#               lpm_check,
-#               label='from curve fitting with modeling method {0}'.format(
-#                       pump_concerned.modeling_method))
-#    ax.set_xlabel('power')
-#    ax.set_ylabel('head')
-#    ax.set_zlabel('discharge Q')
-#    ax.legend(loc='lower left')
-#    plt.show()
+    pump_concerned = pump5
+    f4, intervals = pump_concerned.functQforPH()
+    lpm_check = []
+
+    pump_concerned.specs = pump_concerned.specs[pump_concerned.specs.tdh > 7]
+
+    for index, row in pump_concerned.specs.iterrows():
+        try:
+            Q = f4(row.power, row.tdh)
+        except (errors.PowerError, errors.HeadError):
+            Q = 0
+        lpm_check.append(Q['Q'])
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d',
+                         title='Flow Q depending on P and H')
+    ax.scatter(pump_concerned.specs.power, pump_concerned.specs.tdh,
+               pump_concerned.specs.flow,
+               label='from data')
+    ax.scatter(pump_concerned.specs.power, pump_concerned.specs.tdh,
+               lpm_check,
+               label='from curve fitting with modeling method {0}'.format(
+                       pump_concerned.modeling_method))
+    ax.set_xlabel('power')
+    ax.set_ylabel('head')
+    ax.set_zlabel('discharge Q')
+    ax.legend(loc='lower left')
+    plt.show()

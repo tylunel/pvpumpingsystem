@@ -13,6 +13,7 @@ from matplotlib.pyplot import plot
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # needed for plotting in 3d
 import scipy.optimize as opt
+import warnings
 
 # pvpumpingsystem modules:
 from pvpumpingsystem import inverse
@@ -129,9 +130,36 @@ class Pump:
                                        'flow': flow,
                                        'power': power})
 
+        # complete power data
         if 'power' not in self.specs.columns or \
                 self.specs.power.isna().any():
             self.specs['power'] = self.specs.voltage * self.specs.current
+
+        # complete efficiency data
+        if 'efficiency' not in self.specs.columns or \
+                self.specs.efficiency.isna().any():
+            # TODO: first condition only used by theoretical model,
+            # put it in _curves_coeffs_theoretical or algo asi
+            if (self.specs.power == self.specs.power.max()).all():
+                # Case with very few data
+                hydrau_power = self.specs.flow/60000 * self.specs.tdh * 9810
+                rated_data = self.specs[hydrau_power == hydrau_power.max()]
+                rated_efficiency = float(hydrau_power.max()/rated_data.power)
+                if not 0 < rated_efficiency < 1:
+                    raise ValueError('The rated efficiency is found to be '
+                                     'out of the range [0, 1].')
+                # arbitrary coeff
+                coeff = 0.9
+                global_efficiency = coeff * rated_efficiency
+                self.specs['efficiency'] = global_efficiency
+                warnings.warn('Power and current data will be redetermined'
+                              'from efficiency.')
+                self.specs.power = hydrau_power * global_efficiency
+                self.specs.current = self.specs.power / self.specs.voltage
+            else:
+                self.specs['efficiency'] = ((self.specs.flow/60000)
+                                            * self.specs.tdh * 9.81 * 1000) \
+                                            / self.specs.power
 
         self.data_completeness = specs_completeness(
                 self.specs,
@@ -773,16 +801,22 @@ def specs_completeness(specs,
             'permanent_magnet', 'series_excited', 'shunt_excited',
             'separately_excited'))
 
+    # nb voltages
     voltages = specs.voltage.drop_duplicates()
     volt_nb = len(voltages)
 
-    # computing of mean lpm completeness
+    # flow data completeness (ideally goes until zero)
     lpm_ratio = []
     for v in voltages:
         lpm_ratio.append(min(specs[specs.voltage == v].flow)
                          / max(specs[specs.voltage == v].flow))
     mean_lpm_ratio = np.mean(lpm_ratio)
 
+    # nb heads
+    heads = specs.tdh.drop_duplicates()
+    heads_nb = len(heads)
+
+    # head data completeness (minimum tdh should be 0 ideally)
     head_ratio = min(specs.tdh)/max(specs.tdh)
 
     data_number = 0
@@ -793,6 +827,7 @@ def specs_completeness(specs,
     return {'voltage_number': volt_nb,
             'lpm_min': mean_lpm_ratio,
             'head_min': head_ratio,
+            'head_number': heads_nb,
             'elec_archi': valid_elec_archi,
             'data_number': data_number}
 
@@ -827,16 +862,16 @@ def _curves_coeffs_Arab06(specs, data_completeness):
             and data_completeness['voltage_number'] >= 3:
         funct_mod_1 = function_models.compound_polynomial_1_3
         funct_mod_2 = function_models.compound_polynomial_2_3
-    # Original model from [1]
-    elif data_completeness['data_number'] >= 9 \
-            and data_completeness['voltage_number'] >= 3:
-        funct_mod_1 = function_models.compound_polynomial_1_2
-        funct_mod_2 = function_models.compound_polynomial_2_2
+#    # Original model from [1]
+#    if data_completeness['data_number'] >= 9 \
+#            and data_completeness['voltage_number'] >= 3:
+#        funct_mod_1 = function_models.compound_polynomial_1_2
+#        funct_mod_2 = function_models.compound_polynomial_2_2
     # New model to make accessible computation of pump with fewer data
-    elif data_completeness['data_number'] >= 8 \
-            and data_completeness['voltage_number'] >= 2:
-        funct_mod_1 = function_models.compound_polynomial_1_2
-        funct_mod_2 = function_models.compound_polynomial_1_3
+#    elif data_completeness['data_number'] >= 8 \
+#            and data_completeness['voltage_number'] >= 2:
+#        funct_mod_1 = function_models.compound_polynomial_1_2
+#        funct_mod_2 = function_models.compound_polynomial_1_3
     else:
         raise errors.InsufficientDataError('Lack of information on lpm, '
                                            'current or tdh for pump.')
@@ -865,10 +900,12 @@ def _curves_coeffs_Arab06(specs, data_completeness):
             'rmse_f1': stats_f1['rmse'],
             'nrmse_f1': stats_f1['nrmse'],
             'r_squared_f1': stats_f1['r_squared'],
+            'adjusted_r_squared_f1': stats_f1['adjusted_r_squared'],
             'coeffs_f2': param_f2,
             'rmse_f2': stats_f2['rmse'],
             'nrmse_f2': stats_f2['nrmse'],
-            'r_squared_f2': stats_f2['r_squared']}
+            'r_squared_f2': stats_f2['r_squared'],
+            'adjusted_r_squared_f2': stats_f2['adjusted_r_squared']}
 
 
 def _curves_coeffs_Kou98(specs, data_completeness):
@@ -921,10 +958,12 @@ def _curves_coeffs_Kou98(specs, data_completeness):
             'rmse_f1': stats_f1['rmse'],
             'nrmse_f1': stats_f1['nrmse'],
             'r_squared_f1': stats_f1['r_squared'],
+            'adjusted_r_squared_f1': stats_f1['adjusted_r_squared'],
             'coeffs_f2': param_f2,
             'rmse_f2': stats_f2['rmse'],
             'nrmse_f2': stats_f2['nrmse'],
-            'r_squared_f2': stats_f2['r_squared']}
+            'r_squared_f2': stats_f2['r_squared'],
+            'adjusted_r_squared_f2': stats_f2['adjusted_r_squared']}
 
 
 def _curves_coeffs_Hamidat08(specs, data_completeness):
@@ -946,19 +985,15 @@ def _curves_coeffs_Hamidat08(specs, data_completeness):
 
     Reference
     ---------
-    [1] Hamidat A., ..., 2008, Renewable Energy
-
+    [1] Hamidat A., Benyoucef B., Mathematic models of photovoltaic
+    motor-pump systems, 2008, Renewable Energy
     """
-    # FIXME: the checks on data_completeness are correct? check thesis
-    # TODO: add check on number of head available (for lin. reg. of coeffs)
-    if data_completeness['data_number'] >= 10 \
-            and data_completeness['voltage_number'] >= 4:
+    if data_completeness['data_number'] >= 16 \
+            and data_completeness['head_number'] >= 4:
         funct_mod_2 = function_models.compound_polynomial_3_3
-#        funct_mod_2_order = 2
-    elif data_completeness['data_number'] >= 10 \
-            and data_completeness['voltage_number'] >= 2:
-        funct_mod_2 = function_models.compound_polynomial_2_3
-#        funct_mod_2_order = 1
+#    elif data_completeness['data_number'] >= 12 \
+#            and data_completeness['head_number'] >= 4:
+#        funct_mod_2 = function_models.compound_polynomial_2_3
     else:
         raise errors.InsufficientDataError('Lack of information on lpm, '
                                            'current or tdh for pump.')
@@ -976,7 +1011,8 @@ def _curves_coeffs_Hamidat08(specs, data_completeness):
     return {'coeffs_f2': param_f2,
             'rmse_f2': stats_f2['rmse'],
             'nrmse_f2': stats_f2['nrmse'],
-            'r_squared_f2': stats_f2['r_squared']}
+            'r_squared_f2': stats_f2['r_squared'],
+            'adjusted_r_squared_f2': stats_f2['adjusted_r_squared']}
 
 
 # TODO: add way to use it with only one data point in the case of mppt
@@ -1040,19 +1076,102 @@ def _curves_coeffs_theoretical(specs, data_completeness, elec_archi):
     dataxy = [np.array(specs.power),
               np.array(specs.tdh)]
     dataz = np.array(specs.flow)
+
     param_f2, matcov = opt.curve_fit(funct_mod_2, dataxy, dataz, maxfev=10000)
     # computing of statistical figures for f2
     stats_f2 = function_models.correlation_stats(funct_mod_2, param_f2,
                                                  dataxy, dataz)
 
+    # alternative vraiment pas terrible
+
+#    def funct_mod_2_alter(input_values, a, b, c):
+#        P_on_H = input_values
+#        return a + b * P_on_H + c * P_on_H**2
+
+#    dataxy_alter = np.array(specs.power[specs.tdh != 0] /
+#                            specs.tdh[specs.tdh != 0])
+#    dataz_alter = np.array(specs.flow[specs.tdh != 0])
+#    param_f2_alter, matcov = opt.curve_fit(funct_mod_2_alter,
+#                                           dataxy_alter,
+#                                           dataz_alter)
+#    # computing of statistical figures for f2
+#    stats_f2_alter = function_models.correlation_stats(funct_mod_2_alter,
+#                                                       param_f2_alter,
+#                                                       dataxy_alter,
+#                                                       dataz_alter)
+
+    # affinity law with constant efficiency - if power data is all the same
+
+#    def funct_P_for_tdh(input_values, a, b, c):
+#        H = input_values
+#        return a + b * H + c * H**2
+
+    # get alpha(tdh) for P = alpha(tdh) * Q**3
+#    alpha = specs.power / (specs.flow**3)
+#
+#    def funct_alpha(H, a, b, c):
+#        return (a + b * H + c * H**2)
+#
+#    dataH = np.array(specs.tdh[specs.tdh != 0])
+#    dataA = np.array(alpha[specs.tdh != 0])
+#    param_alpha, matcov = opt.curve_fit(funct_alpha,
+#                                        dataH,
+#                                        dataA)
+#
+#    # apply affinity law
+#    def funct_Q_for_PH(P, H):
+#        alpha = funct_alpha(H, *param_alpha)
+#        return (P/alpha)**(1/3)
+    # TO CONTINUE
+
+    # Simple efficiency
+    mean_efficiency = specs.efficiency.mean()
+
+    def funct_Q_for_PH(input_values, **kwargs):
+        P, H = input_values
+        return mean_efficiency * (60000 * P) / (H * 9.81 * 1000)
+
+    dataxy_alter = [np.array(specs.power[specs.tdh != 0]),
+                    np.array(specs.tdh[specs.tdh != 0])]
+    dataz_alter = np.array(specs.flow[specs.tdh != 0])
+#    param_f2_alter, matcov = opt.curve_fit(funct_Q_for_PH,
+#                                           dataxy_alter,
+#                                           dataz_alter)
+    # computing of statistical figures for f2
+    stats_f2_alter = function_models.correlation_stats(funct_Q_for_PH,
+                                                       [],
+                                                       dataxy_alter,
+                                                       dataz_alter)
+
+    # TODO: alternative martiré - if power is not all the same - WORK NEEDED
+#
+#    def funct_mod_2_alter(input_values, a, b, c, d, e, f):
+#        P_1, P_2, P_3, P_4, P_5 = input_values
+#        return a + b*P_1 + c*P_2 + d*P_3 * e*P_4 * f*P_5
+
+#    funct_mod_2_alter = function_models.polynomial_5
+#
+#    dataxy_alter = np.array(specs.flow[specs.tdh != 0])
+#    dataz_alter = np.array(specs.efficiency[specs.tdh != 0])
+#    param_f2_alter, matcov = opt.curve_fit(funct_mod_2_alter,
+#                                           dataxy_alter,
+#                                           dataz_alter)
+#    # computing of statistical figures for f2
+#    stats_f2_alter = function_models.correlation_stats(funct_mod_2_alter,
+#                                                       param_f2_alter,
+#                                                       dataxy_alter,
+#                                                       dataz_alter)
+
     return {'coeffs_f1': param_f1,
             'rmse_f1': stats_f1['rmse'],
             'nrmse_f1': stats_f1['nrmse'],
             'r_squared_f1': stats_f1['r_squared'],
+            'adjusted_r_squared_f1': stats_f1['adjusted_r_squared'],
             'coeffs_f2': param_f2,
             'rmse_f2': stats_f2['rmse'],
             'nrmse_f2': stats_f2['nrmse'],
-            'r_squared_f2': stats_f2['r_squared']}
+            'r_squared_f2': stats_f2['r_squared'],
+            'adjusted_r_squared_f2': stats_f2['adjusted_r_squared']}
 
 
 def _domain_I_H(specs, data_completeness):
@@ -1234,34 +1353,40 @@ if __name__ == "__main__":
     # %% pump creation
     pump1 = Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
                  idname='SCB_10',
-                 modeling_method='arab',
+                 modeling_method='theoretical',
                  motor_electrical_architecture='permanent_magnet')
 
-    pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
-                           136],
-                      24: [443, 432, 413, 401, 390, 382, 375, 371, 352, 345,
-                           310]},
-                 tdh={12: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
-                           54.9, 61.0, 70.1],
-                      24: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
-                           54.9, 61.0, 70.1]},
-                 current={12: [1.2, 1.5, 1.8, 2.0, 2.1, 2.4, 2.7, 3.0, 3.3,
-                               3.4, 3.9],
-                          24: [1.5, 1.7, 2.1, 2.4, 2.6, 2.8, 3.1, 3.3, 3.6,
-                               3.8, 4.1]
-                          },
-                 idname='Shurflo_9325',
-                 modeling_method='arab',
-                 motor_electrical_architecture='permanent_magnet')
+#    pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
+#                           136],
+#                      24: [443, 432, 413, 401, 390, 382, 375, 371, 352, 345,
+#                           310]},
+#                 tdh={12: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
+#                           54.9, 61.0, 70.1],
+#                      24: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
+#                           54.9, 61.0, 70.1]},
+#                 current={12: [1.2, 1.5, 1.8, 2.0, 2.1, 2.4, 2.7, 3.0, 3.3,
+#                               3.4, 3.9],
+#                          24: [1.5, 1.7, 2.1, 2.4, 2.6, 2.8, 3.1, 3.3, 3.6,
+#                               3.8, 4.1]
+#                          },
+#                 idname='Shurflo_9325',
+#                 modeling_method='theoretical',
+#                 motor_electrical_architecture='permanent_magnet')
 
-    pump3 = Pump(path="data/pump_files/Shurflo_9325.txt",
-                 idname='Shurflo_9325',
-                 modeling_method='arab',
-                 motor_electrical_architecture='permanent_magnet')
+#    pump3 = Pump(path="data/pump_files/Shurflo_9325.txt",
+#                 idname='Shurflo_9325',
+#                 modeling_method='theoretical',
+#                 motor_electrical_architecture='permanent_magnet')
 
-    pump4 = Pump(path="data/pump_files/aquatec_swp_4000.txt",
-                 idname='aquatec_swp_4000',
-                 modeling_method='arab',
+#    pump4 = Pump(path="data/pump_files/aquatec_swp_4000.txt",
+#                 idname='aquatec_swp_4000',
+#                 modeling_method='arab',
+#                 motor_electrical_architecture='permanent_magnet')
+
+# Deficient pump data:
+    pump5 = Pump(path="data/pump_files/rosen_SC33-158-D380-9200.txt",
+                 idname='rosen_SC33',
+                 modeling_method='theoretical',
                  motor_electrical_architecture='permanent_magnet')
 
 #    pump1.plot_Q_vs_H()

@@ -65,7 +65,7 @@ pvgen1.run_model()
 # 4) and close the file.
 #
 # To use it here then, download it with the path as follows:
-pump_rosen = pp.Pump(path="../data/pump_files/rosen_SC33-158-D380-9200.txt",
+pump_rosen = pp.Pump(path="../data/pump_files/rosen_SC33-158-D380-9200_modified.txt",
                        idname='rosen_SC33-158',
                        motor_electrical_architecture='permanent_magnet',
                        price=4000,  # USD

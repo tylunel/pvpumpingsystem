@@ -4,7 +4,7 @@ PUMP NAME: SCB_10_150_120_BL
 # Units for columns are in the order: 
 # [V]	[m]	[A]	[L/min]	[W]	[no unit]
 voltage	tdh	current	flow	power	efficiency
-60	0.0	2.2	34.0	131	0
+60	0.0	2.2	34.0	131	nan
 60	3.5	2.2	30.4	134	13
 60	7.0	2.3	26.2	137	22
 60	10.6	2.3	21.4	139	27

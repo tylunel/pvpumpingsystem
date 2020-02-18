@@ -5,11 +5,11 @@ PUMP NAME: rosen_SC33-158-D380-9200
 # Units for columns are in the order: 
 # [V]	[m]	[A]	[L/min]	[W]	[no unit]
 voltage	tdh	current	flow	power	efficiency
-540	132	9	210	nan	nan
-540	122	10	250	nan	nan
-540	122	10.5	290	nan	nan
-540	102	10.8	320	nan	nan
-540	90	10.9	385	nan	nan
-540	77	10.8	415	nan	nan
-540	62	10.2	460	nan	nan
-540	46	10	500	nan	nan
+540	132	25.5	210	nan	nan
+540	122	25.5	250	nan	nan
+540	112	25.5	290	nan	nan
+540	102	25.5	320	nan	nan
+540	90	25.5	385	nan	nan
+540	77	25.5	415	nan	nan
+540	62	25.5	460	nan	nan
+540	46	25.5	500	nan	nan

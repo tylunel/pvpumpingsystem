@@ -24,10 +24,16 @@ def correlation_stats(funct_mod, params, data_input, data_to_fit):
     rmse = np.sqrt(sum((data_to_fit-data_fitted)**2)/len(data_to_fit))
     nrmse = rmse/np.mean(data_fitted)
     r_squared = r2_score(data_to_fit, data_fitted)
+
     nb_data = len(data_to_fit)
+    nb_independent_variables = len(data_input)
+    adjusted_r_squared = 1 - (1 - r_squared) * \
+        ((nb_data - 1) / (nb_data - nb_independent_variables - 1))
+
     return {'rmse': rmse,
             'nrmse': nrmse,
             'r_squared': r_squared,
+            'adjusted_r_squared': adjusted_r_squared,
             'nb_data': nb_data}
 
 
@@ -154,6 +160,13 @@ def polynomial_multivar_0_1_0(input_val, y_intercept, b1):
     """
     x, y = input_val[0], input_val[1]
     return y_intercept + 0*x + b1*y
+
+
+def polynomial_5(x, y_intercept, a, b, c, d, e):
+    """
+    Model of a polynomial function of fifth order.
+    """
+    return y_intercept + a*x + b*x**2 + c*x**3 + d*x**4 + e*x**5
 
 
 def polynomial_4(x, y_intercept, a, b, c, d):

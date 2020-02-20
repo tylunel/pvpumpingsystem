@@ -868,16 +868,16 @@ def _curves_coeffs_Arab06(specs, data_completeness):
             and data_completeness['voltage_number'] >= 3:
         funct_mod_1 = function_models.compound_polynomial_1_3
         funct_mod_2 = function_models.compound_polynomial_2_3
-#    # Original model from [1]
-#    if data_completeness['data_number'] >= 9 \
-#            and data_completeness['voltage_number'] >= 3:
-#        funct_mod_1 = function_models.compound_polynomial_1_2
-#        funct_mod_2 = function_models.compound_polynomial_2_2
-    # New model to make accessible computation of pump with fewer data
-#    elif data_completeness['data_number'] >= 8 \
-#            and data_completeness['voltage_number'] >= 2:
-#        funct_mod_1 = function_models.compound_polynomial_1_2
-#        funct_mod_2 = function_models.compound_polynomial_1_3
+    # Original model from [1]
+    elif data_completeness['data_number'] >= 9 \
+            and data_completeness['voltage_number'] >= 3:
+        funct_mod_1 = function_models.compound_polynomial_1_2
+        funct_mod_2 = function_models.compound_polynomial_2_2
+    # Other alternative for more restricted pump specifications
+    elif data_completeness['data_number'] >= 8 \
+            and data_completeness['voltage_number'] >= 2:
+        funct_mod_1 = function_models.compound_polynomial_1_2
+        funct_mod_2 = function_models.compound_polynomial_1_3
     else:
         raise errors.InsufficientDataError('Lack of information on lpm, '
                                            'current or tdh for pump.')
@@ -997,9 +997,9 @@ def _curves_coeffs_Hamidat08(specs, data_completeness):
     if data_completeness['data_number'] >= 16 \
             and data_completeness['head_number'] >= 4:
         funct_mod_2 = function_models.compound_polynomial_3_3
-#    elif data_completeness['data_number'] >= 12 \
-#            and data_completeness['head_number'] >= 4:
-#        funct_mod_2 = function_models.compound_polynomial_2_3
+    elif data_completeness['data_number'] >= 12 \
+            and data_completeness['head_number'] >= 4:
+        funct_mod_2 = function_models.compound_polynomial_2_3
     else:
         raise errors.InsufficientDataError('Lack of information on lpm, '
                                            'current or tdh for pump.')

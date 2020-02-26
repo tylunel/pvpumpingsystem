@@ -6,6 +6,8 @@ Example of a simulation with pvpumpingsystem package.
 """
 
 import matplotlib.pyplot as plt
+from pandas.plotting import register_matplotlib_converters
+register_matplotlib_converters()
 
 import pvpumpingsystem.pump as pp
 import pvpumpingsystem.pipenetwork as pn
@@ -91,27 +93,27 @@ pipes1 = pn.PipeNetwork(h_stat=10,  # static head [m]
 reservoir1 = rv.Reservoir(size=1000,  # size [L]
                           price=500)
 
-consumption1 = cs.Consumption(constant_flow=1,  # output flow rate [L/min]
-                              length=len(pvgen1.weather_data))
-consumption1 = cs.Consumption(repeated_flow=[0,   0,   0,   0,   0,   0,
-                                             0,   0,   0.2, 0.1, 0.1, 0.3,
-                                             0.3, 0.3, 0.3, 0.3, 0.3, 0.5,
-                                             0.3, 0.1, 0.1, 0,   0,   0],
-                              # output flow rate [L/min]
-                              length=len(pvgen1.weather_data))
+consumption_cst = cs.Consumption(constant_flow=1,  # output flow rate [L/min]
+                                 length=len(pvgen1.weather_data))
+consumption_daily = cs.Consumption(repeated_flow=[0,   0,   0,   0,   0,   0,
+                                                  0,   0,   0.2, 0.1, 0.1, 0.3,
+                                                  0.3, 0.3, 0.3, 0.3, 0.3, 0.5,
+                                                  0.3, 0.1, 0.1, 0,   0,   0],
+                                   # output flow rate [L/min]
+                                   length=len(pvgen1.weather_data))
 
 pvps1 = pvps.PVPumpSystem(pvgen1,
                           pump_shurflo,
-                          coupling='direct',  # to adapt: 'mppt' or 'direct',
+                          coupling='mppt',  # to adapt: 'mppt' or 'direct',
                           mppt=mppt1,
                           pipes=pipes1,
-                          consumption=consumption1,
+                          consumption=consumption_cst,
                           reservoir=reservoir1)
 
 
 # ------------ RUNNING MODEL -----------------
 
-pvps1.run_model(iteration=True)
+pvps1.run_model(iteration=False)
 #print(pvps1.flow[6:16])
 print(pvps1)
 print('LLP = ', pvps1.llp)

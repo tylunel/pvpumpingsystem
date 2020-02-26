@@ -21,7 +21,7 @@ import pvpumpingsystem.pvgeneration as pvgen
 pvgen1 = pvgen.PVGeneration(
             # Weather data
             weather_data=('../data/weather_files/CAN_PQ_Montreal.Intl.'
-                          'AP.716270_CWEC_truncated.epw'),  # to adapt:
+                          'AP.716270_CWEC.epw'),  # to adapt:
 
             # PV array parameters
             pv_module_name='Canadian solar 140',
@@ -132,7 +132,8 @@ if pvps1.coupling == 'direct':
 
 # PV electric power
 plt.figure()
-plt.plot(pvps1.efficiency.index, pvps1.efficiency.electric_power)
+plt.plot(pvps1.efficiency.index,
+         pvps1.efficiency.electric_power)
 plt.title('Electric power in vs time')
 
 

@@ -901,6 +901,9 @@ def calc_reservoir(reservoir, Q_pumped, Q_consumption):
                          'are not relying on the same dates.')
     Q_consumption_relevant = Q_consumption.loc[intersect]
 
+    # replace nan by 0 for computation of Q_diff
+    Q_pumped.fillna(value=0, inplace=True)
+
     # diff in volume
     Q_diff = Q_pumped - Q_consumption_relevant
 

@@ -6,8 +6,10 @@ Example of a simulation with pvpumpingsystem package.
 """
 
 import matplotlib.pyplot as plt
-from pandas.plotting import register_matplotlib_converters
-register_matplotlib_converters()
+import pandas as pd
+
+# allows pandas to convert timestamp for matplotlib
+pd.plotting.register_matplotlib_converters()
 
 import pvpumpingsystem.pump as pp
 import pvpumpingsystem.pipenetwork as pn
@@ -23,7 +25,7 @@ import pvpumpingsystem.pvgeneration as pvgen
 pvgen1 = pvgen.PVGeneration(
             # Weather data
             weather_data=('../data/weather_files/CAN_PQ_Montreal.Intl.'
-                          'AP.716270_CWEC.epw'),  # to adapt:
+                          'AP.716270_CWEC_truncated.epw'),  # to adapt:
 
             # PV array parameters
             pv_module_name='Canadian solar 140',
@@ -31,7 +33,7 @@ pvgen1 = pvgen.PVGeneration(
             surface_tilt=45,  # 0 = horizontal, 90 = vertical
             surface_azimuth=180,  # 180 = South, 90 = East
             albedo=0,  # between 0 and 1
-            modules_per_string=1,
+            modules_per_string=3,
             strings_in_parallel=1,
             # PV module glazing parameters (not always given in specs)
             glass_params={'K': 4,  # extinction coefficient [1/m]
@@ -93,21 +95,22 @@ pipes1 = pn.PipeNetwork(h_stat=10,  # static head [m]
 reservoir1 = rv.Reservoir(size=1000,  # size [L]
                           price=500)
 
-consumption_cst = cs.Consumption(constant_flow=1,  # output flow rate [L/min]
-                                 length=len(pvgen1.weather_data))
+consumption_cst = cs.Consumption(constant_flow=0.2,  # output flow rate [L/min]
+                              length=len(pvgen1.weather_data))
+
 consumption_daily = cs.Consumption(repeated_flow=[0,   0,   0,   0,   0,   0,
-                                                  0,   0,   0.2, 0.1, 0.1, 0.3,
-                                                  0.3, 0.3, 0.3, 0.3, 0.3, 0.5,
-                                                  0.3, 0.1, 0.1, 0,   0,   0],
-                                   # output flow rate [L/min]
-                                   length=len(pvgen1.weather_data))
+                                             0,   0,   0.2, 0.1, 0.1, 0.3,
+                                             1, 1.2, 0.3, 0.3, 0.3, 0.5,
+                                             0.8, 0.3, 0.1, 0.1,   0,   0],
+                              # output flow rate [L/min]
+                              length=len(pvgen1.weather_data))
 
 pvps1 = pvps.PVPumpSystem(pvgen1,
-                          pump_shurflo,
-                          coupling='mppt',  # to adapt: 'mppt' or 'direct',
+                          pump_sunpump,
+                          coupling='direct',  # to adapt: 'mppt' or 'direct',
                           mppt=mppt1,
                           pipes=pipes1,
-                          consumption=consumption_cst,
+                          consumption=consumption_daily,
                           reservoir=reservoir1)
 
 
@@ -119,7 +122,7 @@ print(pvps1)
 print('LLP = ', pvps1.llp)
 print('Initial investment = {0} USD'.format(pvps1.initial_investment))
 print('NPV = {0} USD'.format(pvps1.npv))
-if pvps1.coupling == 'direct':
+if pvps1.coupling == 'mppt':
     pvps1.functioning_point_noiteration(plot=True)
 
 
@@ -134,8 +137,7 @@ if pvps1.coupling == 'direct':
 
 # PV electric power
 plt.figure()
-plt.plot(pvps1.efficiency.index,
-         pvps1.efficiency.electric_power)
+plt.plot(pvps1.efficiency.index, pvps1.efficiency.electric_power)
 plt.title('Electric power in vs time')
 
 

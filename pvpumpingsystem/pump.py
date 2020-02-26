@@ -1328,10 +1328,10 @@ def _domain_P_H(specs, data_completeness):
 
 if __name__ == "__main__":
     # %% pump creation
-#    pump1 = Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
-#                 idname='SCB_10',
-#                 modeling_method='theoretical',
-#                 motor_electrical_architecture='permanent_magnet')
+    pump1 = Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
+                 idname='SCB_10',
+                 modeling_method='arab',
+                 motor_electrical_architecture='permanent_magnet')
 
 #    pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
 #                           136],
@@ -1391,11 +1391,13 @@ if __name__ == "__main__":
 #    print('I for VH=(80, 25): {0:.2f}'.format(f2(80, 25)))
 
 # %% plot of functQforPH
-    pump_concerned = pump5
+    pump_concerned = pump1
     f4, intervals = pump_concerned.functQforPH()
     lpm_check = []
 
-    pump_concerned.specs = pump_concerned.specs[pump_concerned.specs.tdh > 7]
+    if pump_concerned == pump5:
+        pump_concerned.specs = pump_concerned.specs[
+                pump_concerned.specs.tdh > 7]
 
     for index, row in pump_concerned.specs.iterrows():
         try:

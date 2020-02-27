@@ -122,7 +122,7 @@ print(pvps1)
 print('LLP = ', pvps1.llp)
 print('Initial investment = {0} USD'.format(pvps1.initial_investment))
 print('NPV = {0} USD'.format(pvps1.npv))
-if pvps1.coupling == 'mppt':
+if pvps1.coupling == 'direct':
     pvps1.functioning_point_noiteration(plot=True)
 
 

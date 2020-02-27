@@ -107,7 +107,7 @@ consumption_daily = cs.Consumption(repeated_flow=[0,   0,   0,   0,   0,   0,
 
 pvps1 = pvps.PVPumpSystem(pvgen1,
                           pump_sunpump,
-                          coupling='direct',  # to adapt: 'mppt' or 'direct',
+                          coupling='mppt',  # to adapt: 'mppt' or 'direct',
                           mppt=mppt1,
                           pipes=pipes1,
                           consumption=consumption_daily,
@@ -117,7 +117,7 @@ pvps1 = pvps.PVPumpSystem(pvgen1,
 # ------------ RUNNING MODEL -----------------
 
 pvps1.run_model(iteration=False)
-#print(pvps1.flow[6:16])
+
 print(pvps1)
 print('LLP = ', pvps1.llp)
 print('Initial investment = {0} USD'.format(pvps1.initial_investment))

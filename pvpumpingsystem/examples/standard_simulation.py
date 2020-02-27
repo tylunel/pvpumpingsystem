@@ -6,6 +6,10 @@ Example of a simulation with pvpumpingsystem package.
 """
 
 import matplotlib.pyplot as plt
+import pandas as pd
+
+# allows pandas to convert timestamp for matplotlib
+pd.plotting.register_matplotlib_converters()
 
 import pvpumpingsystem.pump as pp
 import pvpumpingsystem.pipenetwork as pn
@@ -29,7 +33,7 @@ pvgen1 = pvgen.PVGeneration(
             surface_tilt=45,  # 0 = horizontal, 90 = vertical
             surface_azimuth=180,  # 180 = South, 90 = East
             albedo=0,  # between 0 and 1
-            modules_per_string=1,
+            modules_per_string=3,
             strings_in_parallel=1,
             # PV module glazing parameters (not always given in specs)
             glass_params={'K': 4,  # extinction coefficient [1/m]
@@ -91,33 +95,34 @@ pipes1 = pn.PipeNetwork(h_stat=10,  # static head [m]
 reservoir1 = rv.Reservoir(size=1000,  # size [L]
                           price=500)
 
-consumption1 = cs.Consumption(constant_flow=1,  # output flow rate [L/min]
+consumption_cst = cs.Consumption(constant_flow=0.2,  # output flow rate [L/min]
                               length=len(pvgen1.weather_data))
-consumption1 = cs.Consumption(repeated_flow=[0,   0,   0,   0,   0,   0,
+
+consumption_daily = cs.Consumption(repeated_flow=[0,   0,   0,   0,   0,   0,
                                              0,   0,   0.2, 0.1, 0.1, 0.3,
-                                             0.3, 0.3, 0.3, 0.3, 0.3, 0.5,
-                                             0.3, 0.1, 0.1, 0,   0,   0],
+                                             1, 1.2, 0.3, 0.3, 0.3, 0.5,
+                                             0.8, 0.3, 0.1, 0.1,   0,   0],
                               # output flow rate [L/min]
                               length=len(pvgen1.weather_data))
 
 pvps1 = pvps.PVPumpSystem(pvgen1,
-                          pump_shurflo,
+                          pump_sunpump,
                           coupling='direct',  # to adapt: 'mppt' or 'direct',
                           mppt=mppt1,
                           pipes=pipes1,
-                          consumption=consumption1,
+                          consumption=consumption_daily,
                           reservoir=reservoir1)
 
 
 # ------------ RUNNING MODEL -----------------
 
-pvps1.run_model(iteration=True)
+pvps1.run_model(iteration=False)
 #print(pvps1.flow[6:16])
 print(pvps1)
 print('LLP = ', pvps1.llp)
 print('Initial investment = {0} USD'.format(pvps1.initial_investment))
 print('NPV = {0} USD'.format(pvps1.npv))
-if pvps1.coupling == 'direct':
+if pvps1.coupling == 'mppt':
     pvps1.functioning_point_noiteration(plot=True)
 
 

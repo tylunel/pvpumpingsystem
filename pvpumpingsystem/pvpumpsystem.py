@@ -325,16 +325,28 @@ class PVPumpSystem(object):
             Available strings are 'empty' (no water in reservoir)
             and 'morning' (enough water for one morning consumption).
 
+        Return
+        ------
+        None, but create new attribute 'water_stored' from
+        pvpumpingsystem.calc_reservoir().
+
         """
+        # set an empty water reservoir at beginning
         if starting_soc == 'empty' or starting_soc == 0:
             self.reservoir.water_volume = 0
+
+        # set reservoir with enough water to fulfil the need of one morning
         elif starting_soc == 'morning':
-            # Water needed in the first morning (until 12am)
+            # Get water needed in the first morning (until 12am)
             vol = float((self.consumption.flow_rate.iloc[0:12]*60).sum())
             # initialization of water in reservoir
             self.reservoir.water_volume = vol
+
+        # set water level to the one given
         elif isinstance(starting_soc, float) and self.reservoir.size != np.inf:
             self.reservoir.water_volume = self.reservoir.size * starting_soc
+
+        # exception handling
         else:
             raise TypeError('starting_soc type is not correct, or is '
                             'incoherent with reservoir.size')
@@ -359,6 +371,10 @@ class PVPumpSystem(object):
         self.calc_efficiency()
         self.calc_reservoir(**kwargs)
 
+        self.consumption.flow_rate = cs.adapt_to_flow_pumped(
+                self.consumption.flow_rate,
+                self.flow.Qlpm)
+
         total_water_required = sum(self.consumption.flow_rate.Qlpm*60)
         total_water_lacking = -sum(self.water_stored.extra_water[
                 self.water_stored.extra_water < 0])
@@ -375,8 +391,6 @@ class PVPumpSystem(object):
                                          lifespan_pv=30,
                                          lifespan_pump=12,
                                          lifespan_mppt=10)
-
-#        if self.coupling == 'direct' and llp
 
 
 def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
@@ -863,7 +877,8 @@ def calc_efficiency(df, irradiance, pv_area):
 
 
 def calc_reservoir(reservoir, Q_pumped, Q_consumption):
-    """Function computing the water volume in the reservoir and the extra or
+    """
+    Function computing the water volume in the reservoir and the extra or
     lacking water compared to the consumption.
 
     Parameters
@@ -879,7 +894,7 @@ def calc_reservoir(reservoir, Q_pumped, Q_consumption):
 
     Returns
     -------
-    level_df: pd.DataFrame
+    water_stored: pd.DataFrame
         Dataframe with water_volume in tank, and extra or lacking water.
     """
     level = []
@@ -887,25 +902,13 @@ def calc_reservoir(reservoir, Q_pumped, Q_consumption):
     timestep = Q_pumped.index[1] - Q_pumped.index[0]
     timestep_minute = timestep.seconds/60
 
-    # TODO: replace by process in Consumption class
-    timezone = Q_pumped.index.tz
-    # test if Q_consumption.index is naive iff:
-    if Q_consumption.index.tzinfo is None or \
-            Q_consumption.index.tzinfo.utcoffset(Q_consumption.index) is None:
-        Q_consumption.index = Q_consumption.index.tz_localize(timezone)
-
-    # get intersection of index
-    intersect = Q_pumped.index.intersection(Q_consumption.index)
-    if intersect.empty is True:
-        raise ValueError('The consumption data and the water pumped data '
-                         'are not relying on the same dates.')
-    Q_consumption_relevant = Q_consumption.loc[intersect]
+    Q_consumption = cs.adapt_to_flow_pumped(Q_consumption, Q_pumped)
 
     # replace nan by 0 for computation of Q_diff
     Q_pumped.fillna(value=0, inplace=True)
 
     # diff in volume
-    Q_diff = Q_pumped - Q_consumption_relevant
+    Q_diff = Q_pumped - Q_consumption
 
     # total change in volume during the timestep in liters
     volume_diff = Q_diff * timestep_minute
@@ -913,24 +916,24 @@ def calc_reservoir(reservoir, Q_pumped, Q_consumption):
     for vol in volume_diff:
         level.append(reservoir.change_water_volume(vol))
 
-    level_df = pd.DataFrame(level, columns=('volume', 'extra_water'))
-    level_df.index = Q_pumped.index
+    water_stored = pd.DataFrame(level, columns=('volume', 'extra_water'))
+    water_stored.index = Q_pumped.index
 
-    return level_df
+    return water_stored
 
 
 if __name__ == '__main__':
     # %% set up
 
     pvgen1 = pvgen.PVGeneration(
+            weather_data=('data/weather_files/CAN_PQ_Montreal.Intl.'
+                          'AP.716270_CWEC.epw'),
             pv_module_name='kyocera solar KU270 6MCA',
             surface_tilt=45,
             surface_azimuth=180,
             albedo=0,
             modules_per_string=3,
             strings_per_inverter=2,
-            weather_data=('data/weather_files/CAN_PQ_Montreal.Intl.'
-                          'AP.716270_CWEC.epw'),
             orientation_strategy=None,
             clearsky_model='ineichen',
             transposition_model='haydavies',

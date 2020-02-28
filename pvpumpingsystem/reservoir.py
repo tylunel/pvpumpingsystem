@@ -49,7 +49,8 @@ class Reservoir(object):
         quantity: numeric
             amount of water too add or remove (in liters)
 
-        returns:
+        Returns:
+        --------
             - tuple with:
                 (water_volume, extra (+) or lacking water(-))
         """

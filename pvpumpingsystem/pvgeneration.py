@@ -26,7 +26,8 @@ class PVGeneration:
 
     weather_data: str or dict (containing pd.DataFrame and dict),
         Path to the weather file if string recognized,
-        or the weather data itself if not string.
+        or the weather data itself if not string. In the latter case,
+        the dict must contains keys 'weather_data' and 'weather_metadata'.
 
     price_per_module: float, default is 200
         Price of one PV module referenced in pv_module_name, in US dollars.
@@ -203,7 +204,7 @@ class PVGeneration:
         else:  # assumed to be dict with weather data (pd.df) and metadata
             self.weather_data = weather_data['weather_data']
             self.location = pvlib.location.Location.from_epw(
-                    weather_data['metadata'])
+                    weather_data['weather_metadata'])
 
         # Choices of models to use
         self.modelchain = pvlib.modelchain.ModelChain(

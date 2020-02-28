@@ -49,8 +49,8 @@ mppt1 = mppt.MPPT(efficiency=0.96,
 # PV generator parameters
 pvgen1 = pvgen.PVGeneration(
             # Weather data
-            weather_data=('../data/weather_files/CAN_PQ_Montreal.Intl.'
-                          'AP.716270_CWEC.epw'),  # to adapt:
+            weather_data={'weather_data': weather_data,
+                          'weather_metadata': weather_metadata},  # to adapt:
 
             # PV array parameters
             pv_module_name='kyocera solar KU270 6MCA',
@@ -103,7 +103,6 @@ pump_shurflo = pp.Pump(path="../data/pump_files/Shurflo_9325.txt",
                        price=700,
                        motor_electrical_architecture='permanent_magnet')
 
-# TODO: reform pump_database as DataFrame to be consistent with pv_database
 pump_database = [pump_sunpump,
                  pump_shurflo]
 
@@ -113,13 +112,6 @@ pv_database = ['Canadian Solar 200',
 
 
 # ------------ RUN SIZING ---------------------------------------------------
-
-#selection, total = sizing.sizing_maximize_flow(pv_database,
-#                                               pump_database,
-#                                               weather_short,
-#                                               weather_metadata,
-#                                               pvps_fixture)
-#print('configuration for maximum output flow:\n', selection)
 
 selection, total = sizing.sizing_minimize_npv(pv_database,
                                               pump_database,

@@ -57,7 +57,47 @@ class Consumption(object):
         return str(self.flow_rate)
 
 
+def adapt_to_flow_pumped(Q_consumption, Q_pumped):
+    """
+    Method for shrinking the consumption flow_rate attribute
+    at the same size than the corresponding pumped flow rate data.
+
+    Parameters
+    ----------
+    Q_consumption: pd.DataFrame,
+        Dataframe with pandas timestamp as index. Typically comes from
+        PVPumpSystem.consumption.flow_rate
+
+    Q_pumped: pd.DataFrame,
+        Dataframe with pandas timestamp as index. Typically comes from
+        PVPumpSystem.flow.Qlpm
+
+    Return
+    ------
+    None, the consumption object is changed internally.
+    """
+
+    timezone = Q_pumped.index.tz
+
+    # test if Q_consumption.index is naive iff:
+    if Q_consumption.index.tzinfo is None or \
+            Q_consumption.index.tzinfo.utcoffset(Q_consumption.index) \
+            is None:
+        Q_consumption.index = Q_consumption.index.tz_localize(timezone)
+
+    # get intersection of index
+    intersect = Q_pumped.index.intersection(Q_consumption.index)
+    if intersect.empty is True:
+        raise ValueError('The consumption data and the water pumped data '
+                         'are not relying on the same dates.')
+    Q_consumption = Q_consumption.loc[intersect]
+
+    return Q_consumption
+
+
 if __name__ == '__main__':
-    consum = Consumption(repeated_flow=[0,0,0,0,0,0,15,20,15,10,10,10,
-                                        10,10,10,30,30,30,0,0,0,0,0,0])
+    consum = Consumption(repeated_flow=[0, 0, 0, 0, 0, 0,
+                                        15, 20, 15, 10, 10, 10,
+                                        10, 10, 10, 30, 30, 30,
+                                        0, 0, 0, 0, 0, 0])
     print(consum)

@@ -8,9 +8,6 @@ Example of a simulation with pvpumpingsystem package.
 import matplotlib.pyplot as plt
 import pandas as pd
 
-# allows pandas to convert timestamp for matplotlib
-pd.plotting.register_matplotlib_converters()
-
 import pvpumpingsystem.pump as pp
 import pvpumpingsystem.pipenetwork as pn
 import pvpumpingsystem.reservoir as rv
@@ -19,6 +16,8 @@ import pvpumpingsystem.pvpumpsystem as pvps
 import pvpumpingsystem.mppt as mppt
 import pvpumpingsystem.pvgeneration as pvgen
 
+# allows pandas to convert timestamp for matplotlib
+pd.plotting.register_matplotlib_converters()
 
 # ------------ PV MODELING DEFINITION -----------------------
 
@@ -107,7 +106,7 @@ consumption_daily = cs.Consumption(repeated_flow=[0,   0,   0,   0,   0,   0,
 
 pvps1 = pvps.PVPumpSystem(pvgen1,
                           pump_sunpump,
-                          coupling='direct',  # to adapt: 'mppt' or 'direct',
+                          coupling='mppt',  # to adapt: 'mppt' or 'direct',
                           mppt=mppt1,
                           pipes=pipes1,
                           consumption=consumption_daily,
@@ -117,12 +116,12 @@ pvps1 = pvps.PVPumpSystem(pvgen1,
 # ------------ RUNNING MODEL -----------------
 
 pvps1.run_model(iteration=False)
-#print(pvps1.flow[6:16])
+
 print(pvps1)
 print('LLP = ', pvps1.llp)
 print('Initial investment = {0} USD'.format(pvps1.initial_investment))
 print('NPV = {0} USD'.format(pvps1.npv))
-if pvps1.coupling == 'mppt':
+if pvps1.coupling == 'direct':
     pvps1.functioning_point_noiteration(plot=True)
 
 

@@ -20,6 +20,10 @@ from pvpumpingsystem import inverse
 from pvpumpingsystem import errors
 from pvpumpingsystem import function_models
 
+# FIXME: doc states lpm, tdh, current, because they can be used for creating
+# object with __init__(), but not available anymore then as attribute.
+# What is the proper way to document it.
+
 
 class Pump:
     """
@@ -129,6 +133,9 @@ class Pump:
                                        'current': cur,
                                        'flow': flow,
                                        'power': power})
+
+        self.range = pd.DataFrame([self.specs.max(), self.specs.min()],
+                                  index=['max', 'min'])
 
         # complete power data
         if 'power' not in self.specs.columns or \

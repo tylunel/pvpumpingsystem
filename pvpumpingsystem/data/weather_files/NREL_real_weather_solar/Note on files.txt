@@ -1,0 +1,3 @@
+TMY3 files are based on 1976-2005 real-weather data if available, or 1991-2005 if previous years are not available.
+To compare efficiently TMY3 and real-weather files, we should consider to compare on the full span used for building
+the TMY set.

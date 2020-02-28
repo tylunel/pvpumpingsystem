@@ -16,6 +16,15 @@ import pvpumpingsystem.mppt as mppt
 import pvpumpingsystem.pvgeneration as pvgen
 
 
+# ------------ SCALE FACTOR ------------------------------
+# As the case studied asks for a high output flow rate, and as this level
+# of flow rate is rare for DC pump, the comparison will be made by
+# assuming more than 1 pump is installed. The below parameter set this
+# number of pump, and will subsequently decrease the consumption and
+# the number of pv modules by the same factor.
+scale_factor = 4
+nb_pv_mod = 39/scale_factor  # 39 is the original number of PV module
+
 # ------------ PV MODELING DEFINITION -----------------------
 
 pvgen1 = pvgen.PVGeneration(
@@ -26,12 +35,12 @@ pvgen1 = pvgen.PVGeneration(
 
             # PV array parameters
             pv_module_name='Canadian solar 370P',
-            price_per_module=200,  # in US dollars
+            price_per_watt=2.5,  # in US dollars
             surface_tilt=45,  # 0 = horizontal, 90 = vertical
             surface_azimuth=180,  # 180 = South, 90 = East
             albedo=0,  # between 0 and 1
-            modules_per_string=25,
-            strings_in_parallel=3,
+            modules_per_string=nb_pv_mod,
+            strings_in_parallel=1,
             # PV module glazing parameters (not always given in specs)
             glass_params={'K': 4,  # extinction coefficient [1/m]
                           'L': 0.002,  # thickness [m]
@@ -66,10 +75,14 @@ pvgen1.run_model()
 #
 # To use it here then, download it with the path as follows:
 pump_rosen = pp.Pump(path="../data/pump_files/rosen_SC33-158-D380-9200.txt",
-                       idname='rosen_SC33-158',
+                     idname='rosen_SC33-158',
+                     motor_electrical_architecture='permanent_magnet',
+                     price=4000,  # USD
+                     modeling_method='theoretical')
+
+pump_sunpump = pp.Pump(path="../data/pump_files/SCS_22_300_240_BL.txt",
                        motor_electrical_architecture='permanent_magnet',
-                       price=4000,  # USD
-                       modeling_method='theoretical')
+                       modeling_method='arab')
 
 
 # ------------ PVPS MODELING STEPS ------------------------
@@ -95,8 +108,8 @@ consumption_night = cs.Consumption(repeated_flow=[0, 0, 0, 0, 0, 0,
                                    # output flow rate [L/min]
                                    length=len(pvgen1.weather_data))
 consumption_day = cs.Consumption(repeated_flow=[0, 0, 0, 0, 0, 0,
-                                                0,   0,   0,   0,   0, 420,
-                                                420, 420, 420, 420, 420, 0,
+                                                0,   0,   0, 420, 420, 420,
+                                                420, 420, 420, 0, 0, 0,
                                                 0, 0, 0, 0, 0, 0
                                                 ],
                                  # output flow rate [L/min]
@@ -105,13 +118,15 @@ consumption_continuous = cs.Consumption(constant_flow=104,
                                         # output flow rate [L/min]
                                         length=len(pvgen1.weather_data))
 
+consumption_used = consumption_day
+consumption_used.flow_rate = consumption_used.flow_rate/scale_factor
 
 pvps1 = pvps.PVPumpSystem(pvgen1,
-                          pump_rosen,
+                          pump_sunpump,
                           coupling='mppt',  # to adapt: 'mppt' or 'direct',
                           mppt=mppt1,
                           pipes=pipes1,
-                          consumption=consumption_continuous,
+                          consumption=consumption_used,
                           reservoir=reservoir1)
 
 
@@ -120,8 +135,9 @@ pvps1 = pvps.PVPumpSystem(pvgen1,
 pvps1.run_model()
 print(pvps1)
 print('LLP = ', pvps1.llp)
-print('Initial investment = {0} USD'.format(pvps1.initial_investment))
-print('NPV = {0} USD'.format(pvps1.npv))
+print('Initial investment = {0} USD'.format(
+        pvps1.initial_investment * scale_factor))
+print('NPV = {0} USD'.format(pvps1.npv * scale_factor))
 if pvps1.coupling == 'direct':
     pvps1.functioning_point_noiteration(plot=True)
 
@@ -179,25 +195,3 @@ fig.tight_layout()  # otherwise the right y-label is slightly clipped
 plt.legend()
 plt.show()
 
-
-# ------------ POTENTIAL PATHS TO USE UNUSED ELECTRICITY  ---------------
-#
-#total_unused_power_Wh = pvps1.flow.P_unused.sum()
-#total_pumped_water_L = (pvps1.flow.Qlpm).sum()*60
-#
-## potabilization of freshwater polluted from pathogen us bacteria can
-## be obtained with MF-UF that requires low energy consumption: 1.2 kWh/m3
-## or 1.2 Wh/L according to :
-## 'Water Purification-Desalination with membrane technology supplied
-## with renewable energy', Massimo Pizzichini, Claudio Russo
-#ratio_potabilized = ((total_unused_power_Wh / 1.2) /
-#                     total_pumped_water_L)
-## creuser avec ajout de cette machine sur installation:
-## https://lacentrale-eco.com/fr/traitement-eau-fr/eau-domestique/traitement-uv-maison/platine-uv/platine-dom-de-traitement-uv-kit-complet-30w-ou-55w-jusqua-2-55-m-h.html
-#
-## with 4.2kJ/kg/K, water temperature can be increased of 50K with 58.5 Wh/L
-#ratio_heated_50K = ((total_unused_power_Wh / 58.5) /
-#                    total_pumped_water_L)
-#
-#print('ratio potabilized: ', ratio_potabilized,
-#      '\nratio heated +50C:', ratio_heated_50K)

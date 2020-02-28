@@ -28,7 +28,7 @@ pvgen1 = pvgen.PVGeneration(
 
             # PV array parameters
             pv_module_name='Canadian solar 140',
-            price_per_module=200,  # in US dollars
+            price_per_watt=2.5,  # in US dollars
             surface_tilt=45,  # 0 = horizontal, 90 = vertical
             surface_azimuth=180,  # 180 = South, 90 = East
             albedo=0,  # between 0 and 1
@@ -82,7 +82,7 @@ pump_shurflo = pp.Pump("../data/pump_files/Shurflo_9325.txt",
 # ------------ PVPS MODELING STEPS ------------------------
 
 mppt1 = mppt.MPPT(efficiency=0.96,
-                  price=1000)
+                  price=410)
 
 pipes1 = pn.PipeNetwork(h_stat=10,  # static head [m]
                         l_tot=100,  # length of pipes [m]

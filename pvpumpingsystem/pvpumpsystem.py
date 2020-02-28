@@ -359,9 +359,17 @@ class PVPumpSystem(object):
 
     def run_model(self, iteration=False, **kwargs):
         """
-        Comprehesive modeling of the PVPS. Computes Loss of Power Supply
+        Comprehesive modeling of the PVPS. Computes Loss of Power Supply (LLP)
         and stores it as an attribute. Re-run eveything even if already
         computed before.
+
+        Parameter
+        ---------
+        iteration: boolean, default is False
+            Decide if the friction head is taken into account in the
+            computation. Turning it to True multiply by three the
+            calculation time.
+
         """
         if not hasattr(self.pvgeneration.modelchain, 'diode_params'):
             self.pvgeneration.run_model()

@@ -1,4 +1,6 @@
 PUMP NAME: SCB_10_150_120_BL
+PRICE: 1097  					# in USD
+ELECTRICAL ARCHITECTURE: permanent magnet	
 # '.' are mandatory inputs that should be replaced by specifications or the line should be removed. 
 # 'nan' are optional input.
 # Units for columns are in the order: 

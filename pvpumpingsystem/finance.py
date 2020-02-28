@@ -73,7 +73,7 @@ def initial_investment(pvps, labour_price_coefficient=None):
         if "has no attribute 'price'" in e.args[0]:  # check the message
             return np.nan
         else:
-            raise AttributeError(e.message)
+            raise e
 
     return result
 
@@ -127,7 +127,7 @@ def net_present_value(pvps, opex, discount_rate=0.02,
         if "has no attribute 'price'" in e.args[0]:  # check the message
             return np.nan
         else:
-            raise AttributeError(e.message)
+            raise e
 
     # calculation of net present value
     npv = np.npv(discount_rate, cashflow_list)

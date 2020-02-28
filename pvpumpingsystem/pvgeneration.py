@@ -29,8 +29,8 @@ class PVGeneration:
         or the weather data itself if not string. In the latter case,
         the dict must contains keys 'weather_data' and 'weather_metadata'.
 
-    price_per_module: float, default is 200
-        Price of one PV module referenced in pv_module_name, in US dollars.
+    price_per_watt: float, default is 2.5
+        Price per watt for the module referenced by pv_module_name [US dollars]
 
     surface_tilt: float, default is 0
         Angle the PV modules have with ground [°]
@@ -125,7 +125,7 @@ class PVGeneration:
                  weather_data,  # path or weather data
                  # PV array parameters
                  pv_module_name,  # As precised as possible
-                 price_per_module=200,  # in US dollars
+                 price_per_watt=2.5,  # in US dollars
                  surface_tilt=0,  # 0 = horizontal, 90 = vertical
                  surface_azimuth=180,  # 180 = South, 90 = East
                  albedo=0,  # between 0 and 1
@@ -175,7 +175,8 @@ class PVGeneration:
         # convert in pandas.Series by selecting first column: iloc[:, 0]
         self.pv_module = pv_database[pv_idname].iloc[:, 0]
         # TODO: add better default value, like depending on power with USD/W
-        self.price_per_module = price_per_module
+        self.price_per_watt = price_per_watt
+        self.price_per_module = price_per_watt * self.pv_module.STC
 
         # Definition of PV generator
         self.system = pvlib.pvsystem.PVSystem(

@@ -54,7 +54,7 @@ pvgen1 = pvgen.PVGeneration(
 
             # PV array parameters
             pv_module_name='kyocera solar KU270 6MCA',
-            price_per_module=200,  # in US dollars
+            price_per_watt=2.5,  # in US dollars
             surface_tilt=45,  # 0 = horizontal, 90 = vertical
             surface_azimuth=180,  # 180 = South, 90 = East
             albedo=0,  # between 0 and 1

@@ -1,4 +1,5 @@
 PUMP NAME: SCS_10_600_240_BL
+PRICE: 2254
 # '.' are mandatory inputs that should be replaced by specifications or the line should be removed. 
 # 'nan' are optional input.
 # Units for columns are in the order: 

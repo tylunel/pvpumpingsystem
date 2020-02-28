@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D  # needed for plotting in 3d
 import scipy.optimize as opt
 import warnings
+import re
 
 # pvpumpingsystem modules:
 from pvpumpingsystem import inverse
@@ -53,17 +54,11 @@ class Pump:
         modeling_method: str, , default is 'arab'
             name of the method used for modeling the pump.
 
-        pump_category: str, default is None
-            centrifugal or positive displacement
-
         idname: str, default is None
             name of the pump
 
         price: numeric, default is None
             The price of the pump
-
-        power_rating: numeric, default is None
-            Power rating of the pump
 
         controller: str, default is None
             Name of controller
@@ -91,27 +86,48 @@ class Pump:
     def __init__(self, path='',
                  lpm=None, tdh=None, current=None,
                  motor_electrical_architecture=None,
-                 pump_category=None,
                  idname=None,
                  price=np.nan,
-                 power_rating=None,
                  controller=None,
                  diameter_output=None,
                  modeling_method='arab'):
 
         self.id = next(self._ids)
 
-        self.motor_electrical_architecture = motor_electrical_architecture
-        self.pump_category = pump_category
-        self.idname = idname
-        self.price = price
-        self.power_rating = power_rating
         self.controller = controller
 
         # retrieve pump data from txt datasheet given by path
         if None in (lpm, tdh, current):
             self.specs, metadata = get_data_pump(path)
             self.voltage_list = self.specs.voltage.drop_duplicates()
+            try:
+                self.price = float(metadata['price'])
+                if not np.isnan(price):
+                    self.price = price
+                    warnings.warn('price attribute overwritten.')
+            except KeyError:
+                self.price = price
+
+            try:
+                self.idname = metadata['pump name']
+                if idname is not None:
+                    self.idname = idname
+                    warnings.warn('idname attribute overwritten.')
+            except KeyError:
+                self.idname = idname
+
+            try:
+                self.motor_electrical_architecture = \
+                    metadata['electrical architecture']
+                if motor_electrical_architecture is not None:
+                    self.motor_electrical_architecture = \
+                        motor_electrical_architecture
+                    warnings.warn('motor_electrical_architecture '
+                                  'attribute overwritten.')
+            except KeyError:
+                self.motor_electrical_architecture = \
+                    motor_electrical_architecture
+
         # retrieve pump data from dict given in parameter
         else:
             self.voltage_list = list(lpm.keys())
@@ -176,9 +192,7 @@ class Pump:
 
     def __repr__(self):
         affich = "name: " + str(self.idname) + \
-                 "\npump_category: " + str(self.pump_category) + \
                  "\nprice: " + str(self.price) + \
-                 "\npower rating (HP): " + str(self.power_rating) + \
                  "\nmodeling method: " + str(self.modeling_method)
         return affich
 
@@ -773,12 +787,21 @@ def get_data_pump(path):
     # open in read-only option
     csvdata = open(path, 'r')
 
-    # get metadata
-    firstline = csvdata.readline()
-    # remove carriage return, split at ':', and remove leading or trailing
-    # whitespace
-    name = firstline.rstrip('\n').split(":")[1].strip()
-    metadata = {'model': name}
+    metadata = {}
+    header = True
+    while header is True:
+        # get metadata
+        line = csvdata.readline()
+
+        # check that it is still header
+        if line.startswith('# '):
+            header is False
+            break
+
+        # remove carriage return and split at ':'.
+        # .strip() removes leading or trailing whitespace
+        content = re.split(':|#', line.rstrip('\n'))
+        metadata[content[0].lower().strip()] = content[1].strip()
 
     # Import data
     # header=0 because firstline already read before
@@ -1336,7 +1359,6 @@ def _domain_P_H(specs, data_completeness):
 if __name__ == "__main__":
     # %% pump creation
     pump1 = Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
-                 idname='SCB_10',
                  modeling_method='arab',
                  motor_electrical_architecture='permanent_magnet')
 
@@ -1368,10 +1390,10 @@ if __name__ == "__main__":
 #                 motor_electrical_architecture='permanent_magnet')
 
 # Deficient pump data:
-    pump5 = Pump(path="data/pump_files/rosen_SC33-158-D380-9200.txt",
-                 idname='rosen_SC33',
-                 modeling_method='theoretical',
-                 motor_electrical_architecture='permanent_magnet')
+#    pump5 = Pump(path="data/pump_files/rosen_SC33-158-D380-9200.txt",
+#                 idname='rosen_SC33',
+#                 modeling_method='theoretical',
+#                 motor_electrical_architecture='permanent_magnet')
 
 #    pump1.plot_Q_vs_H()
 
@@ -1398,32 +1420,32 @@ if __name__ == "__main__":
 #    print('I for VH=(80, 25): {0:.2f}'.format(f2(80, 25)))
 
 # %% plot of functQforPH
-    pump_concerned = pump1
-    f4, intervals = pump_concerned.functQforPH()
-    lpm_check = []
-
-    if pump_concerned == pump5:
-        pump_concerned.specs = pump_concerned.specs[
-                pump_concerned.specs.tdh > 7]
-
-    for index, row in pump_concerned.specs.iterrows():
-        try:
-            Q = f4(row.power, row.tdh)
-        except (errors.PowerError, errors.HeadError):
-            Q = 0
-        lpm_check.append(Q['Q'])
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d',
-                         title='Flow Q depending on P and H')
-    ax.scatter(pump_concerned.specs.power, pump_concerned.specs.tdh,
-               pump_concerned.specs.flow,
-               label='from data')
-    ax.scatter(pump_concerned.specs.power, pump_concerned.specs.tdh,
-               lpm_check,
-               label='from curve fitting with modeling method {0}'.format(
-                       pump_concerned.modeling_method))
-    ax.set_xlabel('power')
-    ax.set_ylabel('head')
-    ax.set_zlabel('discharge Q')
-    ax.legend(loc='lower left')
-    plt.show()
+#    pump_concerned = pump1
+#    f4, intervals = pump_concerned.functQforPH()
+#    lpm_check = []
+#
+#    if pump_concerned == pump5:
+#        pump_concerned.specs = pump_concerned.specs[
+#                pump_concerned.specs.tdh > 7]
+#
+#    for index, row in pump_concerned.specs.iterrows():
+#        try:
+#            Q = f4(row.power, row.tdh)
+#        except (errors.PowerError, errors.HeadError):
+#            Q = 0
+#        lpm_check.append(Q['Q'])
+#    fig = plt.figure()
+#    ax = fig.add_subplot(111, projection='3d',
+#                         title='Flow Q depending on P and H')
+#    ax.scatter(pump_concerned.specs.power, pump_concerned.specs.tdh,
+#               pump_concerned.specs.flow,
+#               label='from data')
+#    ax.scatter(pump_concerned.specs.power, pump_concerned.specs.tdh,
+#               lpm_check,
+#               label='from curve fitting with modeling method {0}'.format(
+#                       pump_concerned.modeling_method))
+#    ax.set_xlabel('power')
+#    ax.set_ylabel('head')
+#    ax.set_zlabel('discharge Q')
+#    ax.legend(loc='lower left')
+#    plt.show()

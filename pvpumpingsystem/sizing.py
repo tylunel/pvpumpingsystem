@@ -279,6 +279,9 @@ def subset_respecting_llp_direct(pv_database, pump_database,
     return preselection
 
 
+# TODO: make this function work with the voltage range of mppt (once available)
+# so as to size M_s and M_p. For now only M_s changes, but correponds
+# actually more to the number of pv module than to nb of pv modules in series.
 def subset_respecting_llp_mppt(pv_database, pump_database,
                                weather_data, weather_metadata,
                                pvps_fixture,

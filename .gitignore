@@ -1,2 +1,5 @@
+# remove all folder named __pycache__ anywhere in the package
 **/__pycache__/
-pvpumpingsystem/data/weather_files/Melbourne_hourly_and_minutely/melbourne_minutely_086282_2010/sl_086282_2010_WY_minutely.txt
+
+# Ignore these files because too big for github
+pvpumpingsystem/data/weather_files/Melbourne_hourly_and_minutely/melbourne_minutely_086282_2010/

@@ -287,7 +287,8 @@ def subset_respecting_llp_mppt(pv_database, pump_database,
                                weather_data, weather_metadata,
                                pvps_fixture,
                                llp_accepted=0.01,
-                               M_s_guess=None):
+                               M_s_guess=None,
+                               **kwargs):
     """
     Function returning the configurations of PV modules and pump
     that will minimize the net present value of the system and will insure
@@ -332,7 +333,7 @@ def subset_respecting_llp_mppt(pv_database, pump_database,
     def funct_llp_for_Ms(pvps, M_s):
         pvps.pvgeneration.system.modules_per_string = M_s
         pvps.pvgeneration.run_model()
-        pvps.run_model(starting_soc='morning', iteration=False)
+        pvps.run_model(**kwargs)
         return pvps.llp
 
     # initalization of variables

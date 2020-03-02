@@ -332,7 +332,7 @@ class PVPumpSystem(object):
 
         """
         # set an empty water reservoir at beginning
-        if starting_soc == 'empty' or starting_soc == 0:
+        if starting_soc == 'empty':
             self.reservoir.water_volume = 0
 
         # set reservoir with enough water to fulfil the need of one morning
@@ -341,6 +341,10 @@ class PVPumpSystem(object):
             vol = float((self.consumption.flow_rate.iloc[0:12]*60).sum())
             # initialization of water in reservoir
             self.reservoir.water_volume = vol
+
+        # set a full water reservoir at beginning
+        if starting_soc == 'full':
+            self.reservoir.water_volume = self.reservoir.size
 
         # set water level to the one given
         elif isinstance(starting_soc, float) and self.reservoir.size != np.inf:

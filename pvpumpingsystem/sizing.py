@@ -112,7 +112,8 @@ def subset_respecting_llp_direct(pv_database, pump_database,
                                  pvps_fixture,
                                  llp_accepted=0.01,
                                  M_s_guess=None,
-                                 M_p_guess=None):
+                                 M_p_guess=None,
+                                 **kwargs):
     """
     Function returning the configurations of PV modules and pump
     that will minimize the net present value of the system and will insure
@@ -160,7 +161,7 @@ def subset_respecting_llp_direct(pv_database, pump_database,
         pvps.pvgeneration.system.modules_per_string = M_s
         pvps.pvgeneration.system.strings_per_inverter = M_p
         pvps.pvgeneration.run_model()
-        pvps.run_model(starting_soc='morning', iteration=False)
+        pvps.run_model(**kwargs)
         return pvps.llp
 
     # initalization of variables
@@ -292,8 +293,6 @@ def subset_respecting_llp_mppt(pv_database, pump_database,
     that will minimize the net present value of the system and will insure
     the Loss of Load Probability (llp) is inferior to the one given.
 
-    //!\\ Works fine only for MPPT coupling for now.
-
     Parameters
     ----------
     pv_database: list of strings,
@@ -382,7 +381,7 @@ def subset_respecting_llp_mppt(pv_database, pump_database,
                 elif llp > llp_accepted and llp_prev != llp:
                     M_s += 1
                 elif llp > llp_accepted and llp_prev == llp and llp != llp_max:
-                    break
+                    break  # unsatisfying llp, to be removed later
                 elif llp > llp_accepted and llp_prev == llp and llp == llp_max:
                     M_s += 1
                 else:
@@ -398,6 +397,9 @@ def subset_respecting_llp_mppt(pv_database, pump_database,
                                'llp': pvps_fixture.llp,
                                'npv': pvps_fixture.npv}),
                     ignore_index=True)
+
+    # Remove not satifying LLP
+    preselection = preselection[preselection.llp < llp_accepted]
 
     return preselection
 

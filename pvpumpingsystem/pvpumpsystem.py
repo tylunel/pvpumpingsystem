@@ -343,7 +343,7 @@ class PVPumpSystem(object):
             self.reservoir.water_volume = vol
 
         # set a full water reservoir at beginning
-        if starting_soc == 'full':
+        elif starting_soc == 'full':
             self.reservoir.water_volume = self.reservoir.size
 
         # set water level to the one given

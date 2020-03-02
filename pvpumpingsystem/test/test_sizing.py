@@ -90,7 +90,7 @@ def test_sizing_minimize_npv(databases):
                                            llp_accepted=0.01,
                                            M_s_guess=1)
     assert ('Shurflo_9325' in selection.pump.values and
-            'Canadian_Solar_Inc__CS1U_430MS' in selection.pv_module.values)
+            'Canadian_Solar_Inc__CS5C_80M' in selection.pv_module.values)
 
 
 if __name__ == '__main__':

@@ -195,19 +195,19 @@ def subset_respecting_llp_direct(pv_database, pump_database,
             # M_p
             I_sc_array_min = pump.range.current['min']
             I_sc_array_max = pump.range.current['max'] * 4  # arbitrary coeff
-            M_p_max = I_sc_array_max//pvgen1.pv_module.I_sc_ref  # round down
-            M_p_min = I_sc_array_min//pvgen1.pv_module.I_sc_ref + 1  # round up
+            M_p_max = I_sc_array_max//pvps_fixture.pvgeneration.pv_module.I_sc_ref  # round down
+            M_p_min = I_sc_array_min//pvps_fixture.pvgeneration.pv_module.I_sc_ref + 1  # round up
             # M_s
             V_oc_array_min = pump.range.voltage['min']
             V_oc_array_max = pump.range.voltage['max'] * 1.2
-            M_s_min = V_oc_array_min//pvgen1.pv_module.V_oc_ref + 1  # round up
-            M_s_max = V_oc_array_max//pvgen1.pv_module.V_oc_ref + 1  # round up
+            M_s_min = V_oc_array_min//pvps_fixture.pvgeneration.pv_module.V_oc_ref + 1  # round up
+            M_s_max = V_oc_array_max//pvps_fixture.pvgeneration.pv_module.V_oc_ref + 1  # round up
 
-            if pvgen1.pv_module.V_oc_ref > V_oc_array_max:
+            if pvps_fixture.pvgeneration.pv_module.V_oc_ref > V_oc_array_max:
                 warnings.warn(('Pump {0} and PV module voltage '
                                'do not match').format(pump.idname))
                 continue  # skip this round
-            if pvgen1.pv_module.I_sc_ref > I_sc_array_max:
+            if pvps_fixture.pvgeneration.pv_module.I_sc_ref > I_sc_array_max:
                 warnings.warn(('Pump {0} and PV module current '
                                'do not match').format(pump.idname))
                 continue  # skip this round
@@ -273,7 +273,7 @@ def subset_respecting_llp_direct(pv_database, pump_database,
                     llp_prev_Mp = llp
 
             preselection = preselection.append(
-                    pd.Series({'pv_module': pvgen1.pv_module.name,
+                    pd.Series({'pv_module': pvps_fixture.pvgeneration.pv_module.name,
                                'M_s': M_s,
                                'M_p': M_p,
                                'pump': pump.idname,
@@ -372,7 +372,7 @@ def subset_respecting_llp_mppt(pv_database, pump_database,
 
             # Guess a M_s to start with:
             if M_s_guess is None:
-                M_s = pump.range.power['max'] // pvgen1.pv_module.PTC
+                M_s = pump.range.power['max'] // pvps_fixture.pvgeneration.pv_module.PTC
             else:
                 M_s = M_s_guess
 
@@ -404,7 +404,7 @@ def subset_respecting_llp_mppt(pv_database, pump_database,
                 llp_prev = llp
 
             preselection = preselection.append(
-                    pd.Series({'pv_module': pvgen1.pv_module.name,
+                    pd.Series({'pv_module': pvps_fixture.pvgeneration.pv_module.name,
                                'M_s': M_s,
                                'M_p': 1,
                                'pump': pump.idname,

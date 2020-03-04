@@ -322,8 +322,8 @@ class PVPumpSystem(object):
         starting_soc: str or float, default is 'morning'
             State of Charge of the reservoir at the beginning of
             the simulation [%]
-            Available strings are 'empty' (no water in reservoir)
-            and 'morning' (enough water for one morning consumption).
+            Available strings are 'empty' (no water in reservoir),
+            'morning' (enough water for one morning consumption) and 'full'.
 
         Return
         ------
@@ -938,7 +938,7 @@ if __name__ == '__main__':
     # %% set up
 
     pvgen1 = pvgen.PVGeneration(
-            weather_data=('data/weather_files/CAN_PQ_Montreal.Intl.'
+            weather_data_and_metadata=('data/weather_files/CAN_PQ_Montreal.Intl.'
                           'AP.716270_CWEC.epw'),
             pv_module_name='kyocera solar KU270 6MCA',
             surface_tilt=45,

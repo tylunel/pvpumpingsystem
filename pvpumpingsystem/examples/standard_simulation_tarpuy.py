@@ -30,7 +30,7 @@ nb_pv_mod = 39/scale_factor  # 39 is the original number of PV module
 pvgen1 = pvgen.PVGeneration(
             # Weather data
             # check 'Hogar Escuela Tarpuy' for more precise location
-            weather_data=('../data/weather_files/PER_Arequipa.847520_IWEC.epw'),
+            weather_data_and_metadata=('../data/weather_files/PER_Arequipa.847520_IWEC.epw'),
 #            weather_data=('../data/weather_files/PER_Lima.846280_IWEC.epw'),
 
             # PV array parameters
@@ -104,19 +104,16 @@ consumption_night = cs.Consumption(repeated_flow=[0, 0, 0, 0, 0, 0,
                                                   0, 0, 0, 0, 0, 0,
                                                   0, 0, 0, 0, 0, 0,
                                                   420, 420, 420, 420, 420, 420,
-                                                  ],
+                                                  ])
                                    # output flow rate [L/min]
-                                   length=len(pvgen1.weather_data))
 consumption_day = cs.Consumption(repeated_flow=[0, 0, 0, 0, 0, 0,
                                                 0,   0,   0, 420, 420, 420,
                                                 420, 420, 420, 0, 0, 0,
                                                 0, 0, 0, 0, 0, 0
-                                                ],
+                                                ])
                                  # output flow rate [L/min]
-                                 length=len(pvgen1.weather_data))
-consumption_continuous = cs.Consumption(constant_flow=104,
+consumption_continuous = cs.Consumption(constant_flow=104)
                                         # output flow rate [L/min]
-                                        length=len(pvgen1.weather_data))
 
 consumption_used = consumption_day
 consumption_used.flow_rate = consumption_used.flow_rate/scale_factor

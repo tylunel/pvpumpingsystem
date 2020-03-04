@@ -167,15 +167,20 @@ def subset_respecting_llp_direct(pv_database, pump_database,
     # initalization of variables
     preselection = pd.DataFrame()
 
+    pvps_fixture.pvgeneration.weather_data_and_metadata = {
+            'weather_data': weather_data,
+            'weather_metadata': weather_metadata}
+
     for pv_mod_name in tqdm.tqdm(pv_database,
                                  desc='PV database exploration: ',
                                  total=len(pv_database)):
-        pvgen1 = pvgen.PVGeneration({'weather_data': weather_data,
-                                     'weather_metadata': weather_metadata},
-                                    pv_module_name=pv_mod_name,
-                                    modules_per_string=M_s_guess,
-                                    strings_in_parallel=1)
-        pvps_fixture.pvgeneration = pvgen1
+#        pvgen1 = pvgen.PVGeneration({'weather_data': weather_data,
+#                                     'weather_metadata': weather_metadata},
+#                                    pv_module_name=pv_mod_name,
+#                                    modules_per_string=M_s_guess,
+#                                    strings_in_parallel=1)
+#        pvps_fixture.pvgeneration = pvgen1
+        pvps_fixture.pvgeneration.pv_module_name = pv_mod_name
 
         for pump in tqdm.tqdm(pump_database,
                               desc='Pump database exploration: ',
@@ -220,6 +225,8 @@ def subset_respecting_llp_direct(pv_database, pump_database,
             else:
                 M_p = M_p_guess
 
+            # TODO: put this code in a new function 'size_Ms_Mp()' for
+            # more readability
             # initialization of variable for first round
             llp_prev_Ms = 1.1
             llp_prev_Mp = 1.1
@@ -275,7 +282,7 @@ def subset_respecting_llp_direct(pv_database, pump_database,
                     ignore_index=True)
 
     # Remove not satifying LLP
-    preselection = preselection[preselection.llp < llp_accepted]
+    preselection = preselection[preselection.llp <= llp_accepted]
 
     return preselection
 
@@ -339,15 +346,19 @@ def subset_respecting_llp_mppt(pv_database, pump_database,
     # initalization of variables
     preselection = pd.DataFrame()
 
+    pvps_fixture.pvgeneration.weather_data_and_metadata = {
+            'weather_data': weather_data,
+            'weather_metadata': weather_metadata}
+
     for pv_mod_name in tqdm.tqdm(pv_database,
                                  desc='Research of best combination: ',
                                  total=len(pv_database)):
-        pvgen1 = pvgen.PVGeneration({'weather_data': weather_data,
-                                     'weather_metadata': weather_metadata},
-                                    pv_module_name=pv_mod_name,
-                                    modules_per_string=M_s_guess,
-                                    strings_in_parallel=1)
-        pvps_fixture.pvgeneration = pvgen1
+#        pvgen1 = pvgen.PVGeneration({'weather_data': weather_data,
+#                                     'weather_metadata': weather_metadata},
+#                                    pv_module_name=pv_mod_name,
+#                                    modules_per_string=M_s_guess,
+#                                    strings_in_parallel=1)
+        pvps_fixture.pvgeneration.pv_module_name = pv_mod_name
 
         for pump in pump_database:
             # check that pump can theoretically match
@@ -368,6 +379,8 @@ def subset_respecting_llp_mppt(pv_database, pump_database,
             # initialization of variable for first round
             llp_prev = 1.1
 
+            # TODO: put this code in a new function 'size_nb_pv_mod()' for
+            # more readability
             while True:
                 llp = funct_llp_for_Ms(pvps_fixture, M_s)
                 print('module: {0} / pump: {1} / M_s: {2} / llp: {3}'.format(
@@ -400,7 +413,7 @@ def subset_respecting_llp_mppt(pv_database, pump_database,
                     ignore_index=True)
 
     # Remove not satifying LLP
-    preselection = preselection[preselection.llp < llp_accepted]
+    preselection = preselection[preselection.llp <= llp_accepted]
 
     return preselection
 
@@ -430,7 +443,7 @@ def sizing_minimize_npv(pv_database, pump_database,
         List of motor-pump to try.
 
     weather_data: pd.DataFrame
-        Weather file of the location.
+        Weather data of the location.
         Typically comes from pvlib.iotools.epw.read_epw()
 
     weather_metadata: dict
@@ -548,7 +561,7 @@ if __name__ == '__main__':
     pv_database = ['Canadian_solar 340', 'Canadian_solar 200']
 
     pvgen1 = pvgen.PVGeneration(
-        weather_data={'weather_data': weather_worst_month,
+        weather_data_and_metadata={'weather_data': weather_worst_month,
                       'weather_metadata': weather_metadata},
         pv_module_name=pv_database[0]
         )

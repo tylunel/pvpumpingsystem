@@ -23,17 +23,17 @@ pd.plotting.register_matplotlib_converters()
 
 pvgen1 = pvgen.PVGeneration(
             # Weather data
-            weather_data = ('../data'
-                            '/weather_files/FRA_Brest.071100_IWEC.epw'),  # to adapt:
+            weather_data_and_metadata = ('../data/weather_files/'
+                            'CAN_QC_MONTREAL-INTL-A_7025251_CWEC.epw'),  # to adapt:
 
             # PV array parameters
-            pv_module_name='Canadian_Solar_Inc__CS6P_200P',
+            pv_module_name='Canadian_Solar_Inc__CS6X_300P',
             price_per_watt=2.5,  # in US dollars
             surface_tilt=45,  # 0 = horizontal, 90 = vertical
             surface_azimuth=180,  # 180 = South, 90 = East
             albedo=0,  # between 0 and 1
-            modules_per_string=3,
-            strings_in_parallel=3,
+            modules_per_string=2,
+            strings_in_parallel=1,
             # PV module glazing parameters (not always given in specs)
             glass_params={'K': 4,  # extinction coefficient [1/m]
                           'L': 0.002,  # thickness [m]
@@ -97,24 +97,32 @@ reservoir1 = rv.Reservoir(size=3500,  # [L]
 
 consumption_cst = cs.Consumption(constant_flow=0.2)  # output flow rate [L/min]
 
-consumption_daily = cs.Consumption(
+# represents 1002L/day
+consumption_daily_1 = cs.Consumption(
         repeated_flow=[0,   0,   0,   0,   0,   0,
-                       0,   0,   0.2, 0.1, 0.1, 0.3,
-                       1, 1.2, 0.3, 0.3, 0.1, 0.5,
-                       0.8, 0.3, 0.1, 0.1,   0,   0])
+                       0,   0, 0.2, 0.1, 0.1, 0.3,
+                       1, 1.2, 0.3, 0.3, 0.3, 0.5,
+                       0.8, 0.3, 0.1, 0.1,   0,  0])
+
+# represents 1746L/day ~ community of 25 people
+consumption_daily_2 = cs.Consumption(
+    repeated_flow=[0,   0,   0,   0,   0,   0,
+                   0.4,   0.8, 0.7, 1.3, 1.5, 1.6,
+                   2.4, 3.4, 1.4, 1.9, 2.2, 2.9,
+                   4.7, 2.6, 0.8, 0.4, 0.1,   0])
 
 pvps1 = pvps.PVPumpSystem(pvgen1,
                           pump_sunpump,
                           coupling='direct',  # to adapt: 'mppt' or 'direct',
                           mppt=mppt1,
                           pipes=pipes1,
-                          consumption=consumption_daily,
+                          consumption=consumption_daily_2,
                           reservoir=reservoir1)
 
 
 # ------------ RUNNING MODEL -----------------
 
-pvps1.run_model(iteration=False, starting_soc='full')
+pvps1.run_model(iteration=False, starting_soc=0.5)
 
 print(pvps1)
 print('LLP = ', pvps1.llp)

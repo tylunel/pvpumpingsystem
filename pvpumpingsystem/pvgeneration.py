@@ -24,7 +24,7 @@ class PVGeneration:
         The name of the PV module used. Should preferentially follow the form:
         '(company_name)_(reference_code)_(peak_power)'
 
-    weather_data: str or dict (containing pd.DataFrame and dict),
+    weather_data_and_metadata: str or dict (containing pd.DataFrame and dict),
         Path to the weather file if string recognized,
         or the weather data itself if not string. In the latter case,
         the dict must contains keys 'weather_data' and 'weather_metadata'.
@@ -122,7 +122,7 @@ class PVGeneration:
 
     def __init__(self,
                  # Weather
-                 weather_data,  # path or weather data
+                 weather_data_and_metadata,  # path or weather data
                  # PV array parameters
                  pv_module_name,  # As precised as possible
                  price_per_watt=2.5,  # in US dollars
@@ -198,14 +198,14 @@ class PVGeneration:
                     )
 
         # Import of weather
-        if isinstance(weather_data, str):  # assumed to be the path of weather
+        if isinstance(weather_data_and_metadata, str):  # assumed to be the path of weather
             self.weather_data, metadata = pvlib.iotools.epw.read_epw(
-                    weather_data, coerce_year=2005)
+                    weather_data_and_metadata, coerce_year=2005)
             self.location = pvlib.location.Location.from_epw(metadata)
         else:  # assumed to be dict with weather data (pd.df) and metadata
-            self.weather_data = weather_data['weather_data']
+            self.weather_data = weather_data_and_metadata['weather_data']
             self.location = pvlib.location.Location.from_epw(
-                    weather_data['weather_metadata'])
+                    weather_data_and_metadata['weather_metadata'])
 
         # Choices of models to use
         self.modelchain = pvlib.modelchain.ModelChain(

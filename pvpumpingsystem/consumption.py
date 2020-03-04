@@ -35,9 +35,9 @@ class Consumption(object):
     """
 
     def __init__(self, flow_rate=None, constant_flow=None, repeated_flow=None,
-                 length=8760):
+                 length=8760, year=2005, safety_factor=1):
         if flow_rate is None:
-            index = pd.date_range(datetime.datetime(2005, 1, 1, 0),
+            index = pd.date_range(datetime.datetime(year, 1, 1, 0),
                                   periods=length,
                                   freq='H')
             self.flow_rate = pd.DataFrame(index=index, columns=('Qlpm',))
@@ -52,6 +52,9 @@ class Consumption(object):
                 self.flow_rate.loc[index] = repeated_flow[i % length]
         else:
             self.flow_rate = self.flow_rate.fillna(0)
+
+        self.flow_rate *= safety_factor
+        self.safety_factor = safety_factor
 
     def __repr__(self):
         return str(self.flow_rate)
@@ -99,5 +102,6 @@ if __name__ == '__main__':
     consum = Consumption(repeated_flow=[0, 0, 0, 0, 0, 0,
                                         15, 20, 15, 10, 10, 10,
                                         10, 10, 10, 30, 30, 30,
-                                        0, 0, 0, 0, 0, 0])
-    print(consum)
+                                        0, 0, 0, 0, 0, 0],
+            safety_factor = 1.1)
+    print(consum.flow_rate[8:16])

@@ -25,7 +25,7 @@ def pvps_set_up():
 
     pvgen1 = pvgen.PVGeneration(
             # Weather data
-            weather_data=(os.path.join(test_dir,
+            weather_data_and_metadata=(os.path.join(test_dir,
                                        '../data/weather_files/CAN_PQ_Montreal'
                                        '.Intl.AP.716270_CWEC_truncated.epw')),
 

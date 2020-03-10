@@ -156,27 +156,12 @@ class PVGeneration:
                  **kwargs
                  ):
 
-        # Retrieve SAM PV module database
-        pv_database = pvlib.pvsystem.retrieve_sam(pv_database_name)
-
-        # search pv_database to find the pv module which corresponds to name
-        pv_idname = difflib.get_close_matches(pv_module_name,
-                                              pv_database.columns,
-                                              n=1,
-                                              cutoff=0.5)  # %min of similarity
-        if pv_idname == []:
-            raise FileNotFoundError(
-                'The pv module entered could not be found in the database.'
-                'Check the name you entered. To give more chance to find it, '
-                'write the name as follows:'
-                '(company_name)_(reference_code)_(peak_power)')
-
-        # Retrieve the pv module concerned from the pv database
-        # convert in pandas.Series by selecting first column: iloc[:, 0]
-        self.pv_module = pv_database[pv_idname].iloc[:, 0]
-        # TODO: add better default value, like depending on power with USD/W
+        self.pv_database_name = pv_database_name
         self.price_per_watt = price_per_watt
-        self.price_per_module = price_per_watt * self.pv_module.STC
+        self.pv_module_name = pv_module_name
+        # Import of weather
+        self.weather_data_and_metadata = weather_data_and_metadata
+
 
         # Definition of PV generator
         self.system = pvlib.pvsystem.PVSystem(
@@ -196,16 +181,6 @@ class PVGeneration:
                     losses_parameters=losses_parameters,
                     name=None  # fixed (overwritten in PVGeneration object)
                     )
-
-        # Import of weather
-        if isinstance(weather_data_and_metadata, str):  # assumed to be the path of weather
-            self.weather_data, metadata = pvlib.iotools.epw.read_epw(
-                    weather_data_and_metadata, coerce_year=2005)
-            self.location = pvlib.location.Location.from_epw(metadata)
-        else:  # assumed to be dict with weather data (pd.df) and metadata
-            self.weather_data = weather_data_and_metadata['weather_data']
-            self.location = pvlib.location.Location.from_epw(
-                    weather_data_and_metadata['weather_metadata'])
 
         # Choices of models to use
         self.modelchain = pvlib.modelchain.ModelChain(
@@ -232,6 +207,54 @@ class PVGeneration:
                      self.system.strings_per_inverter) + \
                  "\nin: " + str(self.location)
         return text
+
+    @property  # getter
+    def weather_data_and_metadata(self):
+        return {'weather_data': self.weather_data,
+                'weather_metadata': self.location}
+
+    # setter: allows to change weather data
+    @weather_data_and_metadata.setter
+    def weather_data_and_metadata(self, value):
+        if isinstance(value, str):  # assumed to be the path of weather
+            self.weather_data, metadata = pvlib.iotools.epw.read_epw(
+                    value, coerce_year=2005)
+            self.location = pvlib.location.Location.from_epw(metadata)
+        else:  # assumed to be dict with weather data (pd.df) and metadata
+            self.weather_data = value['weather_data']
+            self.location = pvlib.location.Location.from_epw(
+                        value['weather_metadata'])
+        if hasattr(self, 'modelchain'):  # adapt modelchain to new data
+            self.modelchain.location = self.location
+            # activates the setting of array tilt according to location:
+            self.modelchain.orientation_strategy = \
+                self.modelchain.orientation_strategy
+
+    @property  # getter
+    def pv_module_name(self):
+        return self.pv_module.name
+
+    # setter: allows to change weather data
+    @pv_module_name.setter
+    def pv_module_name(self, simple_name):
+        # Retrieve SAM PV module database
+        pv_database = pvlib.pvsystem.retrieve_sam(self.pv_database_name)
+        # search pv_database to find the pv module which corresponds to name
+        pv_idname = difflib.get_close_matches(simple_name,
+                                              pv_database.columns,
+                                              n=1,
+                                              cutoff=0.5)  # %min of similarity
+        if pv_idname == []:
+            raise FileNotFoundError(
+                'The pv module entered could not be found in the database.'
+                'Check the name you entered. To give more chance to find it, '
+                'write the name as follows:'
+                '(company_name)_(reference_code)_(peak_power)')
+        # Retrieve the pv module concerned from the pv database, and
+        # convert in pandas.Series by selecting first column: iloc[:, 0]
+        self.pv_module = pv_database[pv_idname].iloc[:, 0]
+        # TODO: add better default value, like depending on power with USD/W
+        self.price_per_module = self.price_per_watt * self.pv_module.STC
 
     def run_model(self):
         """

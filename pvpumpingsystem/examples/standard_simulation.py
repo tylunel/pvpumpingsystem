@@ -7,6 +7,7 @@ Example of a simulation with pvpumpingsystem package.
 
 import matplotlib.pyplot as plt
 import pandas as pd
+import pvlib
 
 import pvpumpingsystem.pump as pp
 import pvpumpingsystem.pipenetwork as pn
@@ -19,6 +20,7 @@ import pvpumpingsystem.pvgeneration as pvgen
 # allows pandas to convert timestamp for matplotlib
 pd.plotting.register_matplotlib_converters()
 
+
 # ------------ PV MODELING DEFINITION -----------------------
 
 pvgen1 = pvgen.PVGeneration(
@@ -27,12 +29,12 @@ pvgen1 = pvgen.PVGeneration(
                             'CAN_QC_MONTREAL-INTL-A_7025251_CWEC.epw'),  # to adapt:
 
             # PV array parameters
-            pv_module_name='Canadian_Solar_Inc__CS6X_300P',
+            pv_module_name='Canadian_Solar_Inc__CS6P_200P',
             price_per_watt=2.5,  # in US dollars
             surface_tilt=45,  # 0 = horizontal, 90 = vertical
             surface_azimuth=180,  # 180 = South, 90 = East
             albedo=0,  # between 0 and 1
-            modules_per_string=2,
+            modules_per_string=3,
             strings_in_parallel=1,
             # PV module glazing parameters (not always given in specs)
             glass_params={'K': 4,  # extinction coefficient [1/m]
@@ -41,7 +43,7 @@ pvgen1 = pvgen.PVGeneration(
             racking_model='open_rack',  # or'close_mount' or 'insulated_back'
 
             # Models used (check pvlib.modelchain for all available models)
-            orientation_strategy=None,  # or 'flat' or 'south_at_latitude_tilt'
+            orientation_strategy='south_at_latitude_tilt',  # or 'flat' or 'south_at_latitude_tilt'
             clearsky_model='ineichen',
             transposition_model='haydavies',
             solar_position_method='nrel_numpy',
@@ -113,7 +115,7 @@ consumption_daily_2 = cs.Consumption(
 
 pvps1 = pvps.PVPumpSystem(pvgen1,
                           pump_sunpump,
-                          coupling='direct',  # to adapt: 'mppt' or 'direct',
+                          coupling='mppt',  # to adapt: 'mppt' or 'direct',
                           mppt=mppt1,
                           pipes=pipes1,
                           consumption=consumption_daily_2,

@@ -1,6 +1,0 @@
-NREL Solar Radiation Research Laboratory
-https://www.nrel.gov/grid/solar-resource/renewable-resource-data.html
-Baseline Measurement System
-Latitude: 39.742o North
-Longitude: 105.18o West
-Elevation: 1828.8 meters AMSL

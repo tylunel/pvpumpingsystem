@@ -157,7 +157,7 @@ def subset_respecting_llp_direct(pv_database, pump_database,
         pvps_fixture.coupling = 'direct'
         warnings.warn("Pvps coupling method changed to 'direct'.")
 
-    def funct_llp_for_Ms_Mp(pvps, M_s, M_p):
+    def funct_llp_for_Ms_Mp(pvps, M_s, M_p, **kwargs):
         pvps.pvgeneration.system.modules_per_string = M_s
         pvps.pvgeneration.system.strings_per_inverter = M_p
         pvps.pvgeneration.run_model()
@@ -174,12 +174,7 @@ def subset_respecting_llp_direct(pv_database, pump_database,
     for pv_mod_name in tqdm.tqdm(pv_database,
                                  desc='PV database exploration: ',
                                  total=len(pv_database)):
-#        pvgen1 = pvgen.PVGeneration({'weather_data': weather_data,
-#                                     'weather_metadata': weather_metadata},
-#                                    pv_module_name=pv_mod_name,
-#                                    modules_per_string=M_s_guess,
-#                                    strings_in_parallel=1)
-#        pvps_fixture.pvgeneration = pvgen1
+
         pvps_fixture.pvgeneration.pv_module_name = pv_mod_name
 
         for pump in tqdm.tqdm(pump_database,
@@ -237,9 +232,9 @@ def subset_respecting_llp_direct(pv_database, pump_database,
 
             while True:
                 llp = funct_llp_for_Ms_Mp(pvps_fixture, M_s, M_p)
-                print('module: {0} / pump: {1} / M_s: {2} / M_p: {3} '
-                      '/ llp: {4}'.format(pv_mod_name, pump.idname,
-                                          M_s, M_p, llp))
+                print('module: {0} / pump: {1} / M_s: {2} /'
+                      ' llp: {3} / npv: {4}'.format(
+                        pv_mod_name, pump.idname, M_s, llp, pvps_fixture.npv))
                 # changing M_s
                 if llp <= llp_accepted:
                     break
@@ -337,8 +332,9 @@ def subset_respecting_llp_mppt(pv_database, pump_database,
         pvps_fixture.coupling = 'mppt'
         warnings.warn("Pvps coupling method changed to 'mppt'.")
 
-    def funct_llp_for_Ms(pvps, M_s):
+    def funct_llp_for_Ms(pvps, M_s, **kwargs):
         pvps.pvgeneration.system.modules_per_string = M_s
+        pvps.pvgeneration.system.strings_per_inverter = 1
         pvps.pvgeneration.run_model()
         pvps.run_model(**kwargs)
         return pvps.llp
@@ -353,11 +349,7 @@ def subset_respecting_llp_mppt(pv_database, pump_database,
     for pv_mod_name in tqdm.tqdm(pv_database,
                                  desc='Research of best combination: ',
                                  total=len(pv_database)):
-#        pvgen1 = pvgen.PVGeneration({'weather_data': weather_data,
-#                                     'weather_metadata': weather_metadata},
-#                                    pv_module_name=pv_mod_name,
-#                                    modules_per_string=M_s_guess,
-#                                    strings_in_parallel=1)
+
         pvps_fixture.pvgeneration.pv_module_name = pv_mod_name
 
         for pump in pump_database:
@@ -383,8 +375,9 @@ def subset_respecting_llp_mppt(pv_database, pump_database,
             # more readability
             while True:
                 llp = funct_llp_for_Ms(pvps_fixture, M_s)
-                print('module: {0} / pump: {1} / M_s: {2} / llp: {3}'.format(
-                        pv_mod_name, pump.idname, M_s, llp))
+                print('module: {0} / pump: {1} / M_s: {2} /'
+                      ' llp: {3} / npv: {4}'.format(
+                        pv_mod_name, pump.idname, M_s, llp, pvps_fixture.npv))
                 if llp <= llp_accepted and llp_prev > 1:  # first round
                     M_s -= 1
                 elif llp <= llp_accepted and llp_prev <= llp_accepted:

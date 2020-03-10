@@ -92,12 +92,14 @@ class PVPumpSystem(object):
                  reservoir=None,
                  consumption=None,
                  labour_price_coefficient=0.20,  # TODO: realistic value?
+                 discount_rate=0.05,
                  idname=None):
         self.pvgeneration = pvgeneration  # instance of PVArray
         self.motorpump = motorpump  # instance of Pump
         self.coupling = coupling
         self.mppt = mppt
         self.labour_price_coefficient = labour_price_coefficient
+        self.discount_rate = discount_rate
 
         if motorpump_model is None and motorpump is not None:
             self.motorpump_model = self.motorpump.modeling_method
@@ -397,9 +399,11 @@ class PVPumpSystem(object):
         # Price of motorpump, pv modules, reservoir, mppt
         self.initial_investment = fin.initial_investment(self)
 
+        # TODO: add opex in __init__ as attribute and add a way to change
+        # lifespans
         self.npv = fin.net_present_value(self,
                                          opex=500,
-                                         discount_rate=0.05,
+                                         discount_rate=self.discount_rate,
                                          lifespan_pv=30,
                                          lifespan_pump=12,
                                          lifespan_mppt=10)

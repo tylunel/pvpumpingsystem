@@ -595,6 +595,8 @@ class Pump:
             elif intervals['P'](H)[1] < P:
                 Pmax = intervals['P'](H)[1]
                 Q = opt.newton(funct_P, 5, args=(Pmax, H))
+                if Q < 0:  # Case where extrapolation from curve fit is bad
+                    Q = 0
                 P_unused = P - Pmax
             # if P is NaN or other
             else:
@@ -643,6 +645,8 @@ class Pump:
             elif intervals['P'](H)[0] <= P <= intervals['P'](H)[1]:
                 Q = funct_mod([P, H], *coeffs)
                 P_unused = 0
+                if Q < 0:  # Case where extrapolation from curve fit is bad
+                    Q = 0
             # if P is more than maximum
             elif intervals['P'](H)[1] < P:
                 Pmax = intervals['P'](H)[1]
@@ -692,6 +696,8 @@ class Pump:
             elif intervals['P'](H)[1] < P:
                 Pmax = intervals['P'](H)[1]
                 Q = funct_mod([P, H], *coeffs)
+                if Q < 0:  # Case where extrapolation from curve fit is bad
+                    Q = 0
                 P_unused = P - Pmax
             # if P is NaN or other
             else:
@@ -739,6 +745,8 @@ class Pump:
             # if P is in available range
             elif intervals['P'](H)[0] <= P <= intervals['P'](H)[1]:
                 Q = funct_mod([P, H], *coeffs)
+                if Q < 0:  # Case where extrapolation from curve fit is bad
+                    Q = 0
                 P_unused = 0
             # if P is more than maximum
             elif intervals['P'](H)[1] < P:
@@ -1358,7 +1366,7 @@ def _domain_P_H(specs, data_completeness):
 
 if __name__ == "__main__":
     # %% pump creation
-    pump1 = Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
+    pump1 = Pump(path="data/pump_files/SCS_18_90_60_BL.txt",
                  modeling_method='arab',
                  motor_electrical_architecture='permanent_magnet')
 
@@ -1420,32 +1428,32 @@ if __name__ == "__main__":
 #    print('I for VH=(80, 25): {0:.2f}'.format(f2(80, 25)))
 
 # %% plot of functQforPH
-#    pump_concerned = pump1
-#    f4, intervals = pump_concerned.functQforPH()
-#    lpm_check = []
-#
+    pump_concerned = pump1
+    f4, intervals = pump_concerned.functQforPH()
+    lpm_check = []
+
 #    if pump_concerned == pump5:
 #        pump_concerned.specs = pump_concerned.specs[
 #                pump_concerned.specs.tdh > 7]
-#
-#    for index, row in pump_concerned.specs.iterrows():
-#        try:
-#            Q = f4(row.power, row.tdh)
-#        except (errors.PowerError, errors.HeadError):
-#            Q = 0
-#        lpm_check.append(Q['Q'])
-#    fig = plt.figure()
-#    ax = fig.add_subplot(111, projection='3d',
-#                         title='Flow Q depending on P and H')
-#    ax.scatter(pump_concerned.specs.power, pump_concerned.specs.tdh,
-#               pump_concerned.specs.flow,
-#               label='from data')
-#    ax.scatter(pump_concerned.specs.power, pump_concerned.specs.tdh,
-#               lpm_check,
-#               label='from curve fitting with modeling method {0}'.format(
-#                       pump_concerned.modeling_method))
-#    ax.set_xlabel('power')
-#    ax.set_ylabel('head')
-#    ax.set_zlabel('discharge Q')
-#    ax.legend(loc='lower left')
-#    plt.show()
+
+    for index, row in pump_concerned.specs.iterrows():
+        try:
+            Q = f4(row.power, row.tdh)
+        except (errors.PowerError, errors.HeadError):
+            Q = 0
+        lpm_check.append(Q['Q'])
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d',
+                         title='Flow Q depending on P and H')
+    ax.scatter(pump_concerned.specs.power, pump_concerned.specs.tdh,
+               pump_concerned.specs.flow,
+               label='from data')
+    ax.scatter(pump_concerned.specs.power, pump_concerned.specs.tdh,
+               lpm_check,
+               label='from curve fitting with modeling method {0}'.format(
+                       pump_concerned.modeling_method))
+    ax.set_xlabel('power')
+    ax.set_ylabel('head')
+    ax.set_zlabel('discharge Q')
+    ax.legend(loc='lower left')
+    plt.show()

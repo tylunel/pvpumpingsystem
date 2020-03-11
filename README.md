@@ -1,5 +1,5 @@
 # pvpumpingsystem
-Package providing tools for modeling and sizing photovoltaic water pumping system.
+"pvpumpingsystem" is a package providing tools for modeling and sizing photovoltaic water pumping systems.
 
 It allows to find the quantity of water pumped from the pumping station characteristic given,
 or to choose some elements of the pumping station depending on the consumption of water needed.

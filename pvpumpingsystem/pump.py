@@ -83,7 +83,7 @@ class Pump:
     """
     _ids = count(1)
 
-    def __init__(self, path='',
+    def __init__(self, path,
                  lpm=None, tdh=None, current=None,
                  motor_electrical_architecture=None,
                  idname=None,

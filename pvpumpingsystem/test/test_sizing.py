@@ -14,6 +14,7 @@ import pvpumpingsystem.consumption as cs
 import pvpumpingsystem.mppt as mppt
 import pvpumpingsystem.pvpumpsystem as pvps
 import pvpumpingsystem.sizing as siz
+import pvpumpingsystem.pvgeneration as pvgen
 
 test_dir = os.path.dirname(
     os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -78,7 +79,14 @@ def test_sizing_minimize_npv(databases):
     consum = cs.Consumption(constant_flow=1,
                             length=len(weather_shrunk))
 
-    pvps_fixture = pvps.PVPumpSystem(None, None,
+    pvgene = pvgen.PVGeneration(
+            weather_data_and_metadata={
+                    'weather_data': weather_shrunk,
+                    'weather_metadata': weather_metadata},
+            pv_module_name='Canadian Solar 200P')
+
+    pvps_fixture = pvps.PVPumpSystem(pvgene,
+                                     pump_database[0],
                                      coupling='mppt',
                                      mppt=mppt1,
                                      consumption=consum,

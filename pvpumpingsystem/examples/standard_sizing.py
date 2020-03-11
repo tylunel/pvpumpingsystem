@@ -82,7 +82,7 @@ pvgen1 = pvgen.PVGeneration(
             )
 
 
-pvps_fixture = pvps.PVPumpSystem(None,
+pvps_fixture = pvps.PVPumpSystem(pvgen1,
                                  None,
                                  motorpump_model='arab',
                                  coupling='mppt',
@@ -97,7 +97,9 @@ pvps_fixture = pvps.PVPumpSystem(None,
 # Pump database:
 pump_sunpump = pp.Pump(path="../data/pump_files/SCB_10_150_120_BL.txt",
                        price=1100,
-                       idname='SCB_10')
+                       idname='SCB_10_150_120_BL')
+
+pump_sunpump_2 = pp.Pump(path="../data/pump_files/SCB_10_150_180_BL.txt")
 
 pump_shurflo = pp.Pump(path="../data/pump_files/Shurflo_9325.txt",
                        idname='Shurflo_9325',
@@ -105,6 +107,7 @@ pump_shurflo = pp.Pump(path="../data/pump_files/Shurflo_9325.txt",
                        motor_electrical_architecture='permanent_magnet')
 
 pump_database = [pump_sunpump,
+                 pump_sunpump_2,
                  pump_shurflo]
 
 # PV array database:

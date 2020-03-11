@@ -233,8 +233,9 @@ def subset_respecting_llp_direct(pv_database, pump_database,
             while True:
                 llp = funct_llp_for_Ms_Mp(pvps_fixture, M_s, M_p)
                 print('module: {0} / pump: {1} / M_s: {2} /'
-                      ' llp: {3} / npv: {4}'.format(
-                        pv_mod_name, pump.idname, M_s, llp, pvps_fixture.npv))
+                      '/ M_p: {3} / llp: {4} / npv: {5}'.format(
+                        pv_mod_name, pump.idname, M_s, M_p,
+                        llp, pvps_fixture.npv))
                 # changing M_s
                 if llp <= llp_accepted:
                     break
@@ -252,9 +253,10 @@ def subset_respecting_llp_direct(pv_database, pump_database,
 
                 if not M_s_change_efficient:  # then change M_p
                     llp = funct_llp_for_Ms_Mp(pvps_fixture, M_s, M_p)
-                    print('module: {0} / pump: {1} / M_s: {2} / M_p: {3} '
-                          '/ llp: {4}'.format(pv_mod_name, pump.idname,
-                                              M_s, M_p, llp))
+                print('module: {0} / pump: {1} / M_s: {2} /'
+                      '/ M_p: {3} / llp: {4} / npv: {5}'.format(
+                        pv_mod_name, pump.idname, M_s, M_p,
+                        llp, pvps_fixture.npv))
                     # changing M_p
                     if llp <= llp_accepted:
                         break

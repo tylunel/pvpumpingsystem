@@ -7,7 +7,7 @@ WORK IN PROGRESS !!
 @author: tylunel
 """
 
-# TODO: or add way to give the pv module specs
+# TODO: add way to directly give the pv module specs
 
 import pvlib
 import difflib
@@ -16,7 +16,7 @@ import difflib
 class PVGeneration:
     """
     Class representing the power generation through the photovoltaic system.
-    It is a container of pvlib.ModelChain.
+    It is a container of pvlib.ModelChain [1].
 
     Attributes
     ----------
@@ -118,6 +118,11 @@ class PVGeneration:
         Arbitrary keyword arguments. Included for compatibility, but not
         used.
 
+    Reference
+    ---------
+    [1] William F. Holmgren, Clifford W. Hansen, Mark A. Mikofski,
+    "pvlib python: a python package for modeling solar energy systems",
+    2018, Journal of Open Source Software
     """
 
     def __init__(self,
@@ -161,7 +166,6 @@ class PVGeneration:
         self.pv_module_name = pv_module_name
         # Import of weather
         self.weather_data_and_metadata = weather_data_and_metadata
-
 
         # Definition of PV generator
         self.system = pvlib.pvsystem.PVSystem(

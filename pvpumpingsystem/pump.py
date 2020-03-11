@@ -560,7 +560,12 @@ class Pump:
 
     def functQforPH_Hamidat(self):
         """
+        Function using [1] for output flow rate modeling.
 
+        Reference
+        ---------
+        [1] Hamidat A., Benyoucef B., Mathematic models of photovoltaic
+        motor-pump systems, 2008, Renewable Energy
         """
         coeffs = self.coeffs['coeffs_f2']
 
@@ -1116,7 +1121,8 @@ def _curves_coeffs_theoretical(specs, data_completeness, elec_archi):
         def funct_mod_2(input_values, a, b, c, d):
             P, H = input_values
             return (a + b*H) * (c + d*P)
-            # theoretically it should be the following formula, but doesn't work
+            # theoretically it should be the following formula,
+            # but doesn't work:
             # return (a + b*H + c*H**2) * P/H
 
         dataxy = [np.array(specs.power),
@@ -1414,7 +1420,8 @@ if __name__ == "__main__":
 #        cur_check.append(f2(row.voltage, row.tdh, error_raising=False))
 #
 #    fig = plt.figure()
-#    ax = fig.add_subplot(111, projection='3d', title='Current as a function of'
+#    ax = fig.add_subplot(111, projection='3d',
+#                            title='Current as a function of'
 #                         ' voltage (V) and static head (m)')
 #    ax.scatter(pump_concerned.specs.voltage, pump_concerned.specs.tdh,
 #               pump_concerned.specs.current, label='from data')

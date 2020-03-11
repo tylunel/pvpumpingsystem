@@ -559,7 +559,7 @@ def functioning_point_noiteration(params,
             R_s = (M_s/M_p) * R_s
             R_sh = (M_s/M_p) * R_sh
 
-        if np.isnan(I_L):
+        if np.isnan(I_L) or I_L == 0:
             Vm = 0
             Im = 0
         else:
@@ -942,8 +942,9 @@ if __name__ == '__main__':
     # %% set up
 
     pvgen1 = pvgen.PVGeneration(
-            weather_data_and_metadata=('data/weather_files/CAN_PQ_Montreal.Intl.'
-                          'AP.716270_CWEC.epw'),
+            weather_data_and_metadata=(
+                    'data/weather_files/CAN_PQ_Montreal.Intl.'
+                    'AP.716270_CWEC.epw'),
             pv_module_name='kyocera solar KU270 6MCA',
             surface_tilt=45,
             surface_azimuth=180,

@@ -7,7 +7,6 @@ Example of a simulation with pvpumpingsystem package.
 
 import matplotlib.pyplot as plt
 import pandas as pd
-import pvlib
 
 import pvpumpingsystem.pump as pp
 import pvpumpingsystem.pipenetwork as pn
@@ -25,11 +24,12 @@ pd.plotting.register_matplotlib_converters()
 
 pvgen1 = pvgen.PVGeneration(
             # Weather data
-            weather_data_and_metadata = ('../data/weather_files/'
-                            'CAN_QC_MONTREAL-INTL-A_7025251_CWEC.epw'),  # to adapt:
+            weather_data_and_metadata=(
+                    '../data/weather_files/'
+                    'CAN_QC_MONTREAL-INTL-A_7025251_CWEC.epw'),  # to adapt:
 
             # PV array parameters
-            pv_module_name='Canadian_Solar_Inc__CS6P_200P',
+            pv_module_name='Canadian_Solar CS6P 200P',
             price_per_watt=2.5,  # in US dollars
             surface_tilt=45,  # 0 = horizontal, 90 = vertical
             surface_azimuth=180,  # 180 = South, 90 = East
@@ -43,7 +43,7 @@ pvgen1 = pvgen.PVGeneration(
             racking_model='open_rack',  # or'close_mount' or 'insulated_back'
 
             # Models used (check pvlib.modelchain for all available models)
-            orientation_strategy='south_at_latitude_tilt',  # or 'flat' or 'south_at_latitude_tilt'
+            orientation_strategy='south_at_latitude_tilt',  # or 'flat' or None
             clearsky_model='ineichen',
             transposition_model='haydavies',
             solar_position_method='nrel_numpy',
@@ -79,7 +79,7 @@ pump_shurflo = pp.Pump("../data/pump_files/Shurflo_9325.txt",
                        modeling_method='arab')  # to adapt:
 
 
-# ------------ PVPS MODELING STEPS ------------------------
+# ------------ REST OF PVPS ------------------------
 
 mppt1 = mppt.MPPT(efficiency=0.96,
                   price=410,
@@ -88,7 +88,7 @@ mppt1 = mppt.MPPT(efficiency=0.96,
 
 pipes1 = pn.PipeNetwork(h_stat=30,  # static head [m]
                         l_tot=100,  # length of pipes [m]
-                        diam=0.08,  # diameter [m]
+                        diam=0.02,  # diameter [m]
                         material='plastic',
                         fittings=None,  # Not available yet
                         optimism=True)
@@ -97,14 +97,15 @@ reservoir1 = rv.Reservoir(size=3500,  # [L]
                           water_volume=0,  # [L] at beginning
                           price=(1010+210))  # 210 is pipes price
 
-consumption_cst = cs.Consumption(constant_flow=0.2)  # output flow rate [L/min]
+# represents 288L/day
+consumption_cst = cs.Consumption(constant_flow=0.4)  # output flow rate [L/min]
 
-# represents 1002L/day
+# represents 288L/day
 consumption_daily_1 = cs.Consumption(
         repeated_flow=[0,   0,   0,   0,   0,   0,
                        0,   0, 0.2, 0.1, 0.1, 0.3,
-                       1, 1.2, 0.3, 0.3, 0.3, 0.5,
-                       0.8, 0.3, 0.1, 0.1,   0,  0])
+                       0.9, 0.7, 0.3, 0.3, 0.3, 0.5,
+                       0.6, 0.3, 0.1, 0.1,   0,  0])
 
 # represents 1746L/day ~ community of 25 people
 consumption_daily_2 = cs.Consumption(
@@ -115,10 +116,10 @@ consumption_daily_2 = cs.Consumption(
 
 pvps1 = pvps.PVPumpSystem(pvgen1,
                           pump_sunpump,
-                          coupling='mppt',  # to adapt: 'mppt' or 'direct',
+                          coupling='direct',  # to adapt: 'mppt' or 'direct',
                           mppt=mppt1,
                           pipes=pipes1,
-                          consumption=consumption_daily_2,
+                          consumption=consumption_daily_1,
                           reservoir=reservoir1)
 
 

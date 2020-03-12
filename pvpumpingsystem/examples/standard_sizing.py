@@ -49,8 +49,9 @@ mppt1 = mppt.MPPT(efficiency=0.96,
 # PV generator parameters
 pvgen1 = pvgen.PVGeneration(
             # Weather data
-            weather_data_and_metadata={'weather_data': weather_data,
-                          'weather_metadata': weather_metadata},  # to adapt:
+            weather_data_and_metadata={
+                    'weather_data': weather_data,
+                    'weather_metadata': weather_metadata},  # to adapt:
 
             # PV array parameters
             pv_module_name='kyocera solar KU270 6MCA',

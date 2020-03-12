@@ -23,15 +23,17 @@ import pvpumpingsystem.pvgeneration as pvgen
 # number of pump, and will subsequently decrease the consumption and
 # the number of pv modules by the same factor.
 scale_factor = 4
-nb_pv_mod = 39/scale_factor  # 39 is the original number of PV module
+nb_pv_mod = 39//scale_factor  # 39 is the original number of PV module
 
 # ------------ PV MODELING DEFINITION -----------------------
 
 pvgen1 = pvgen.PVGeneration(
             # Weather data
             # check 'Hogar Escuela Tarpuy' for more precise location
-            weather_data_and_metadata=('../data/weather_files/PER_Arequipa.847520_IWEC.epw'),
-#            weather_data=('../data/weather_files/PER_Lima.846280_IWEC.epw'),
+            weather_data_and_metadata=(
+                    '../data/weather_files/PER_Arequipa.847520_IWEC.epw'),
+#            weather_data_and_metadata=(
+#                   '../data/weather_files/PER_Lima.846280_IWEC.epw'),
 
             # PV array parameters
             pv_module_name='Canadian solar 370P',
@@ -179,7 +181,6 @@ ax1.plot(pvps1.efficiency.index, pvps1.water_stored.extra_water,
 
 ax1.tick_params(axis='y', labelcolor='r')
 
-
 ax2 = ax1.twinx()  # instantiate a second axe that shares the same x-axis
 
 ax2.set_ylabel('flow-rate [L/min]', color='b')
@@ -191,4 +192,3 @@ align_yaxis(ax1, 0, ax2, 0)
 fig.tight_layout()  # otherwise the right y-label is slightly clipped
 plt.legend()
 plt.show()
-

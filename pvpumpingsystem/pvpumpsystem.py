@@ -210,24 +210,39 @@ class PVPumpSystem(object):
             v_high_boundary = self.pvgeneration.system.module.V_oc_ref * \
                 M_s*1.1
             Vrange_pv = np.arange(0, v_high_boundary)
+
             # IV curve of PV array for good conditions
             IL, I0, Rs, Rsh, nNsVth = \
                 self.pvgeneration.system.calcparams_desoto(1000, 25)
+            if (M_s, M_p) != (1, 1):
+                IL = M_p * IL
+                I0 = M_p * I0
+                nNsVth = nNsVth * M_s
+                Rs = (M_s/M_p) * Rs
+                Rsh = (M_s/M_p) * Rsh
             Ivect_pv_good = self.pvgeneration.system.i_from_v(Rsh, Rs,
                                                               nNsVth,
                                                               Vrange_pv,
                                                               I0, IL)
             plt.plot(Vrange_pv, Ivect_pv_good,
                      label='pv array with S = 1000 W and Tcell = 25°C')
+
             # IV curve of PV array for poor conditions
             IL, I0, Rs, Rsh, nNsVth = \
                 self.pvgeneration.system.calcparams_desoto(100, 60)
+            if (M_s, M_p) != (1, 1):
+                IL = M_p * IL
+                I0 = M_p * I0
+                nNsVth = nNsVth * M_s
+                Rs = (M_s/M_p) * Rs
+                Rsh = (M_s/M_p) * Rsh
             Ivect_pv_poor = self.pvgeneration.system.i_from_v(Rsh, Rs,
                                                               nNsVth,
                                                               Vrange_pv,
                                                               I0, IL)
             plt.plot(Vrange_pv, Ivect_pv_poor,
                      label='pv array with S = 100 W and Tcell = 60°C')
+
             # IV curve of load (pump)
             Vrange_load = np.arange(*intervalsVH['V'](tdh))
             plt.plot(Vrange_load,
@@ -944,13 +959,13 @@ if __name__ == '__main__':
     pvgen1 = pvgen.PVGeneration(
             weather_data_and_metadata=(
                     'data/weather_files/CAN_PQ_Montreal.Intl.'
-                    'AP.716270_CWEC.epw'),
+                    'AP.716270_CWEC_truncated.epw'),
             pv_module_name='kyocera solar KU270 6MCA',
             surface_tilt=45,
             surface_azimuth=180,
             albedo=0,
             modules_per_string=3,
-            strings_per_inverter=2,
+            strings_per_inverter=1,
             orientation_strategy=None,
             clearsky_model='ineichen',
             transposition_model='haydavies',
@@ -987,7 +1002,7 @@ if __name__ == '__main__':
     pvps1 = PVPumpSystem(pvgen1,
                          pump1,
                          motorpump_model='arab',
-                         coupling='mppt',
+                         coupling='direct',
                          mppt=mppt1,
                          pipes=pipes1,
                          consumption=consum1,
@@ -1004,6 +1019,8 @@ if __name__ == '__main__':
     print('LLP: ', pvps1.llp)
     print('initial_investment: {0} USD'.format(pvps1.initial_investment))
     print('NPV: {0} USD'.format(pvps1.npv))
+    if pvps1.coupling == 'direct':
+        pvps1.functioning_point_noiteration(plot=True)
 
 #    warnings.filterwarnings("ignore")  # disable all warnings
 #    pvps1.calc_flow()

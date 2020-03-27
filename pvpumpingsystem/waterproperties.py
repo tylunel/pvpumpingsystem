@@ -2,13 +2,10 @@
 """
 Gives water properties in various physical conditions.
 
-
-@author: Louis Lamarche,  Tanguy Lunel
+@author: Adapted from Louis Lamarche by Tanguy Lunel
 """
 
 import numpy as np
-
-# TODO: translate in engligh
 
 
 class Switch(object):
@@ -17,7 +14,7 @@ class Switch(object):
         self.fall = False
 
     def __iter__(self):
-        """Return the match method once,  then stop"""
+        """Return the match method once, then stop"""
         yield self.match
         raise StopIteration
 
@@ -32,21 +29,42 @@ class Switch(object):
             return False
 
 
-def water_prop(nom,  T):
-    """prop = water_prop(nom, T)
-        choix de nom : 'temp', 'pres', 'vf', 'vg', 'hfg', 'Cpf', 'Cpg',
-                        'muf', 'mug', 'kf', 'kg', 'Prf', 'Prg', 'st', 'betaf'
-            exemples :
-                'vf' : volume massique [m3/kg] du fluide
-                'rhof': masse volumique [kg/m3] du fluide,  inverse de vf
-                'nuf' : viscosité cinénatique of water fluide (passe par muf
-                et rhof(vf) pour le calculer)
-                'nug' : viscosité cinématique of water gaz
-                'muf': viscosité dynamique du fluide
+# TODO: rewrite this function for more readibility, and remove the issue
+# noticed in 'N.B.:'
+def water_prop(name,  T):
+    """
+    Function giving water property requested.
 
-            si nom != temp,  T = temperature  (temperature en Kelvin)
-            si nom == temp,  T est à remplacer par la pression
-            (pression en bar 10e5 Pa)
+    Parameters
+    ----------
+    name: str
+        Options are :
+            'temp',
+            'pres',
+            'vf': fluid specific volume [m3/kg],
+            'rhof': fluid density [kg/m3] - reverse of vf,
+            'vg',
+            'hfg',
+            'Cpf',
+            'Cpg',
+            'muf': dynamic viscosity,
+            'mug',
+            'nug': cinematic viscosity of vapor (gas),
+            'nuf': cinematic viscosity of fluid water (uses 'muf' and 'rhof')
+            'kf',
+            'kg',
+            'Prf',
+            'Prg',
+            'st',
+            'betaf'
+    T: float,
+        Temperature at which the property is wanted
+        N.B.:
+            if name == 'temp', T must be replaced by pression [in bar]
+
+    Returns
+    -------
+    * float
     """
 
     properties_table = np.array([
@@ -221,7 +239,7 @@ def water_prop(nom,  T):
     label = ['temp', 'pres', 'vf', 'vg', 'hfg', 'Cpf', 'Cpg', 'muf', 'mug',
              'kf', 'kg', 'Prf', 'Prg', 'st', 'betaf']
 
-    for case in Switch(nom):
+    for case in Switch(name):
         if case('temp'):
             y = properties_table[:, 0]
             x = properties_table[:, 1]
@@ -232,7 +250,7 @@ def water_prop(nom,  T):
             p = np.interp(T, x,  y)
             break
         if case('muf', 'mug'):
-            i = label.index(nom)
+            i = label.index(name)
             y = properties_table[:, i]
             x = properties_table[:, 0]
             Tmin = x[0]
@@ -243,8 +261,8 @@ def water_prop(nom,  T):
             p = p*10**-6
             break
         if case('nuf'):
-            nom1 = 'muf'
-            i = label.index(nom1)
+            name1 = 'muf'
+            i = label.index(name1)
             y = properties_table[:, i]
             x = properties_table[:, 0]
             Tmin = x[0]
@@ -252,15 +270,15 @@ def water_prop(nom,  T):
             if T < Tmin or T > Tmax:
                 print('Warning: T is out of the table: data extrapolated')
             p1 = np.interp(T, x,  y)
-            nom2 = 'vf'
-            i = label.index(nom2)
+            name2 = 'vf'
+            i = label.index(name2)
             y = properties_table[:, i]
             p2 = np.interp(T, x,  y)
             p = p1*p2*10**-9
             break
         if case('nug'):
-            nom1 = 'mug'
-            i = label.index(nom1)
+            name1 = 'mug'
+            i = label.index(name1)
             y = properties_table[:, i]
             x = properties_table[:, 0]
             Tmin = x[0]
@@ -268,15 +286,15 @@ def water_prop(nom,  T):
             if T < Tmin or T > Tmax:
                 print('Warning: T is out of the table: data extrapolated')
             p1 = np.interp(T, x,  y)
-            nom2 = 'vg'
-            i = label.index(nom2)
+            name2 = 'vg'
+            i = label.index(name2)
             y = properties_table[:, i]
             p2 = np.interp(T, x,  y)
             p = p1*p2*10**-6
             break
         if case('alg'):
-            nom1 = 'kg'
-            i = label.index(nom1)
+            name1 = 'kg'
+            i = label.index(name1)
             y = properties_table[:, i]
             x = properties_table[:, 0]
             Tmin = x[0]
@@ -284,19 +302,19 @@ def water_prop(nom,  T):
             if T < Tmin or T > Tmax:
                 print('Warning: T is out of the table: data extrapolated')
             p1 = np.interp(T, x,  y)
-            nom2 = 'vg'
-            i = label.index(nom2)
+            name2 = 'vg'
+            i = label.index(name2)
             y = properties_table[:, i]
             p2 = np.interp(T, x,  y)
-            nom3 = 'Cpg'
-            i = label.index(nom2)
+            name3 = 'Cpg'
+            i = label.index(name2)
             y = properties_table[:, i]
             p3 = np.interp(T, x,  y)
             p = (p1*p2/p3)*10**-6
             break
         if case('alf'):
-            nom1 = 'kf'
-            i = label.index(nom1)
+            name1 = 'kf'
+            i = label.index(name1)
             y = properties_table[:, i]
             x = properties_table[:, 0]
             Tmin = x[0]
@@ -304,18 +322,18 @@ def water_prop(nom,  T):
             if T < Tmin or T > Tmax:
                 print('Warning: T is out of the table: data extrapolated')
             p1 = np.interp(T, x,  y)
-            nom2 = 'vf'
-            i = label.index(nom2)
+            name2 = 'vf'
+            i = label.index(name2)
             y = properties_table[:, i]
             p2 = np.interp(T, x,  y)
-            nom3 = 'Cpf'
-            i = label.index(nom3)
+            name3 = 'Cpf'
+            i = label.index(name3)
             y = properties_table[:, i]
             p3 = np.interp(T, x,  y)
             p = (p1*p2/p3)*10**-9
             break
         if case('kf', 'kg', 'st'):
-            i = label.index(nom)
+            i = label.index(name)
             y = properties_table[:, i]
             x = properties_table[:, 0]
             Tmin = x[0]
@@ -326,7 +344,7 @@ def water_prop(nom,  T):
             p = p*10**-3
             break
         if case('Cpf', 'Cpg', 'hfg'):
-            i = label.index(nom)
+            i = label.index(name)
             y = properties_table[:, i]
             x = properties_table[:, 0]
             Tmin = x[0]
@@ -337,7 +355,7 @@ def water_prop(nom,  T):
             p = p*10**3
             break
         if case('vf'):
-            i = label.index(nom)
+            i = label.index(name)
             y = properties_table[:, i]
             x = properties_table[:, 0]
             Tmin = x[0]
@@ -348,8 +366,8 @@ def water_prop(nom,  T):
             p = p*10**-3
             break
         if case('rhof'):
-            nom2 = 'vf'
-            i = label.index(nom2)
+            name2 = 'vf'
+            i = label.index(name2)
             y = properties_table[:, i]
             x = properties_table[:, 0]
             Tmin = x[0]
@@ -360,8 +378,8 @@ def water_prop(nom,  T):
             p = 1000.0/p
             break
         if case('rhog'):
-            nom2 = 'vg'
-            i = label.index(nom2)
+            name2 = 'vg'
+            i = label.index(name2)
             y = properties_table[:, i]
             x = properties_table[:, 0]
             Tmin = x[0]
@@ -372,7 +390,7 @@ def water_prop(nom,  T):
             p = 1000.0/p
             break
         if case('betaf'):
-            i = label.index(nom)
+            i = label.index(name)
             y = properties_table[:, i]
             x = properties_table[:, 0]
             Tmin = x[0]
@@ -382,7 +400,7 @@ def water_prop(nom,  T):
             p = np.interp(T, x,  y)
             p = p*10**-6
             break
-        i = label.index(nom)
+        i = label.index(name)
         y = properties_table[:, i]
         x = properties_table[:, 0]
         Tmin = x[0]
@@ -400,10 +418,3 @@ def vap_p(Tk):
     p = 6.11*10**(7.5*T/(237.3+T))
     p = p*100.0
     return p
-
-
-if __name__ == '__main__':
-    res = water_prop('rhof', 20+273)
-    print(res)
-#    res2=water_prop('vf', 20+273)
-#    print(res2)

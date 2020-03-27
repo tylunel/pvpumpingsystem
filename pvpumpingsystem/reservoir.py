@@ -6,7 +6,6 @@ Module for reservoir modeling.
 """
 
 import numpy as np
-import warnings
 
 
 # TODO: replace water_volume by state of charge SOC
@@ -73,51 +72,3 @@ class Reservoir(object):
             return (0, lacking_water)
 
         return (self.water_volume, 0)
-
-#    def reservoir_level(self,Q=None,consumption=None):
-#        """Function giving the volume of water contained in the reservoir
-#        at anytime.
-#
-#        parameters:
-#            - Q (numeric or array-like): volume of water added(in m3)
-#            - consumption (numeric or array-like): volume of water removed
-#                (in m3)
-#
-#        returns:
-#            volume of water in the reservoir (numeric or array-like) (in m3)
-#
-#        """
-#        warnings.simplefilter('error')
-#        warnings.warn("\nFunction not really useful anymore, use "
-#                      "change_water_volume instead. Or switch 'error' by "
-#                      "'default' in the first line of the function",
-#                      DeprecationWarning)
-#
-#        if Q is None and consumption is None:
-#            return self.water_volume
-#
-#        Q=np.array(Q)
-#        consumption=np.array(consumption)
-#
-#        if Q.size != consumption.size:
-#            raise ValueError('Q and consumption must have same size')
-#
-#        vol_init=self.water_volume
-#        tab_volume=[] # the volume stored here is the volume at the end of hour
-#
-#        if Q is not None and consumption is not None:
-#            for i, flowin in Q:
-#                vol_new=vol_init + flowin - consumption[i]
-#                tab_volume.append(vol_new)
-
-
-if __name__ == '__main__':
-    reserv1 = Reservoir(3, 1)
-    q = [0.5,0.2,2,-1,4,-8]
-    tabres = []
-    for qi in q:
-        tabres.append(reserv1.change_water_volume(qi))
-
-    print(tabres)
-    arrres = np.array(tabres)
-    print(arrres)

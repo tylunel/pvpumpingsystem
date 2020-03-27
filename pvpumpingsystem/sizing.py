@@ -76,7 +76,8 @@ def shrink_weather_representative(weather_data, nb_elt=48):
 def shrink_weather_worst_month(weather_data):
     """
     Create a new weather_data object with only the worst month of the
-    weather_data given, according to the irradiance data.
+    weather_data given, according to the global horizontal irradiance (ghi)
+    data.
 
     Parameters
     ----------
@@ -90,6 +91,9 @@ def shrink_weather_worst_month(weather_data):
     * pandas.DataFrame: weather object of nb_elt lines
 
     """
+    # TODO: add attribute for selecting which criteria to use for considering
+    # the worst month (could be ghi (like now), dni, dhi, temperature, etc)
+
     # DataFrame for results
     sum_irradiance = pd.DataFrame()
 
@@ -118,8 +122,6 @@ def subset_respecting_llp_direct(pv_database, pump_database,
     Function returning the configurations of PV modules and pump
     that will minimize the net present value of the system and will insure
     the Loss of Load Probability (llp) is inferior to the one given.
-
-    //!\\ Works fine only for MPPT coupling for now.
 
     Parameters
     ----------
@@ -503,7 +505,13 @@ def sizing_minimize_npv(pv_database, pump_database,
 
 def sizing_Ms_vs_tank_size():
     """
-    Function optimizing M_s and reservoir size as in Bouzidi.
+    Function optimizing M_s and reservoir size as in [1].
+
+    References
+    ----------
+
+    [1] Bouzidi, 2013, 'New sizing method of PV water pumping systems',
+    Sustainable Energy Technologies and Assessments
     """
     raise NotImplementedError
 

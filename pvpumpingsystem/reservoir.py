@@ -19,17 +19,17 @@ class Reservoir(object):
 
         Attributes:
         --------
-        size: float, default is inf, i.e. like if there was no reservoir
+        size: float, default is 0, i.e. like if there was no reservoir
             Volume of reservoir [L]
         water_volume: float, default is 0
             Volume of water in the reservoir [L]. 0 = empty
         material: str, default is None
             Material of the reservoir
         price: float, default is 0
-            Price of the reservoir
+            Price of the reservoir [USD]
     """
 
-    def __init__(self, size=float("inf"),
+    def __init__(self, size=0,
                  water_volume=0,
                  price=0,
                  material=None):

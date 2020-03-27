@@ -462,7 +462,7 @@ class Pump:
     def functQforVH(self):
         """
         Function redirecting to functQforPH. It first computes P with
-        functIforVH(), and then reinject it in functQforPH().
+        functIforVH(), and then reinjects it into functQforPH().
         """
 
         def functQ(V, H):
@@ -487,7 +487,7 @@ class Pump:
         Returns
         -------
         * a tuple containing :
-            - the function giving Q according to power P and  head H
+            - the function giving Q according to power P and head H
             for the pump : Q = f2(P, H)
             - the domains of validity for P and H. Can be functions, so as the
             range of one depends on the other, or fixed ranges.
@@ -744,7 +744,7 @@ def get_data_pump(path):
             * power: dict
                 electrical power at input [W]
 
-        dict: metadata (only name for now) of the pump
+        dict: metadata of the pump
     """
     # open in read-only option
     csvdata = open(path, 'r')
@@ -785,6 +785,8 @@ def specs_completeness(specs,
         * data_number: float
             number of points for which lpm, current, voltage and head are
             given
+        * head_number: float
+            number of head for which other data are given
         * lpm_min: float
             Ratio between min flow_rate given and maximum.
             Should be ideally 0.
@@ -845,6 +847,14 @@ def _curves_coeffs_Arab06(specs, data_completeness):
     specs: pd.DataFrame
         DataFrame with specs.
 
+    Returns
+    -------
+    * dict: Contains the coeffs resulting from linear regression under
+        keys 'coeffs_f1' and 'coeffs_f2', and statistical figures on
+        goodness of fit (keys: 'rmse_f1', 'nrmse_f1', 'r_squared_f1',
+                         'adjusted_r_squared_f1', 'rmse_f2', 'nrmse_f2',
+                         'r_squared_f2', 'adjusted_r_squared_f2')
+
     Reference
     ---------
     [1] Hadj Arab A., Benghanem M. & Chenlo F.,
@@ -854,6 +864,9 @@ def _curves_coeffs_Arab06(specs, data_completeness):
 
     """
     # TODO: add check on number of head available (for lin. reg. of coeffs)
+
+    # TODO: add attribute forcing the use of one particular model
+    # ex: force_model='djoudi' (or 'arab', or 'alternative'...)
 
     # Original model from [2]
     if data_completeness['data_number'] >= 12 \
@@ -917,6 +930,14 @@ def _curves_coeffs_Kou98(specs, data_completeness):
     specs: pd.DataFrame
         DataFrame with specs.
 
+    Returns
+    -------
+    * dict: Contains the coeffs resulting from linear regression under
+        keys 'coeffs_f1' and 'coeffs_f2', and statistical figures on
+        goodness of fit (keys: 'rmse_f1', 'nrmse_f1', 'r_squared_f1',
+                         'adjusted_r_squared_f1', 'rmse_f2', 'nrmse_f2',
+                         'r_squared_f2', 'adjusted_r_squared_f2')
+
     Reference
     ---------
     [1] Kou Q, Klein S.A. & Beckman W.A., "A method for estimating the
@@ -979,7 +1000,10 @@ def _curves_coeffs_Hamidat08(specs, data_completeness):
 
     Returns
     -------
-    * dict with coefficients and statistical outputs
+    * dict: Contains the coeffs resulting from linear regression under
+        key 'coeffs_f2', and statistical figures on
+        goodness of fit (keys: 'rmse_f2', 'nrmse_f2',
+                         'r_squared_f2', 'adjusted_r_squared_f2')
 
     Reference
     ---------
@@ -1018,21 +1042,38 @@ def _curves_coeffs_theoretical(specs, data_completeness, elec_archi):
     """Compute curve-fitting coefficient following theoretical analysis of
     motor architecture.
 
+    This kind of approach is used in [1], [2].
+
+    Nevertheless, following function takes some liberties with the model
+    of function f2 described in the mentionned papers.
+
     It uses a equation of the form V = R_a*i + beta(H)*np.sqrt(i) to model
     V(I, TDH) and an equation of the form Q = (a + b*H) * (c + d*P) to model
     Q(P, TDH) from the data.
-
-    This kind of equation is used in [1], [2], ...
-
 
     Parameters
     ----------
     specs: pd.DataFrame
         DataFrame with specs.
 
+    Returns
+    -------
+    * dict: Contains the coeffs resulting from linear regression under
+        keys 'coeffs_f1' and 'coeffs_f2', and statistical figures on
+        goodness of fit (keys: 'rmse_f1', 'nrmse_f1', 'r_squared_f1',
+                         'adjusted_r_squared_f1', 'rmse_f2', 'nrmse_f2',
+                         'r_squared_f2', 'adjusted_r_squared_f2')
+
     Reference
     ---------
-    [1] Mokkedem & al, ...
+    [1] Mokkedem & al, 2011, 'Performance of a directly-coupled PV water
+    pumping system', Energy Conversion and Management
+
+    [2] Khatib & Elmenreich, 2016, 'Modeling of Photovoltaic Systems
+    Using MATLAB', Wiley
+
+    [3] Martiré & al, 2008, "A simplified but accurate prevision method
+    for along the sun PV pumping systems"
 
     """
     if elec_archi != 'permanent_magnet':
@@ -1083,28 +1124,25 @@ def _curves_coeffs_theoretical(specs, data_completeness, elec_archi):
         # computing of statistical figures for f2
         stats_f2 = function_models.correlation_stats(funct_mod_2, param_f2,
                                                      dataxy, dataz)
+    # TODO: Seperate it in a new function, or use new attribute force_model
     else:
-        warnings.warn('Simplistic model of constant efficiency applied.')
         # Simple constant efficiency
+        warnings.warn('Simplistic model of constant efficiency applied.')
+        # NOTE: the value '0.7' in the following line is arbitrary. It was
+        # found to be a value which minimizes the mean relative error
+        # on the whole tdh range, but could be studied deeper.
         param_f2 = [0.7 * specs.efficiency.max()]
 
         def funct_Q_for_PH(input_values, efficiency):
             P, H = input_values
             return efficiency * (60000 * P) / (H * 9.81 * 1000)
 
-    #    dataxy_alter = [np.array(specs.power[specs.tdh = 0]),
-    #                    np.array(specs.tdh[specs.tdh != 0])]
-    #    dataz_alter = np.array(specs.flow[specs.tdh != 0])
-        # TODO: remove the extreme parts of the domain as here
+        # TODO: remove the extreme points of the domain as here, because
+        # efficiencies are nearly nil at these points
         dataxy = [np.array(specs.power[specs.tdh > 7]),
                   np.array(specs.tdh[specs.tdh > 7])]
         dataz = np.array(specs.flow[specs.tdh > 7])
 
-#        # computing of statistical figures for f2
-#        stats_f2 = function_models.correlation_stats(funct_Q_for_PH,
-#                                                     param_f2,
-#                                                     dataxy,
-#                                                     dataz)
         # statistical figures for f2 don't make sense in this case:
         stats_f2 = {'rmse': np.nan,
                     'nrmse': np.nan,
@@ -1112,8 +1150,10 @@ def _curves_coeffs_theoretical(specs, data_completeness, elec_archi):
                     'adjusted_r_squared': np.nan,
                     'nb_data': data_completeness['data_number']}
 
+    # TODO: add method of Martiré & al, 2008, "A simplified but accurate
+    # prevision method for along the sun PV pumping systems"
     # affinity law with constant efficiency - if power data is all the same
-    # Use Martiré & al, 2008
+
 #    def funct_P_for_tdh(input_values, a, b, c):
 #        H = input_values
 #        return a + b * H + c * H**2
@@ -1130,7 +1170,7 @@ def _curves_coeffs_theoretical(specs, data_completeness, elec_archi):
 #    def funct_Q_for_PH(P, H):
 #        alpha = funct_alpha(H, *param_alpha)
 #        return (P/alpha)**(1/3)
-    # TO CONTINUE
+    # TO BE CONTINUED (and corrected certainly)
 
     return {'coeffs_f1': param_f1,
             'rmse_f1': stats_f1['rmse'],
@@ -1147,6 +1187,18 @@ def _curves_coeffs_theoretical(specs, data_completeness, elec_archi):
 def _domain_I_H(specs, data_completeness):
     """
     Function giving the domain of cur depending on tdh, and vice versa.
+
+    Parameters
+    ----------
+    specs: pandas.DataFrame,
+        Specifications typically coming from Pump.specs
+
+    data_completeness: dict,
+        Typically comes from specs_completeness() function.
+
+    Returns
+    -------
+    Tuple containing two lists, the domains on I [A] and on TDH [m]
 
     """
 
@@ -1199,6 +1251,18 @@ def _domain_V_H(specs, data_completeness):
     """
     Function giving the range of voltage and head in which the pump will
     work.
+
+    Parameters
+    ----------
+    specs: pandas.DataFrame,
+        Specifications typically coming from Pump.specs
+
+    data_completeness: dict,
+        Typically comes from specs_completeness() function.
+
+    Returns
+    -------
+    Tuple containing two lists, the domains on voltage V [V] and on head [m]
     """
     funct_mod = function_models.polynomial_2
 
@@ -1244,6 +1308,19 @@ def _domain_P_H(specs, data_completeness):
     """
     Function giving the range of power and head in which the pump will
     work.
+
+    Parameters
+    ----------
+    specs: pandas.DataFrame,
+        Specifications typically coming from Pump.specs
+
+    data_completeness: dict,
+        Typically comes from specs_completeness() function.
+
+    Returns
+    -------
+    Tuple containing two lists, the domains on power P [W] and on head [m]
+
     """
     funct_mod = function_models.polynomial_1
 

@@ -928,6 +928,7 @@ def calc_reservoir(reservoir, Q_pumped, Q_consumption):
     water_stored: pd.DataFrame
         Dataframe with water_volume in tank, and extra or lacking water.
     """
+
     level = []
     # timestep of flowrate dataframe Q_lpm_df
     timestep = Q_pumped.index[1] - Q_pumped.index[0]

@@ -11,6 +11,7 @@ import inspect
 import pvpumpingsystem.pump as pp
 import pvpumpingsystem.pipenetwork as pn
 import pvpumpingsystem.consumption as cs
+import pvpumpingsystem.reservoir as res
 import pvpumpingsystem.mppt as mppt
 import pvpumpingsystem.pvpumpsystem as pvps
 import pvpumpingsystem.sizing as siz
@@ -64,6 +65,7 @@ def test_sizing_minimize_npv(databases):
     pump_database = databases['pumps']
     pv_database = databases['pv_modules']
     mppt1 = databases['mppt']
+    reservoir1 = res.Reservoir(size = 5000)
 
     # weather data
     weather_path = os.path.join(
@@ -76,8 +78,7 @@ def test_sizing_minimize_npv(databases):
     # rest of pumping system
     pipes = pn.PipeNetwork(h_stat=20, l_tot=100, diam=0.08,
                            material='plastic', optimism=True)
-    consum = cs.Consumption(constant_flow=1,
-                            length=len(weather_shrunk))
+    consum = cs.Consumption(constant_flow=1)
 
     pvgene = pvgen.PVGeneration(
             weather_data_and_metadata={
@@ -90,6 +91,7 @@ def test_sizing_minimize_npv(databases):
                                      coupling='mppt',
                                      mppt=mppt1,
                                      consumption=consum,
+                                     reservoir=reservoir1,
                                      pipes=pipes)
 
     selection, _ = siz.sizing_minimize_npv(pv_database, pump_database,

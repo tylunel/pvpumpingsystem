@@ -19,8 +19,7 @@ import pvpumpingsystem.pvgeneration as pvgen
 # allows pandas to convert timestamp for matplotlib
 pd.plotting.register_matplotlib_converters()
 
-
-# ------------ PV MODELING DEFINITION -----------------------
+# ------------ LOCATION & PV MODELING -----------------------
 
 pvgen1 = pvgen.PVGeneration(
             # Weather data
@@ -60,7 +59,7 @@ pvgen1 = pvgen.PVGeneration(
 pvgen1.run_model()
 
 
-# ------------ PUMP DEFINITION -----------------
+# ------------ PUMPS -----------------
 
 # For entering new pump data:
 # 1) go in: "../data/pump_files/0_template_for_pump_specs.txt"
@@ -79,7 +78,7 @@ pump_shurflo = pp.Pump("../data/pump_files/Shurflo_9325.txt",
                        modeling_method='arab')  # to adapt:
 
 
-# ------------ RESERVOIR DEFINITION ------------------
+# ------------ RESERVOIRS ------------------
 reservoir1 = rv.Reservoir(size=3500,  # [L]
                           water_volume=0,  # [L] at beginning
                           price=(1010+210))  # 210 is pipes price
@@ -91,7 +90,7 @@ reservoir2 = rv.Reservoir(size=1000,  # [L]
 # no reservoir:
 no_reservoir = rv.Reservoir()
 
-# ------------ CONSUMPTION PROFILE ------------------
+# ------------ CONSUMPTION PROFILES ------------------
 # represents 288L/day
 consumption_cst = cs.Consumption(constant_flow=0.4)  # output flow rate [L/min]
 

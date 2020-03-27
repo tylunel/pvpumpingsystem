@@ -1,39 +1,18 @@
 # -*- coding: utf-8 -*-
 """
 Module aimed at gathering the functions for financial analysis.
-Ultimately, it should inlude:
-    initial investment assessment (capex), net present value, loan repayment
+Ultimately, it should include:
+    initial investment assessment, net present value, loan repayment
 
 @author: tylunel
 
+Before adding new function, check numpy_finance for equivalent financial
+functions.
 
-In Numpy, Some Simple financial functions already exist:
-
-fv(rate, nper, pmt, pv[, when])
-    Compute the future value.
-pv(rate, nper, pmt[, fv, when])
-    Compute the present value.
-npv(rate, values)
-    Returns the NPV (Net Present Value) of a cash flow series.
-pmt(rate, nper, pv[, fv, when])
-    Compute the payment against loan principal plus interest.
-ppmt(rate, per, nper, pv[, fv, when])
-    Compute the payment against loan principal.
-ipmt(rate, per, nper, pv[, fv, when])
-    Compute the interest portion of a payment.
-irr(values)
-    Return the Internal Rate of Return (IRR).
-mirr(values, finance_rate, reinvest_rate)
-    Modified internal rate of return.
-nper(rate, pmt, pv[, fv, when])
-    Compute the number of periodic payments.
-rate(nper, pmt, pv, fv[, when, guess, tol, ...])
-    Compute the rate of interest per period.
 """
-# TODO: Check for terminology. CAPEX may not be the equivalent of initial
-# investment
 
 import numpy as np
+import numpy_financial as npf
 
 
 def initial_investment(pvps, labour_price_coefficient=None):
@@ -45,10 +24,15 @@ def initial_investment(pvps, labour_price_coefficient=None):
     pvps: pvpumpingsystem.PVPumpSystem,
         The Photovoltaic pumping system whose cost is to be analyzed.
 
-    labour_price_coefficient: float, default value is taken from pvps object
+    labour_price_coefficient: float, default is None
             Ratio of the price of labour and secondary costs on initial
             investment.
+            None value will look for value of pvps object. In pvps, default
+            is 1.2.
 
+    Returns
+    -------
+    float: Initial investment for the whole pumping system.
     """
     try:
         pv_modules_price = (pvps.pvgeneration.system.modules_per_string
@@ -98,6 +82,16 @@ def net_present_value(pvps, opex, discount_rate=0.02,
     lifespan_pv: float
         Lifespan of the photovoltaic modules. It is also considered as the
         lifespan of the whole system.
+
+    lifespan_mppt: float
+        Lifespan of the mppt
+
+    lifespan_pump: float
+        Lifespan of the pump
+
+    Returns
+    -------
+    float: The net present value of the PVPS
     """
     # creation of list of opex cost with length of lifespan_pv
     cashflow_list = [opex]
@@ -130,7 +124,7 @@ def net_present_value(pvps, opex, discount_rate=0.02,
             raise e
 
     # calculation of net present value
-    npv = np.npv(discount_rate, cashflow_list)
+    npv = npf.npv(discount_rate, cashflow_list)
 
     return npv
 

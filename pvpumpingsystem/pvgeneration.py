@@ -257,7 +257,6 @@ class PVGeneration:
         # Retrieve the pv module concerned from the pv database, and
         # convert in pandas.Series by selecting first column: iloc[:, 0]
         self.pv_module = pv_database[pv_idname].iloc[:, 0]
-        # TODO: add better default value, like depending on power with USD/W
         self.price_per_module = self.price_per_watt * self.pv_module.STC
 
     def run_model(self):

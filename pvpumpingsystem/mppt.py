@@ -10,7 +10,10 @@ Defines a MPPT
 """
 
 # TODO: develop input_voltage_range attribute to ensure that it fits with
-# the ouput voltage from PV array.
+# the ouput voltage from PV array. (Will allow to reduce the computation time
+# as well as pvpumpingsystem will not look for too big number of modules
+# in the PVPS anymore)
+
 # TODO: develop output_voltage_available attribute to ensure that it fits with
 # the input voltage of the pump
 

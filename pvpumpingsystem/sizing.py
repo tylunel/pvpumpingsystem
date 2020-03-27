@@ -366,7 +366,8 @@ def subset_respecting_llp_mppt(pv_database, pump_database,
 
             # Guess a M_s to start with:
             if M_s_guess is None:
-                M_s = pump.range.power['max'] // pvps_fixture.pvgeneration.pv_module.PTC
+                M_s = (pump.range.power['max'] //
+                       pvps_fixture.pvgeneration.pv_module.PTC)
             else:
                 M_s = M_s_guess
 
@@ -390,7 +391,7 @@ def subset_respecting_llp_mppt(pv_database, pump_database,
                 elif llp > llp_accepted and llp_prev != llp:
                     M_s += 1
                 elif llp > llp_accepted and llp_prev == llp and llp != llp_max:
-                    break  # unsatisfying llp, to be removed later
+                    break  # unsatisfying llp, removed later
                 elif llp > llp_accepted and llp_prev == llp and llp == llp_max:
                     M_s += 1
                 else:
@@ -399,13 +400,14 @@ def subset_respecting_llp_mppt(pv_database, pump_database,
                 llp_prev = llp
 
             preselection = preselection.append(
-                    pd.Series({'pv_module': pvps_fixture.pvgeneration.pv_module.name,
-                               'M_s': M_s,
-                               'M_p': 1,
-                               'pump': pump.idname,
-                               'llp': pvps_fixture.llp,
-                               'npv': pvps_fixture.npv}),
-                    ignore_index=True)
+                pd.Series({
+                    'pv_module': pvps_fixture.pvgeneration.pv_module.name,
+                    'M_s': M_s,
+                    'M_p': 1,
+                    'pump': pump.idname,
+                    'llp': pvps_fixture.llp,
+                    'npv': pvps_fixture.npv}),
+                ignore_index=True)
 
     # Remove not satifying LLP
     preselection = preselection[preselection.llp <= llp_accepted]
@@ -556,8 +558,9 @@ if __name__ == '__main__':
     pv_database = ['Canadian_solar 340', 'Canadian_solar 200']
 
     pvgen1 = pvgen.PVGeneration(
-        weather_data_and_metadata={'weather_data': weather_worst_month,
-                      'weather_metadata': weather_metadata},
+        weather_data_and_metadata={
+                'weather_data': weather_worst_month,
+                'weather_metadata': weather_metadata},
         pv_module_name=pv_database[0]
         )
 

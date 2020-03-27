@@ -228,7 +228,7 @@ class Pump:
         """
         To Develop:
         In order to start, the pump usually need a higher power input
-        than the minimum power input in standard functioning.
+        than the minimum power input in steady state operation.
         One potential path for adressing this issue is in [1]
 
         The other path is to consider the controller that goes with the pump.

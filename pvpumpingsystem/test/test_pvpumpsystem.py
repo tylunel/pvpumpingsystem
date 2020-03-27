@@ -119,11 +119,11 @@ def test_calc_flow_direct(pvps_set_up):
     np.testing.assert_allclose(Q, Q_expected, rtol=1)
 
 
-def test_functioning_point_noiteration(pvps_set_up):
-    """Test the ability of code to find the functioning point between
+def test_operating_point_noiteration(pvps_set_up):
+    """Test the ability of code to find the operating point between
     pump and pv array when directly-coupled.
     """
-    df_iv = pvps_set_up.functioning_point_noiteration()
+    df_iv = pvps_set_up.operating_point_noiteration()
     arr_iv = np.array(df_iv[11:19], dtype=float)
     arr_iv_expected = np.array([[3.1552, 75.1672],
                                 [3.0930, 74.2068],

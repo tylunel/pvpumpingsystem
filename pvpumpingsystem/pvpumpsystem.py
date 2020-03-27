@@ -155,12 +155,12 @@ class PVPumpSystem(object):
 #            self.motorpump.modeling_method = model
 #            self.motorpump_model = model
 
-    def functioning_point_noiteration(self,
+    def operating_point_noiteration(self,
                                       plot=False, nb_pts=50, stop=8760):
-        """Finds the IV functioning point(s) of the PV array and the pump
+        """Finds the IV operating point(s) of the PV array and the pump
         (load).
 
-        cf pvlib_pvpumpsystem.functioning_point_noiteration for more details
+        cf pvpumpsystem.operating_point_noiteration for more details
 
         Parameters
         ----------
@@ -177,7 +177,7 @@ class PVPumpSystem(object):
         Returns
         -------
         IV : pandas.DataFrame
-            Current ('I') and voltage ('V') at the functioning point between
+            Current ('I') and voltage ('V') at the operating point between
             load and pv array.
 
         Note / Issues
@@ -194,7 +194,7 @@ class PVPumpSystem(object):
 
         tdh = self.pipes.h_stat
 
-        pdresult = functioning_point_noiteration(
+        pdresult = operating_point_noiteration(
                 params,
                 M_s, M_p,
                 load_fctIfromVH=load_fctI,
@@ -273,9 +273,9 @@ class PVPumpSystem(object):
         --------
         df : pandas.DataFrame
             pd.Dataframe with following attributes:
-                'I': Current in A at the functioning point between
+                'I': Current in A at the operating point between
                     load and pv array.
-                'V': Voltage in V at the functioning point.
+                'V': Voltage in V at the operating point.
                 'Qlpm': Flow rate of water in L/minute
 
         Note / Issues
@@ -512,14 +512,14 @@ def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
     return sol.x
 
 
-def functioning_point_noiteration(params,
+def operating_point_noiteration(params,
                                   modules_per_string,
                                   strings_per_inverter,
                                   load_fctIfromVH=None,
                                   load_interval_V=[-np.inf, np.inf],
                                   pv_interval_V=[-np.inf, np.inf],
                                   tdh=0):
-    """Finds the IV functioning point(s) of the PV array and the load.
+    """Finds the IV operating point(s) of the PV array and the load.
 
     Parameters
     ----------
@@ -542,7 +542,7 @@ def functioning_point_noiteration(params,
     Returns
     -------
     IV : pandas.DataFrame
-        Current ('I') and voltage ('V') at the functioning point between
+        Current ('I') and voltage ('V') at the operating point between
         load and pv array. I and V are float. It is 0 when there is no
         irradiance, and np.nan when pv array and load don't match.
 
@@ -593,7 +593,7 @@ def functioning_point_noiteration(params,
                                 load_interval_V[0], pv_interval_V[1])
             except ValueError as e:
                 if 'f(a) and f(b) must have different signs' in str(e):
-                    # basically means that there is no functioning point
+                    # basically means that there is no operating point
                     Im = np.nan
                     Vm = np.nan
                 else:
@@ -650,9 +650,9 @@ def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
     --------
     df : pandas.DataFrame
         pd.Dataframe with following attributes:
-            'I': Current in A at the functioning point between
+            'I': Current in A at the operating point between
                 load and pv array.
-            'V': Voltage in V at the functioning point.
+            'V': Voltage in V at the operating point.
             'Qlpm': Flow rate of water in L/minute
 
     Note / Issues
@@ -690,8 +690,8 @@ def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
                 # compute total head h_tot
                 h_tot = pipes.h_stat + \
                     pipes.dynamichead(Qlpm, T=temp_water)
-                # compute functioning point
-                iv_data = functioning_point_noiteration(
+                # compute operating point
+                iv_data = operating_point_noiteration(
                         params, M_s, M_p,
                         load_fctIfromVH=load_fctIfromVH,
                         load_interval_V=intervalsVH['V'](h_tot),
@@ -721,8 +721,8 @@ def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
                            'tdh': h_tot
                            })
         else:  # iteration is False
-            # compute functioning point
-            iv_data = functioning_point_noiteration(
+            # compute operating point
+            iv_data = operating_point_noiteration(
                     params, M_s, M_p,
                     load_fctIfromVH=load_fctIfromVH,
                     load_interval_V=intervalsVH['V'](pipes.h_stat),
@@ -788,9 +788,9 @@ def calc_flow_mppt_coupled(pvgeneration, motorpump, pipes, mppt,
     --------
     df : pandas.DataFrame
         pd.Dataframe with following attributes:
-            'I': Current in A at the functioning point between
+            'I': Current in A at the operating point between
                 load and pv array.
-            'V': Voltage in V at the functioning point.
+            'V': Voltage in V at the operating point.
             'Qlpm': Flow rate of water in L/minute
 
     Note / Issues
@@ -1049,14 +1049,14 @@ if __name__ == '__main__':
     print('initial_investment: {0} USD'.format(pvps1.initial_investment))
     print('NPV: {0} USD'.format(pvps1.npv))
     if pvps1.coupling == 'direct':
-        pvps1.functioning_point_noiteration(plot=True)
+        pvps1.operating_point_noiteration(plot=True)
 
 #    warnings.filterwarnings("ignore")  # disable all warnings
 #    pvps1.calc_flow()
 #    warnings.simplefilter("always")  # enable all warnings
 #    pvps1.calc_efficiency()
 #
-#    pvps1.functioning_point_noiteration(plot=True)
+#    pvps1.operating_point_noiteration(plot=True)
 #    # TODO: pb here. The graph represents the I-V relation for only
 #    # one module, not the full array.
 #

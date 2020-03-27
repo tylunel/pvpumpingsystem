@@ -65,7 +65,7 @@ def test_sizing_minimize_npv(databases):
     pump_database = databases['pumps']
     pv_database = databases['pv_modules']
     mppt1 = databases['mppt']
-    reservoir1 = res.Reservoir(size = 5000)
+    reservoir1 = res.Reservoir(size=5000)
 
     # weather data
     weather_path = os.path.join(

@@ -190,13 +190,17 @@ def subset_respecting_llp_direct(pv_database, pump_database,
             # M_p
             I_sc_array_min = pump.range.current['min']
             I_sc_array_max = pump.range.current['max'] * 4  # arbitrary coeff
-            M_p_max = I_sc_array_max//pvps_fixture.pvgeneration.pv_module.I_sc_ref  # round down
-            M_p_min = I_sc_array_min//pvps_fixture.pvgeneration.pv_module.I_sc_ref + 1  # round up
+            M_p_max = (I_sc_array_max  # round down
+                       // pvps_fixture.pvgeneration.pv_module.I_sc_ref)
+            M_p_min = (I_sc_array_min  # round up
+                       // pvps_fixture.pvgeneration.pv_module.I_sc_ref) + 1
             # M_s
             V_oc_array_min = pump.range.voltage['min']
             V_oc_array_max = pump.range.voltage['max'] * 1.2
-            M_s_min = V_oc_array_min//pvps_fixture.pvgeneration.pv_module.V_oc_ref + 1  # round up
-            M_s_max = V_oc_array_max//pvps_fixture.pvgeneration.pv_module.V_oc_ref + 1  # round up
+            M_s_min = (V_oc_array_min  # round up
+                       // pvps_fixture.pvgeneration.pv_module.V_oc_ref) + 1
+            M_s_max = (V_oc_array_max  # round up
+                       // pvps_fixture.pvgeneration.pv_module.V_oc_ref) + 1
 
             if pvps_fixture.pvgeneration.pv_module.V_oc_ref > V_oc_array_max:
                 warnings.warn(('Pump {0} and PV module voltage '
@@ -226,9 +230,6 @@ def subset_respecting_llp_direct(pv_database, pump_database,
             llp_prev_Ms = 1.1
             llp_prev_Mp = 1.1
             M_s_prev = M_s_min
-            M_p_prev = M_p_min
-
-            llp_max = funct_llp_for_Ms_Mp(pvps_fixture, 0, 1)
 
             while True:
                 llp = funct_llp_for_Ms_Mp(pvps_fixture, M_s, M_p)
@@ -270,13 +271,14 @@ def subset_respecting_llp_direct(pv_database, pump_database,
                     llp_prev_Mp = llp
 
             preselection = preselection.append(
-                    pd.Series({'pv_module': pvps_fixture.pvgeneration.pv_module.name,
-                               'M_s': M_s,
-                               'M_p': M_p,
-                               'pump': pump.idname,
-                               'llp': pvps_fixture.llp,
-                               'npv': pvps_fixture.npv}),
-                    ignore_index=True)
+                pd.Series({
+                        'pv_module': pvps_fixture.pvgeneration.pv_module.name,
+                        'M_s': M_s,
+                        'M_p': M_p,
+                        'pump': pump.idname,
+                        'llp': pvps_fixture.llp,
+                        'npv': pvps_fixture.npv}),
+                ignore_index=True)
 
     # Remove not satifying LLP
     preselection = preselection[preselection.llp <= llp_accepted]

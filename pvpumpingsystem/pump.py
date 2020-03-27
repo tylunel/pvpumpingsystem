@@ -23,7 +23,7 @@ from pvpumpingsystem import function_models
 
 # FIXME: doc states lpm, tdh, current, because they can be used for creating
 # object with __init__(), but not available anymore then as attribute.
-# What is the proper way to document it.
+# What is the proper way to document it?
 
 
 class Pump:
@@ -232,7 +232,7 @@ class Pump:
         One potential path for adressing this issue is in [1]
 
         The other path is to consider the controller that goes with the pump.
-        Check 'pump_files/PCA_PCC_BLS_Controller_Data_Sheet.pdf! for more
+        Check 'pump_files/PCA_PCC_BLS_Controller_Data_Sheet.pdf' for more
         details.
 
         References
@@ -274,57 +274,6 @@ class Pump:
             Ivect[i] = fctI(V, head)
 
         return {'I': Ivect, 'V': Vvect}
-
-    def plot_Q_vs_H(self):
-        """
-        Print the graph of Q(in liter per minute) vs tdh(in m)
-
-        Prints
-        -------
-        * Graph Q vs H: matplotlib.figure
-
-        """
-        # Get the model function
-        f2, intervals = self.functQforVH()
-        # Loops for computing the data computed with the model
-        modeled_data = pd.DataFrame()
-        for V in self.voltage_list:
-            tdh_max = self.specs[self.specs.voltage == V].tdh.max()
-            tdh_vect = np.linspace(0, tdh_max, num=10)  # vector of tdh
-            for H in tdh_vect:
-                modeled_data = modeled_data.append(
-                        {'voltage': V, 'tdh': H, 'flow': f2(V, H)['Q']},
-                        ignore_index=True)
-
-        # Plot
-        plt.figure(facecolor='White')
-        ax1 = plt.subplot(1, 1, 1)  # needed for using the prop_cycler
-
-        for i, V in enumerate(self.voltage_list):
-            # get the next color to have the same color by voltage:
-            col = next(ax1._get_lines.prop_cycler)['color']
-            # plot simulated data
-            plot(modeled_data[modeled_data.voltage == V].tdh,
-                 modeled_data[modeled_data.voltage == V].flow,
-                 linestyle='--',
-                 linewidth=1.5,
-                 color=col,
-                 label=str(V)+'VDC extrapolated')
-            # plot measured data
-            plot(self.specs[self.specs.voltage == V].tdh,
-                 self.specs[self.specs.voltage == V].flow,
-                 linestyle='-',
-                 linewidth=2,
-                 color=col,
-                 label=str(V)+'VDC from specs')
-        # graph general appearance
-        ax1.set_title(str(self.model) +
-                      ' Flow rate curves Vs. Head')
-        ax1.set_xlabel('lpm')
-        ax1.set_ylabel('Head (m)')
-        ax1.set_ylim(0, tdh_max*1.1)
-        ax1.legend(loc='best')
-        ax1.grid(True)
 
     def functIforVH(self):
         """
@@ -1370,97 +1319,127 @@ def _domain_P_H(specs, data_completeness):
     return interval_power, interval_tdh
 
 
-if __name__ == "__main__":
-    # %% pump creation
-    pump1 = Pump(path="data/pump_files/SCS_18_90_60_BL.txt",
-                 modeling_method='arab',
-                 motor_electrical_architecture='permanent_magnet')
+def plot_Q_vs_P_H_3d(pump):
+    """
+    Print the graph of Q [L/min] vs tdh [m] and P [W] in 3 dimensions.
 
-#    pump2 = Pump(lpm={12: [212, 204, 197, 189, 186, 178, 174, 166, 163, 155,
-#                           136],
-#                      24: [443, 432, 413, 401, 390, 382, 375, 371, 352, 345,
-#                           310]},
-#                 tdh={12: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
-#                           54.9, 61.0, 70.1],
-#                      24: [6.1, 12.2, 18.3, 24.4, 30.5, 36.6, 42.7, 48.8,
-#                           54.9, 61.0, 70.1]},
-#                 current={12: [1.2, 1.5, 1.8, 2.0, 2.1, 2.4, 2.7, 3.0, 3.3,
-#                               3.4, 3.9],
-#                          24: [1.5, 1.7, 2.1, 2.4, 2.6, 2.8, 3.1, 3.3, 3.6,
-#                               3.8, 4.1]
-#                          },
-#                 idname='Shurflo_9325',
-#                 modeling_method='theoretical',
-#                 motor_electrical_architecture='permanent_magnet')
+    Prints
+    -------
+    * Graph Q (H, P): matplotlib.figure
+    """
 
-#    pump3 = Pump(path="data/pump_files/Shurflo_9325.txt",
-#                 idname='Shurflo_9325',
-#                 modeling_method='theoretical',
-#                 motor_electrical_architecture='permanent_magnet')
-
-#    pump4 = Pump(path="data/pump_files/aquatec_swp_4000.txt",
-#                 idname='aquatec_swp_4000',
-#                 modeling_method='arab',
-#                 motor_electrical_architecture='permanent_magnet')
-
-# Deficient pump data:
-#    pump5 = Pump(path="data/pump_files/rosen_SC33-158-D380-9200.txt",
-#                 idname='rosen_SC33',
-#                 modeling_method='theoretical',
-#                 motor_electrical_architecture='permanent_magnet')
-
-#    pump1.plot_Q_vs_H()
-
-
-# %% plot of functIforVH
-#    pump_concerned = pump1
-#    f2, intervals = pump_concerned.functIforVH()
-#    cur_check = []
-#    for index, row in pump_concerned.specs.iterrows():
-#        cur_check.append(f2(row.voltage, row.tdh, error_raising=False))
-#
-#    fig = plt.figure()
-#    ax = fig.add_subplot(111, projection='3d',
-#                            title='Current as a function of'
-#                         ' voltage (V) and static head (m)')
-#    ax.scatter(pump_concerned.specs.voltage, pump_concerned.specs.tdh,
-#               pump_concerned.specs.current, label='from data')
-#    ax.scatter(pump_concerned.specs.voltage, pump_concerned.specs.tdh,
-#               cur_check, label='from curve fitting')
-#    ax.set_xlabel('voltage')
-#    ax.set_ylabel('head')
-#    ax.set_zlabel('current I')
-#    ax.legend(loc='lower left')
-#    plt.show()
-#    print('I for VH=(80, 25): {0:.2f}'.format(f2(80, 25)))
-
-# %% plot of functQforPH
-    pump_concerned = pump1
-    f4, intervals = pump_concerned.functQforPH()
+    f2, intervals = pump.functQforPH()
     lpm_check = []
 
-#    if pump_concerned == pump5:
-#        pump_concerned.specs = pump_concerned.specs[
-#                pump_concerned.specs.tdh > 7]
-
-    for index, row in pump_concerned.specs.iterrows():
+    for index, row in pump.specs.iterrows():
         try:
-            Q = f4(row.power, row.tdh)
+            Q = f2(row.power, row.tdh)
         except (errors.PowerError, errors.HeadError):
             Q = 0
         lpm_check.append(Q['Q'])
     fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d',
-                         title='Flow Q depending on P and H')
-    ax.scatter(pump_concerned.specs.power, pump_concerned.specs.tdh,
-               pump_concerned.specs.flow,
+    ax = fig.add_subplot(
+            111, projection='3d', title=(
+                    'Flow Q depending on P and H\nmodeling_method: '
+                    + str(pump.modeling_method)))
+    ax.scatter(pump.specs.power, pump.specs.tdh,
+               pump.specs.flow,
                label='from data')
-    ax.scatter(pump_concerned.specs.power, pump_concerned.specs.tdh,
+    ax.scatter(pump.specs.power, pump.specs.tdh,
                lpm_check,
                label='from curve fitting with modeling method {0}'.format(
-                       pump_concerned.modeling_method))
+                       pump.modeling_method))
     ax.set_xlabel('power')
     ax.set_ylabel('head')
     ax.set_zlabel('discharge Q')
     ax.legend(loc='lower left')
     plt.show()
+
+
+def plot_I_vs_V_H_3d(pump):
+    """
+    Print the graph of I [A] vs tdh [m] and V [V] in 3 dimensions.
+
+    Prints
+    -------
+    * Graph I (V, H): matplotlib.figure
+    """
+
+    f1, intervals = pump.functIforVH()
+    intensity_check = []
+
+    for index, row in pump.specs.iterrows():
+        try:
+            intensity = f1(row.voltage, row.tdh)
+        except (errors.VoltageError, errors.HeadError):
+            intensity = 0
+        intensity_check.append(intensity)
+    fig = plt.figure()
+    ax = fig.add_subplot(
+            111, projection='3d', title=(
+                    'Current I depending on V and H\nmodeling_method: '
+                    + str(pump.modeling_method)))
+    ax.scatter(pump.specs.voltage, pump.specs.tdh,
+               pump.specs.current,
+               label='from data')
+    ax.scatter(pump.specs.voltage, pump.specs.tdh,
+               intensity_check,
+               label='from curve fitting with modeling method {0}'.format(
+                       pump.modeling_method))
+    ax.set_xlabel('voltage')
+    ax.set_ylabel('head')
+    ax.set_zlabel('current I')
+    ax.legend(loc='lower left')
+    plt.show()
+
+
+def plot_Q_vs_V_H_2d(pump):
+    """
+    Print the graph of Q [L/min] vs tdh [m] for each voltage available.
+
+    Prints
+    -------
+    * Graph Q (H, V): matplotlib.figure
+
+    """
+    # Get the model function
+    f2, intervals = pump.functQforVH()
+    # Loops for computing the data computed with the model
+    modeled_data = pd.DataFrame()
+    for V in pump.voltage_list:
+        tdh_max = pump.specs[pump.specs.voltage == V].tdh.max()
+        tdh_vect = np.linspace(0, tdh_max, num=10)  # vector of tdh
+        for H in tdh_vect:
+            modeled_data = modeled_data.append(
+                    {'voltage': V, 'tdh': H, 'flow': f2(V, H)['Q']},
+                    ignore_index=True)
+
+    # Plot
+    plt.figure(facecolor='White')
+    ax1 = plt.subplot(1, 1, 1)  # needed for using the prop_cycler
+
+    for i, V in enumerate(pump.voltage_list):
+        # get the next color to have the same color by voltage:
+        col = next(ax1._get_lines.prop_cycler)['color']
+        # plot simulated data
+        plot(modeled_data[modeled_data.voltage == V].tdh,
+             modeled_data[modeled_data.voltage == V].flow,
+             linestyle='--',
+             linewidth=1.5,
+             color=col,
+             label=str(V)+'VDC extrapolated')
+        # plot measured data
+        plot(pump.specs[pump.specs.voltage == V].tdh,
+             pump.specs[pump.specs.voltage == V].flow,
+             linestyle='-',
+             linewidth=2,
+             color=col,
+             label=str(V)+'VDC from specs')
+    # graph general appearance
+    ax1.set_title('Flow rate curves Vs. Head\nmodeling_method: '
+                  + str(pump.modeling_method))
+    ax1.set_xlabel('lpm')
+    ax1.set_ylabel('Head (m)')
+    ax1.set_ylim(0, tdh_max*1.1)
+    ax1.legend(loc='best')
+    ax1.grid(True)

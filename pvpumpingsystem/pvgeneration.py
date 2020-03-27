@@ -2,8 +2,6 @@
 """
 Module for containing pvlib-python in a more convenient way.
 
-WORK IN PROGRESS !!
-
 @author: tylunel
 """
 
@@ -217,7 +215,7 @@ class PVGeneration:
         return {'weather_data': self.weather_data,
                 'weather_metadata': self.location}
 
-    # setter: allows to change weather data
+    # setter: allows to change weather data and dependances at the same time
     @weather_data_and_metadata.setter
     def weather_data_and_metadata(self, value):
         if isinstance(value, str):  # assumed to be the path of weather
@@ -262,6 +260,7 @@ class PVGeneration:
     def run_model(self):
         """
         Runs the modelchain of the PV generation.
+        See pvlib.modelchain.run_model() for more details.
         """
         # Running of the PV generation model
         self.modelchain.run_model(weather=self.weather_data)

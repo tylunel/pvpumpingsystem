@@ -15,6 +15,7 @@ For manual installation, the following dependencies are required:
 - Python 3.7 (https://www.python.org/download/releases/3.7/)
 - fluids (pip install fluids)
 - pvlib-python 0.7 (pip install pvlib==0.7)
+- numpy-financial (pip install numpy_financial)
 
 and common scientific dependencies that you can more easily install via Anaconda:
 - conda (pip install conda)

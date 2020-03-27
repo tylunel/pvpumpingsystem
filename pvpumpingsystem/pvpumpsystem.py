@@ -16,13 +16,10 @@ import time
 import pvlib
 import warnings
 
-import pvpumpingsystem.pump as pp
 import pvpumpingsystem.pipenetwork as pn
 import pvpumpingsystem.reservoir as rv
 import pvpumpingsystem.consumption as cs
-import pvpumpingsystem.mppt as mppt
 import pvpumpingsystem.finance as fin
-import pvpumpingsystem.pvgeneration as pvgen
 from pvpumpingsystem import errors
 
 
@@ -155,8 +152,7 @@ class PVPumpSystem(object):
 #            self.motorpump.modeling_method = model
 #            self.motorpump_model = model
 
-    def operating_point_noiteration(self,
-                                      plot=False, nb_pts=50, stop=8760):
+    def operating_point_noiteration(self, plot=False, nb_pts=50, stop=8760):
         """Finds the IV operating point(s) of the PV array and the pump
         (load).
 
@@ -512,13 +508,14 @@ def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
     return sol.x
 
 
-def operating_point_noiteration(params,
-                                  modules_per_string,
-                                  strings_per_inverter,
-                                  load_fctIfromVH=None,
-                                  load_interval_V=[-np.inf, np.inf],
-                                  pv_interval_V=[-np.inf, np.inf],
-                                  tdh=0):
+def operating_point_noiteration(
+        params,
+        modules_per_string,
+        strings_per_inverter,
+        load_fctIfromVH=None,
+        load_interval_V=[-np.inf, np.inf],
+        pv_interval_V=[-np.inf, np.inf],
+        tdh=0):
     """Finds the IV operating point(s) of the PV array and the load.
 
     Parameters
@@ -952,113 +949,3 @@ def calc_reservoir(reservoir, Q_pumped, Q_consumption):
     water_stored.index = Q_pumped.index
 
     return water_stored
-
-
-if __name__ == '__main__':
-    # %% set up
-
-    weather_data_WY = tools.read_wy_raw(
-        '../../pvpumpingsystem/pvpumpingsystem/'
-        'data/weather_files/Denver_real_weather_solar/'
-        'Denver_WY_1991_2005.csv')
-
-    _, weather_metadata = pvlib.iotools.epw.read_epw(
-        '../../pvpumpingsystem/pvpumpingsystem/'
-        'data/weather_files/USA_CO_Denver.Intl.AP.725650_TMY3.epw')
-
-    worst_year_mppt = 1992
-
-    weather_data_WY_worst_year = weather_data_WY[
-            weather_data_WY.index.year == worst_year_mppt]
-
-
-    pvgen1 = pvgen.PVGeneration(
-#            weather_data_and_metadata=(
-#                    'data/weather_files/CAN_PQ_Montreal.Intl.'
-#                    'AP.716270_CWEC_truncated.epw'),
-            weather_data_and_metadata={
-                    'weather_data': weather_data_WY_worst_year,
-                    'weather_metadata': weather_metadata},
-
-            pv_module_name='kyocera solar KU270 6MCA',
-            surface_tilt=45,
-            surface_azimuth=180,
-            albedo=0,
-            modules_per_string=3,
-            strings_per_inverter=1,
-            orientation_strategy=None,
-            clearsky_model='ineichen',
-            transposition_model='haydavies',
-            solar_position_method='nrel_numpy',
-            airmass_model='kastenyoung1989',
-            dc_model='desoto',
-            ac_model='pvwatts',
-            aoi_model='physical',
-            spectral_model='first_solar',
-            temperature_model='sapm',
-            losses_model='pvwatts')  # takes around 1.4s for 8760 hours
-
-    pvgen1.run_model()  # takes around 0.18s for 8760 hours
-
-    pump1 = pp.Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
-                    modeling_method='arab',
-                    price=1100,
-                    motor_electrical_architecture='permanent_magnet')
-
-    pipes1 = pn.PipeNetwork(h_stat=10,
-                            l_tot=100,
-                            diam=0.08,
-                            material='plastic',
-                            optimism=True)
-
-    reserv1 = rv.Reservoir(size=1000000,
-                           water_volume=0,
-                           price=1000)
-
-#    consum1 = cs.Consumption(constant_flow=1,
-#                             year = 1992)
-    # represents 1746L/day
-    consum1 = cs.Consumption(
-        repeated_flow=[0,   0,   0,   0,   0,   0,
-                       0.4,   0.8, 0.7, 1.3, 1.5, 1.6,
-                       2.4, 3.4, 1.4, 1.9, 2.2, 2.9,
-                       4.7, 2.6, 0.8, 0.4, 0.1,   0],
-        year=1992,
-        safety_factor=1)
-
-    mppt1 = mppt.MPPT(efficiency=0.96,
-                      price=1000)
-
-    pvps1 = PVPumpSystem(pvgen1,
-                         pump1,
-                         motorpump_model='arab',
-                         coupling='mppt',
-                         mppt=mppt1,
-                         pipes=pipes1,
-                         consumption=consum1,
-                         reservoir=reserv1)
-    # takes around 0.03s for 8760 hours
-
-# %% thing to try
-
-    # takes around 15.4s for 8760 hours with iteration
-    # takes around 5.2s for 8760 hours without iteration
-    pvps1.run_model(iteration=True)
-
-    print(pvps1.water_stored)
-    print('LLP: ', pvps1.llp)
-    print('initial_investment: {0} USD'.format(pvps1.initial_investment))
-    print('NPV: {0} USD'.format(pvps1.npv))
-    if pvps1.coupling == 'direct':
-        pvps1.operating_point_noiteration(plot=True)
-
-#    warnings.filterwarnings("ignore")  # disable all warnings
-#    pvps1.calc_flow()
-#    warnings.simplefilter("always")  # enable all warnings
-#    pvps1.calc_efficiency()
-#
-#    pvps1.operating_point_noiteration(plot=True)
-#    # TODO: pb here. The graph represents the I-V relation for only
-#    # one module, not the full array.
-#
-#    print(pvps1.flow[11:19][['I', 'V']])

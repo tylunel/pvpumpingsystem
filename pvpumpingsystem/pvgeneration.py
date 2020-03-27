@@ -5,12 +5,11 @@ Module for containing pvlib-python in a more convenient way.
 @author: tylunel
 """
 
-# TODO: add way to directly give the pv module specs
-
 import pvlib
 import difflib
 
 
+# TODO: add way to directly give the pv module specs
 class PVGeneration:
     """
     Class representing the power generation through the photovoltaic system.

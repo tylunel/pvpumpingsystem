@@ -96,12 +96,3 @@ def adapt_to_flow_pumped(Q_consumption, Q_pumped):
     Q_consumption = Q_consumption.loc[intersect]
 
     return Q_consumption
-
-
-if __name__ == '__main__':
-    consum = Consumption(repeated_flow=[0, 0, 0, 0, 0, 0,
-                                        15, 20, 15, 10, 10, 10,
-                                        10, 10, 10, 30, 30, 30,
-                                        0, 0, 0, 0, 0, 0],
-            safety_factor = 1.1)
-    print(consum.flow_rate[8:16])

@@ -11,7 +11,8 @@ import pandas as pd
 from itertools import count
 from matplotlib.pyplot import plot
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D  # needed for plotting in 3d
+# following line needed for plotting in 3d:
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 import scipy.optimize as opt
 import warnings
 import re
@@ -83,7 +84,7 @@ class Pump:
     """
     _ids = count(1)
 
-    def __init__(self, path,
+    def __init__(self, path,  # noqa: C901
                  lpm=None, tdh=None, current=None,
                  motor_electrical_architecture=None,
                  idname=None,

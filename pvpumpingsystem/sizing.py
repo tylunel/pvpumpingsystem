@@ -4,6 +4,7 @@ Module implementing sizing procedure to facilitate pv pumping station sizing.
 
 @author: Tanguy Lunel
 """
+# TODO: simplify function to remove C901 complexity issues
 
 import numpy as np
 import pandas as pd
@@ -111,7 +112,7 @@ def shrink_weather_worst_month(weather_data):
     return weather_worst_month
 
 
-def subset_respecting_llp_direct(pv_database, pump_database,
+def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
                                  weather_data, weather_metadata,
                                  pvps_fixture,
                                  llp_accepted=0.01,
@@ -291,7 +292,7 @@ def subset_respecting_llp_direct(pv_database, pump_database,
 # TODO: make this function work with the voltage range of mppt (once available)
 # so as to size M_s and M_p. For now only M_s changes, but correponds
 # actually more to the number of pv module than to nb of pv modules in series.
-def subset_respecting_llp_mppt(pv_database, pump_database,
+def subset_respecting_llp_mppt(pv_database, pump_database,    # noqa: C901
                                weather_data, weather_metadata,
                                pvps_fixture,
                                llp_accepted=0.01,

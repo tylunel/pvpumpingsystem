@@ -508,7 +508,8 @@ def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
     return sol.x
 
 
-def operating_point_noiteration(
+# TODO: simplify function for removing C901 lint error
+def operating_point_noiteration(  # noqa: C901
         params,
         modules_per_string,
         strings_per_inverter,

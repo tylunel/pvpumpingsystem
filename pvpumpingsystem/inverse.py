@@ -191,7 +191,7 @@ def inversefunc(func,
                     result = minimize_scalar(optimizer, **min_kwargs)
                 results[j] = result.x
                 resultsmask[j] = result.success
-            except:
+            except:  # noqa: E722
                 resultsmask[j] = False
         if any(~resultsmask):
             warnings.warn("Trouble calculating inverse for values: "
@@ -297,7 +297,7 @@ def _auto_ymin(func, args, xmin, xmax, trend):
         try:
             with warnings.catch_warnings(record=True):
                 ymin = func(xmin, *args) if trend == 1 else func(xmax, *args)
-        except:
+        except:  # noqa: E722
             raise ValueError("Cannot automatically calculate the lower limit "
                              "of the image please inclue it as a parameter")
     return ymin
@@ -310,7 +310,7 @@ def _auto_ymax(func, args, xmin, xmax, trend):
         try:
             with warnings.catch_warnings(record=True):
                 ymax = func(xmax, *args) if trend == 1 else func(xmin, *args)
-        except:
+        except:  # noqa: E722
             raise ValueError("Cannot automatically calculate the upper limit "
                              "of the image please include it as a parameter")
     return ymax

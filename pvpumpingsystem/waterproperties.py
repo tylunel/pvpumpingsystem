@@ -4,6 +4,7 @@ Gives water properties in various physical conditions.
 
 @author: Adapted from Louis Lamarche by Tanguy Lunel
 """
+# flake8: noqa: C901
 
 import numpy as np
 

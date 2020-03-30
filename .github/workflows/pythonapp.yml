@@ -49,8 +49,6 @@ jobs:
         # '--max-complexity=10': maximum complexity over which C901 is raised
         # check 'https://flake8.pycqa.org/en/latest/user/options.html#' for full list of options
 
-jobs:
-  build:
     runs-on: vs2017-win2016
 
     steps:

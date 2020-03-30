@@ -45,7 +45,7 @@ jobs:
     - name: Test with pytest
       run: |
         pip install pytest pytest-cov
-        pytest test/ --cov=pvpumpingsystem
+        pytest --cov=pvpumpingsystem
         # test/ is the folder in which the tests to run are located
 
     #- name: codecov  (Does not seems to actually work for now)

@@ -37,7 +37,7 @@ jobs:
       run: |
         pip install flake8
         # Linter: raises error if code does not respect PEP8 style guidelines
-        flake8 . --count --exit-zero --max-complexity=12 --max-line-length=79 --exclude= *test_sizing.py
+        flake8 . --count --max-complexity=12 --max-line-length=79
         # '--exit-zero': treats all errors as warnings and force to exit with success
         # '--max-complexity=10': maximum complexity over which C901 is raised
         # check 'https://flake8.pycqa.org/en/latest/user/options.html#' for full list of options
@@ -45,7 +45,7 @@ jobs:
     - name: Test with pytest
       run: |
         pip install pytest pytest-cov
-        pytest --cov=pvpumpingsystem
+        pytest pvpumpingsystem --cov=pvpumpingsystem
         # test/ is the folder in which the tests to run are located
 
     #- name: codecov  (Does not seems to actually work for now)

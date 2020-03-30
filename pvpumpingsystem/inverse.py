@@ -7,7 +7,6 @@ Some minor changes are made to fit better with pvpumpingsystem project.
 
 @author:  Alvaro Sanchez-Gonzalez, Tanguy Lunel
 """
-# flake 8: noqa: C901
 
 import numpy as np
 import warnings
@@ -17,7 +16,7 @@ from scipy.optimize import minimize_scalar
 __all__ = ['inversefunc']
 
 
-def inversefunc(func,
+def inversefunc(func,  # noqa: C901
                 y_values=None,
                 domain=None,
                 image=None,
@@ -215,7 +214,7 @@ def inversefunc(func,
         return inv(y_values)
 
 
-def _normparams_inversefunc(domain, image, open_domain, args):
+def _normparams_inversefunc(domain, image, open_domain, args):  # noqa: C901
 
     if not isinstance(args, tuple):
         args = (args,)

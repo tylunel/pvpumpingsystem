@@ -7,6 +7,8 @@ Some minor changes are made to fit better with pvpumpingsystem project.
 
 @author:  Alvaro Sanchez-Gonzalez, Tanguy Lunel
 """
+# flake 8: noqa: C901
+
 import numpy as np
 import warnings
 

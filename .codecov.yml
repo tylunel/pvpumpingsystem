@@ -23,6 +23,7 @@ coverage:
       tests:
         target: 70%
         paths:
-          - "pvpumpingsystem/test/.*"
+          #- "pvpumpingsystem/test/.*"
+          - "pvpumpingsystem/.*"
 
 comment: off

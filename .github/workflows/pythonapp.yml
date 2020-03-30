@@ -47,10 +47,10 @@ jobs:
         pytest pvpumpingsystem --junitxml=junit/test-results.xml --cov --cov-report=xml --cov-report=html
         #pytest pvpumpingsystem --cov=pvpumpingsystem --cov-report=xml --cov-report=html
 
-    #- task: PublishTestResults@2
-    #  inputs:
-    #    testResultsFiles: '**/test-results.xml'
-    #    testRunTitle: 'Linux $(python.version)'
+    - uses: PublishTestResults@2
+      inputs:
+        testResultsFiles: '**/test-results.xml'
+        testRunTitle: 'Linux $(python.version)'
     #- task: PublishCodeCoverageResults@1
     #  inputs:
     #    codeCoverageTool: Cobertura

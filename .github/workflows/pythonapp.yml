@@ -33,17 +33,18 @@ jobs:
         pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
         pip install matplotlib sklearn tqdm fluids numpy_financial
 
-    - name: Test with pytest
-      run: |
-        pip install pytest pytest-cov
-        pytest pvpumpingsystem --cov=pvpumpingsystem --cov-report=xml --cov-report=html
+    #- name: Test with pytest
+    #  run: |
+    #    pip install pytest pytest-cov
+    #    pytest pvpumpingsystem --cov=pvpumpingsystem --cov-report=xml --cov-report=html
         # pvpumpingsystemm is the folder in which the tests to run are located
 
-    - run: |
+    - name: Test with pytest
+      run: |
         #source activate test_env
         pytest pvpumpingsystem --junitxml=junit/test-results.xml --cov --cov-report=xml --cov-report=html
         #pytest pvpumpingsystem --cov=pvpumpingsystem --cov-report=xml --cov-report=html
-      displayName: 'pytest'
+
     #- task: PublishTestResults@2
     #  inputs:
     #    testResultsFiles: '**/test-results.xml'
@@ -56,7 +57,6 @@ jobs:
     #  condition: eq(variables['coverage'], true)
     - run: |
         bash <(curl https://codecov.io/bash) -t 3168bf2e-ee39-4900-bb7d-54c94b84aad9 -f coverage.xml -F adder -F subtractor -F conda
-      displayName: 'codecov'
       condition: eq(variables['coverage'], true)
 
 

@@ -57,7 +57,7 @@ jobs:
     #  condition: eq(variables['coverage'], true)
     - run: |
         bash <(curl https://codecov.io/bash) -t 3168bf2e-ee39-4900-bb7d-54c94b84aad9 -f coverage.xml -F adder -F subtractor -F conda
-      condition: eq(variables['coverage'], true)
+     # condition: eq(variables['coverage'], true)
 
 
     - name: Lint with flake8

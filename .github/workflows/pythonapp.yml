@@ -45,11 +45,11 @@ jobs:
     - name: Test with pytest
       run: |
         pip install pytest pytest-cov
-        pytest pvpumpingsystem --cov=pvpumpingsystem --cov-report=xml --cov-report=html
+        pytest pvpumpingsystem --cov=pvpumpingsystem --cov-report=xml --cov-report=html test/
         # pvpumpingsystemm is the folder in which the tests to run are located
 
-    - task: PublishCodeCoverageResults@1
-      inputs:
-        codeCoverageTool: Cobertura
-        summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
-        reportDirectory: '$(System.DefaultWorkingDirectory)/**/htmlcov'
+    #- task: PublishCodeCoverageResults@1
+    #  inputs:
+    #    codeCoverageTool: Cobertura
+    #    summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
+    #    reportDirectory: '$(System.DefaultWorkingDirectory)/**/htmlcov'

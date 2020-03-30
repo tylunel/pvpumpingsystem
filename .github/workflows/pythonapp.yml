@@ -44,23 +44,9 @@ jobs:
     - name: Test with pytest
       run: |
         pip install pytest pytest-cov
-        pytest pvpumpingsystem --junitxml=junit/test-results.xml --cov --cov-report=xml --cov-report=html
-        #pytest pvpumpingsystem --cov=pvpumpingsystem --cov-report=xml --cov-report=html
-
-    - uses: PublishTestResults@2
-      inputs:
-        testResultsFiles: '**/test-results.xml'
-        testRunTitle: 'Linux $(python.version)'
-    #- task: PublishCodeCoverageResults@1
-    #  inputs:
-    #    codeCoverageTool: Cobertura
-    #    summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.xml'
-    #    reportDirectory: '$(System.DefaultWorkingDirectory)/**/htmlcov'
-    #  condition: eq(variables['coverage'], true)
-    - run: |
+        #pytest pvpumpingsystem --junitxml=junit/test-results.xml --cov --cov-report=xml --cov-report=html
+        pytest pvpumpingsystem --cov=pvpumpingsystem --cov-report=xml --cov-report=html
         bash <(curl https://codecov.io/bash) -t 3168bf2e-ee39-4900-bb7d-54c94b84aad9 -f coverage.xml -F adder -F subtractor -F conda
-     # condition: eq(variables['coverage'], true)
-
 
     - name: Lint with flake8
       run: |

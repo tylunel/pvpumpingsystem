@@ -42,7 +42,7 @@ jobs:
     - script: |
         #source activate test_env
         pytest pvpumpingsystem --junitxml=junit/test-results.xml --cov --cov-report=xml --cov-report=html
-	#pytest pvpumpingsystem --cov=pvpumpingsystem --cov-report=xml --cov-report=html
+        #pytest pvpumpingsystem --cov=pvpumpingsystem --cov-report=xml --cov-report=html
       displayName: 'pytest'
     - task: PublishTestResults@2
       inputs:

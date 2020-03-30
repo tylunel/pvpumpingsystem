@@ -1,9 +1,4 @@
-- name: Codecov
-  uses: codecov/codecov-action@v1.0.3
-
 codecov:
-  token: 3168bf2e-ee39-4900-bb7d-54c94b84aad9
-
   notify:
     require_ci_to_pass: no
 
@@ -11,7 +6,7 @@ coverage:
   status:
     patch:
       default:
-        target: 50%
+        target: 100%
         if_no_uploads: error
         if_not_found: success
         if_ci_failed: failure
@@ -23,8 +18,10 @@ coverage:
         if_not_found: success
         if_ci_failed: failure
         paths:
-          - "pvpumpingsystem/(\w+/)?[^/]+\.py$"
+          - "pvpumpingsystem(\w+/)?[^/]+\.py$"
       tests:
-        target: 50%
+        target: 70%
         paths:
           - "pvpumpingsystem/test/.*"
+
+comment: off

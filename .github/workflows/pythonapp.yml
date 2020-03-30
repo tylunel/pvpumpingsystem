@@ -37,7 +37,7 @@ jobs:
       run: |
         pip install flake8
         # Linter: raises error if code does not respect PEP8 style guidelines
-        flake8 . --count --max-complexity=12 --max-line-length=79 --exclude= *test_sizing.py
+        flake8 . --count --exit-zero --max-complexity=12 --max-line-length=79 --exclude= *test_sizing.py
         # '--exit-zero': treats all errors as warnings and force to exit with success
         # '--max-complexity=10': maximum complexity over which C901 is raised
         # check 'https://flake8.pycqa.org/en/latest/user/options.html#' for full list of options

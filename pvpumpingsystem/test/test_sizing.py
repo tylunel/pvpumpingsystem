@@ -2,7 +2,7 @@
 """
 @author: tylunel
 """
-# flake 8: noqa
+# flake8: noqa
 
 import pytest
 import pvlib

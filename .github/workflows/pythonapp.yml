@@ -45,7 +45,7 @@ jobs:
     - name: Test with pytest
       run: |
         pip install pytest pytest-cov
-        pytest pvpumpingsystem --cov=pvpumpingsystem --cov-report=xml --cov-report=html test/
+        pytest pvpumpingsystem --cov=pvpumpingsystem --cov-report=xml --cov-report=html
         # pvpumpingsystemm is the folder in which the tests to run are located
 
     #- task: PublishCodeCoverageResults@1

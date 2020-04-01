@@ -8,7 +8,6 @@ on: [push, pull_request]
 
 jobs:
   build:
-
     
     ## Decide which environnement the package will be tested on
     #runs-on: ${{ matrix.os }}
@@ -36,16 +35,11 @@ jobs:
         pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
         pip install matplotlib sklearn tqdm fluids numpy_financial
 
-    #- name: Test with pytest
-    #  run: |
-    #    pip install pytest pytest-cov
-    #    pytest pvpumpingsystem --cov=pvpumpingsystem --cov-report=xml --cov-report=html
-        # pvpumpingsystemm is the folder in which the tests to run are located
-
     - name: Test with pytest
       run: |
         pip install pytest pytest-cov
-        pytest pvpumpingsystem --cov=pvpumpingsystem --cov-report=xml --cov-report=html
+        pytest pvpumpingsystem --cov=pvpumpingsystem
+        # pytest pvpumpingsystem --cov=pvpumpingsystem --cov-report=xml --cov-report=html
         bash <(curl https://codecov.io/bash) -t 3168bf2e-ee39-4900-bb7d-54c94b84aad9 -f coverage.xml -F adder -F subtractor -F conda
 
     - name: Lint with flake8

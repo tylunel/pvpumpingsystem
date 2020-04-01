@@ -21,11 +21,6 @@ and common scientific dependencies that you can more easily install via Anaconda
 - conda (pip install conda)
 
 
-# Manual
-
-------- readthedocs documentation coming soon ------------------
-
-
 # Hands-on start
 
 Two examples of how the software can be run are in the folder 'examples'. 

@@ -3,22 +3,15 @@ name: CI general checks
 # General info on YAML syntax:
 # - no tabs, only spaces
 
-# Trigger the workflow on push or pull request
-on: [push, pull_request]
+on: [push, pull_request]  # Trigger the workflow on push or pull request
 
 jobs:
   build:
-    
-    ## Decide which environnement the package will be tested on
-    #runs-on: ${{ matrix.os }}
-    #strategy:
-    #  matrix:
-    #    os: [ubuntu-latest, vs2017-win2016]
 
     runs-on: ubuntu-latest
 
     steps:
-    # make a copy of concerned repository's code, for being used later. '@v1' get the stable version. Not clear why I still need to install pvpumpingsystem later..
+    # make a copy of concerned repository's code, for being used later. '@v1' get the stable version. Not clear why I still need to install pvpumpingsystem later...
     - name: Checkout
       uses: actions/checkout@v1
 
@@ -28,12 +21,11 @@ jobs:
         python-version: 3.7
 
     - name: Install dependencies
-      run: |  # The pipe (|) is a tool allowing us to write multiple lines that execute independently without having to use multiple run commands or multiple jobs.
+      run: |       # The pipe (|) is a tool allowing us to write multiple lines that execute independently without having to use multiple run commands or multiple jobs.
         python -m pip install --upgrade pip
-        # pip install git+https://github.com/tylunel/pvlib-python@all_changes#egg=pvlib  # It is possible to specify the branch we want to download with @<branch>
-        pip install git+https://github.com/pvlib/pvlib-python#egg=pvlib  # still useful because last changes are not in the last release that can be found on pip
+        # pip install git+https://github.com/tylunel/pvlib-python@all_changes#egg=pvlib  # Useful for testing with unreleased changes on pvlib-python. Specifies which branch to download with @<branch>
         pip install git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
-        pip install matplotlib sklearn tqdm fluids numpy_financial
+        pip install pvlib matplotlib sklearn tqdm fluids numpy_financial
 
     - name: Test with pytest and coverage.py
       run: |

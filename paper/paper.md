@@ -11,17 +11,15 @@ authors:
   - name: Tanguy R. Lunel
     orcid: 0000-0003-3008-1422
     affiliation: "1, 2"
-  - name: Daniel Rousse
+  - name: Daniel R. Rousse
     orcid: 0000-0002-7247-5705
     affiliation: 1
 affiliations:
- - name: Industrial research group in technologies of energy and energy efficiency (t3e), 
-Department of Mechanical Sciences, Ecole de Technologie Supérieure Montreal
+ - name: Industrial research group in technologies of energy and energy efficiency (t3e), Department of Mechanical Sciences, Ecole de Technologie Supérieure Montreal
    index: 1
- - name: Department of Material Science and Engineering, 
-Institut National des Sciences Appliquées Rennes
+ - name: Department of Material Science and Engineering, Institut National des Sciences Appliquées Rennes
    index: 2
-date: 25 March 2020
+date: 14 April 2020
 bibliography: paper.bib
 ---
 

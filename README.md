@@ -1,3 +1,5 @@
+![CI general checks](https://github.com/tylunel/pvpumpingsystem/workflows/CI%20general%20checks/badge.svg?branch=master)
+
 # pvpumpingsystem
 "pvpumpingsystem" is a package providing tools for modeling and sizing photovoltaic water pumping systems.
 

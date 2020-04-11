@@ -38,18 +38,13 @@ def test_init(pumpset):
 def test_all_models_coeffs(pumpset):
     """
     Assert that all models manage to have a r_squared value of minimum 0.8
+    after the curve_fit.
     """
-    # Arab model
-    assert pumpset.coeffs['r_squared_f1'] > 0.8
-    # Kou model
-    pumpset.modeling_method = 'kou'
-    assert pumpset.coeffs['r_squared_f1'] > 0.8
-    # theoretical model
-    pumpset.modeling_method = 'theoretical'
-    assert pumpset.coeffs['r_squared_f1'] > 0.8
-    # Hamidat model
-    pumpset.modeling_method = 'hamidat'
-    assert pumpset.coeffs['r_squared_f2'] > 0.8
+
+    for model in ['arab', 'kou', 'theoretical', 'hamidat']:
+        # sets the model to use and redo the curve-fit
+        pumpset.modeling_method = model
+        assert pumpset.coeffs['r_squared_f2'] > 0.8
 
 
 def test_functIforVH(pumpset):
@@ -57,21 +52,25 @@ def test_functIforVH(pumpset):
     Test if the output functV works well,
     and if this function is able to correctly raise errors.
     """
-    # check standard deviation
-    functI, intervals = pumpset.functIforVH()
+    for model in ['arab', 'kou', 'theoretical']:
+        pumpset.modeling_method = model
+        # check standard deviation
+        functI, intervals = pumpset.functIforVH()
 
-    # check computing through functV
-    res = functI(80, 20)
-    res_expected = 3.2861
-    np.testing.assert_allclose(res, res_expected,
-                               rtol=1)
+        # check computing through functV
+        res = functI(80, 20)
+        res_expected = 3.3
+        np.testing.assert_allclose(
+                res,
+                res_expected,
+                rtol=0.05)  # 1% relative error accepted between the models
 
-    # check the raising of errors
-    with pytest.raises(errors.VoltageError):
-        functI(50, 20)
+        # check the raising of errors
+        with pytest.raises(errors.VoltageError):
+            functI(50, 20)
 
-    # check desactivation of error raising (if not working, raises errors)
-    functI(7, 120, error_raising=False)
+        # check desactivation of error raising (if not working, raises errors)
+        functI(7, 120, error_raising=False)
 
 
 def test_functQforPH(pumpset):
@@ -79,20 +78,23 @@ def test_functQforPH(pumpset):
     Test whether the output functV works well,
     and if this function is able to correctly raise errors.
     """
-    # check standard deviation
-    functQ, stddev = pumpset.functQforPH()
+    for model in ['arab', 'kou', 'theoretical', 'hamidat']:
+        # sets the model to use and redo the curve-fit
+        pumpset.modeling_method = model
+        # check standard deviation
+        functQ, stddev = pumpset.functQforPH()
 
-    # check computing through functV
-    res = functQ(400, 20)['Q']
-    res_expected = 36.27
-    np.testing.assert_allclose(res, res_expected,
-                               rtol=0.1)
+        # check computing through functV
+        res = functQ(400, 20)['Q']
+        res_expected = 36.27
+        np.testing.assert_allclose(res, res_expected,
+                                   rtol=0.05)
 
-    # check the processing of unused power when head is too high
-    res = functQ(560, 80)['P_unused']
-    res_expected = 560
-    np.testing.assert_allclose(res, res_expected,
-                               rtol=0.1)
+        # check the processing of unused power when head is too high
+        res = functQ(560, 81)['P_unused']
+        res_expected = 560
+        np.testing.assert_allclose(res, res_expected,
+                                   rtol=0.05)
 
 
 def test_iv_curve_data(pumpset):

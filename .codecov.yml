@@ -3,17 +3,21 @@ codecov:
     require_ci_to_pass: yes
 
 coverage:
+  precision: 2
+  round: down
+  range: "50...100"  # determine the range of color used on codecov dashboard (from red to green)
+
   status:
     patch:
       default:
-        target: 100%
+        target: 90%
         if_no_uploads: error
         if_not_found: success
         if_ci_failed: failure
     project:
       default: false
       library:
-        target: 50%
+        target: 70%
         if_no_uploads: error
         if_not_found: success
         if_ci_failed: failure

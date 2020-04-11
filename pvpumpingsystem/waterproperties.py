@@ -59,7 +59,7 @@ def water_prop(name,  T):
             'st',
             'betaf'
     T: float,
-        Temperature at which the property is wanted
+        Temperature for which the property is searched
         N.B.:
             if name == 'temp', T must be replaced by pression [in bar]
 
@@ -241,17 +241,9 @@ def water_prop(name,  T):
              'kf', 'kg', 'Prf', 'Prg', 'st', 'betaf']
 
     for case in Switch(name):
-        if case('temp'):
-            y = properties_table[:, 0]
-            x = properties_table[:, 1]
-            pmin = x[0]
-            pmax = x[x.size-1]
-            if T < pmin or T > pmax:
-                print('Warning: T is out of the table: data extrapolated')
-            p = np.interp(T, x,  y)
-            break
-        if case('muf', 'mug'):
-            i = label.index(name)
+        if case('rhof'):
+            name2 = 'vf'
+            i = label.index(name2)
             y = properties_table[:, i]
             x = properties_table[:, 0]
             Tmin = x[0]
@@ -259,7 +251,7 @@ def water_prop(name,  T):
             if T < Tmin or T > Tmax:
                 print('Warning: T is out of the table: data extrapolated')
             p = np.interp(T, x,  y)
-            p = p*10**-6
+            p = 1000.0/p
             break
         if case('nuf'):
             name1 = 'muf'
@@ -277,145 +269,159 @@ def water_prop(name,  T):
             p2 = np.interp(T, x,  y)
             p = p1*p2*10**-9
             break
-        if case('nug'):
-            name1 = 'mug'
-            i = label.index(name1)
-            y = properties_table[:, i]
-            x = properties_table[:, 0]
-            Tmin = x[0]
-            Tmax = x[x.size-1]
-            if T < Tmin or T > Tmax:
-                print('Warning: T is out of the table: data extrapolated')
-            p1 = np.interp(T, x,  y)
-            name2 = 'vg'
-            i = label.index(name2)
-            y = properties_table[:, i]
-            p2 = np.interp(T, x,  y)
-            p = p1*p2*10**-6
-            break
-        if case('alg'):
-            name1 = 'kg'
-            i = label.index(name1)
-            y = properties_table[:, i]
-            x = properties_table[:, 0]
-            Tmin = x[0]
-            Tmax = x[x.size-1]
-            if T < Tmin or T > Tmax:
-                print('Warning: T is out of the table: data extrapolated')
-            p1 = np.interp(T, x,  y)
-            name2 = 'vg'
-            i = label.index(name2)
-            y = properties_table[:, i]
-            p2 = np.interp(T, x,  y)
-            name3 = 'Cpg'
-            i = label.index(name2)
-            y = properties_table[:, i]
-            p3 = np.interp(T, x,  y)
-            p = (p1*p2/p3)*10**-6
-            break
-        if case('alf'):
-            name1 = 'kf'
-            i = label.index(name1)
-            y = properties_table[:, i]
-            x = properties_table[:, 0]
-            Tmin = x[0]
-            Tmax = x[x.size-1]
-            if T < Tmin or T > Tmax:
-                print('Warning: T is out of the table: data extrapolated')
-            p1 = np.interp(T, x,  y)
-            name2 = 'vf'
-            i = label.index(name2)
-            y = properties_table[:, i]
-            p2 = np.interp(T, x,  y)
-            name3 = 'Cpf'
-            i = label.index(name3)
-            y = properties_table[:, i]
-            p3 = np.interp(T, x,  y)
-            p = (p1*p2/p3)*10**-9
-            break
-        if case('kf', 'kg', 'st'):
-            i = label.index(name)
-            y = properties_table[:, i]
-            x = properties_table[:, 0]
-            Tmin = x[0]
-            Tmax = x[x.size-1]
-            if T < Tmin or T > Tmax:
-                print('Warning: T is out of the table: data extrapolated')
-            p = np.interp(T, x,  y)
-            p = p*10**-3
-            break
-        if case('Cpf', 'Cpg', 'hfg'):
-            i = label.index(name)
-            y = properties_table[:, i]
-            x = properties_table[:, 0]
-            Tmin = x[0]
-            Tmax = x[x.size-1]
-            if T < Tmin or T > Tmax:
-                print('Warning: T is out of the table: data extrapolated')
-            p = np.interp(T, x,  y)
-            p = p*10**3
-            break
-        if case('vf'):
-            i = label.index(name)
-            y = properties_table[:, i]
-            x = properties_table[:, 0]
-            Tmin = x[0]
-            Tmax = x[x.size-1]
-            if T < Tmin or T > Tmax:
-                print('Warning: T is out of the table: data extrapolated')
-            p = np.interp(T, x,  y)
-            p = p*10**-3
-            break
-        if case('rhof'):
-            name2 = 'vf'
-            i = label.index(name2)
-            y = properties_table[:, i]
-            x = properties_table[:, 0]
-            Tmin = x[0]
-            Tmax = x[x.size-1]
-            if T < Tmin or T > Tmax:
-                print('Warning: T is out of the table: data extrapolated')
-            p = np.interp(T, x,  y)
-            p = 1000.0/p
-            break
-        if case('rhog'):
-            name2 = 'vg'
-            i = label.index(name2)
-            y = properties_table[:, i]
-            x = properties_table[:, 0]
-            Tmin = x[0]
-            Tmax = x[x.size-1]
-            if T < Tmin or T > Tmax:
-                print('Warning: T is out of the table: data extrapolated')
-            p = np.interp(T, x,  y)
-            p = 1000.0/p
-            break
-        if case('betaf'):
-            i = label.index(name)
-            y = properties_table[:, i]
-            x = properties_table[:, 0]
-            Tmin = x[0]
-            Tmax = x[x.size-1]
-            if T < Tmin or T > Tmax:
-                print('Warning: T is out of the table: data extrapolated')
-            p = np.interp(T, x,  y)
-            p = p*10**-6
-            break
-        i = label.index(name)
-        y = properties_table[:, i]
-        x = properties_table[:, 0]
-        Tmin = x[0]
-        Tmax = x[x.size-1]
-        if T < Tmin or T > Tmax:
-            print('Warning: T is out of the table: data extrapolated')
-        p = np.interp(T, x,  y)
-    return p
-
-
-def vap_p(Tk):
-    """Compute vapor pressure of water.
-    Tk is given in Kelvin"""
-    T = Tk - 273.15
-    p = 6.11*10**(7.5*T/(237.3+T))
-    p = p*100.0
+# THE FOLLOWING IS NOT USED IN PVPUMPINGSYSTEM, BUT MAY BE USED LATER
+# OR FOR OTHER PROJECT
+#        if case('temp'):
+#            y = properties_table[:, 0]
+#            x = properties_table[:, 1]
+#            pmin = x[0]
+#            pmax = x[x.size-1]
+#            if T < pmin or T > pmax:
+#                print('Warning: T is out of the table: data extrapolated')
+#            p = np.interp(T, x,  y)
+#            break
+#        if case('muf', 'mug'):
+#            i = label.index(name)
+#            y = properties_table[:, i]
+#            x = properties_table[:, 0]
+#            Tmin = x[0]
+#            Tmax = x[x.size-1]
+#            if T < Tmin or T > Tmax:
+#                print('Warning: T is out of the table: data extrapolated')
+#            p = np.interp(T, x,  y)
+#            p = p*10**-6
+#            break
+#
+#        if case('nug'):
+#            name1 = 'mug'
+#            i = label.index(name1)
+#            y = properties_table[:, i]
+#            x = properties_table[:, 0]
+#            Tmin = x[0]
+#            Tmax = x[x.size-1]
+#            if T < Tmin or T > Tmax:
+#                print('Warning: T is out of the table: data extrapolated')
+#            p1 = np.interp(T, x,  y)
+#            name2 = 'vg'
+#            i = label.index(name2)
+#            y = properties_table[:, i]
+#            p2 = np.interp(T, x,  y)
+#            p = p1*p2*10**-6
+#            break
+#        if case('alg'):
+#            name1 = 'kg'
+#            i = label.index(name1)
+#            y = properties_table[:, i]
+#            x = properties_table[:, 0]
+#            Tmin = x[0]
+#            Tmax = x[x.size-1]
+#            if T < Tmin or T > Tmax:
+#                print('Warning: T is out of the table: data extrapolated')
+#            p1 = np.interp(T, x,  y)
+#            name2 = 'vg'
+#            i = label.index(name2)
+#            y = properties_table[:, i]
+#            p2 = np.interp(T, x,  y)
+#            name3 = 'Cpg'
+#            i = label.index(name2)
+#            y = properties_table[:, i]
+#            p3 = np.interp(T, x,  y)
+#            p = (p1*p2/p3)*10**-6
+#            break
+#        if case('alf'):
+#            name1 = 'kf'
+#            i = label.index(name1)
+#            y = properties_table[:, i]
+#            x = properties_table[:, 0]
+#            Tmin = x[0]
+#            Tmax = x[x.size-1]
+#            if T < Tmin or T > Tmax:
+#                print('Warning: T is out of the table: data extrapolated')
+#            p1 = np.interp(T, x,  y)
+#            name2 = 'vf'
+#            i = label.index(name2)
+#            y = properties_table[:, i]
+#            p2 = np.interp(T, x,  y)
+#            name3 = 'Cpf'
+#            i = label.index(name3)
+#            y = properties_table[:, i]
+#            p3 = np.interp(T, x,  y)
+#            p = (p1*p2/p3)*10**-9
+#            break
+#        if case('kf', 'kg', 'st'):
+#            i = label.index(name)
+#            y = properties_table[:, i]
+#            x = properties_table[:, 0]
+#            Tmin = x[0]
+#            Tmax = x[x.size-1]
+#            if T < Tmin or T > Tmax:
+#                print('Warning: T is out of the table: data extrapolated')
+#            p = np.interp(T, x,  y)
+#            p = p*10**-3
+#            break
+#        if case('Cpf', 'Cpg', 'hfg'):
+#            i = label.index(name)
+#            y = properties_table[:, i]
+#            x = properties_table[:, 0]
+#            Tmin = x[0]
+#            Tmax = x[x.size-1]
+#            if T < Tmin or T > Tmax:
+#                print('Warning: T is out of the table: data extrapolated')
+#            p = np.interp(T, x,  y)
+#            p = p*10**3
+#            break
+#        if case('vf'):
+#            i = label.index(name)
+#            y = properties_table[:, i]
+#            x = properties_table[:, 0]
+#            Tmin = x[0]
+#            Tmax = x[x.size-1]
+#            if T < Tmin or T > Tmax:
+#                print('Warning: T is out of the table: data extrapolated')
+#            p = np.interp(T, x,  y)
+#            p = p*10**-3
+#            break
+#        if case('rhof'):
+#            name2 = 'vf'
+#            i = label.index(name2)
+#            y = properties_table[:, i]
+#            x = properties_table[:, 0]
+#            Tmin = x[0]
+#            Tmax = x[x.size-1]
+#            if T < Tmin or T > Tmax:
+#                print('Warning: T is out of the table: data extrapolated')
+#            p = np.interp(T, x,  y)
+#            p = 1000.0/p
+#            break
+#        if case('rhog'):
+#            name2 = 'vg'
+#            i = label.index(name2)
+#            y = properties_table[:, i]
+#            x = properties_table[:, 0]
+#            Tmin = x[0]
+#            Tmax = x[x.size-1]
+#            if T < Tmin or T > Tmax:
+#                print('Warning: T is out of the table: data extrapolated')
+#            p = np.interp(T, x,  y)
+#            p = 1000.0/p
+#            break
+#        if case('betaf'):
+#            i = label.index(name)
+#            y = properties_table[:, i]
+#            x = properties_table[:, 0]
+#            Tmin = x[0]
+#            Tmax = x[x.size-1]
+#            if T < Tmin or T > Tmax:
+#                print('Warning: T is out of the table: data extrapolated')
+#            p = np.interp(T, x,  y)
+#            p = p*10**-6
+#            break
+#        i = label.index(name)
+#        y = properties_table[:, i]
+#        x = properties_table[:, 0]
+#        Tmin = x[0]
+#        Tmax = x[x.size-1]
+#        if T < Tmin or T > Tmax:
+#            print('Warning: T is out of the table: data extrapolated')
+#        p = np.interp(T, x,  y)
     return p

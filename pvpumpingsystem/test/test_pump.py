@@ -35,6 +35,29 @@ def test_init(pumpset):
     assert type(pumpset.coeffs['coeffs_f1']) is np.ndarray
 
 
+def test_incomplete_pump_data():
+    # This pump data has no information on efficiency
+    pump_testfile = os.path.join(
+            test_dir, '../data/pump_files/rosen_SC33-158-D380-9200.txt')
+    # The initialization recalculates the current used based on a constant
+    # efficiency.
+    pumpset = pp.Pump(path=pump_testfile,
+                      modeling_method='theoretical',
+                      motor_electrical_architecture='permanent_magnet')
+    # check that the current values are not all the same
+    assert not (pumpset.specs.current[0] == pumpset.specs.current[1:]).all()
+
+    functI, intervals = pumpset.functIforVH()
+    res = functI(540, 50)
+    res_expected = 17.94
+    np.testing.assert_allclose(res, res_expected, rtol=0.05)
+
+    functQ, intervals = pumpset.functQforVH()
+    res = functQ(540, 50)['Q']
+    res_expected = 341.3
+    np.testing.assert_allclose(res, res_expected, rtol=0.05)
+
+
 def test_all_models_coeffs(pumpset):
     """
     Assert that all models manage to have a r_squared value of minimum 0.8
@@ -63,7 +86,7 @@ def test_functIforVH(pumpset):
         np.testing.assert_allclose(
                 res,
                 res_expected,
-                rtol=0.05)  # 1% relative error accepted between the models
+                rtol=0.05)  # 5% relative error accepted between the models
 
         # check the raising of errors
         with pytest.raises(errors.VoltageError):

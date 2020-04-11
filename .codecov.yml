@@ -5,7 +5,7 @@ codecov:
 coverage:
   precision: 2
   round: down
-  range: "50...100"  # determine the range of color used on codecov dashboard (from red to green)
+  range: "0...100"  # determine the range of color used on codecov dashboard (from red to green)
 
   status:
     patch:

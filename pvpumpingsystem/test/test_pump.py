@@ -54,7 +54,7 @@ def test_incomplete_pump_data():
 
     functQ, intervals = pumpset.functQforVH()
     res = functQ(540, 50)['Q']
-    res_expected = 341.3
+    res_expected = 487
     np.testing.assert_allclose(res, res_expected, rtol=0.05)
 
 

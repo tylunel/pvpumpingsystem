@@ -216,7 +216,23 @@ class Pump:
         elif model.lower() == 'theoretical':
             self.coeffs = _curves_coeffs_theoretical(
                     self.specs, self.data_completeness,
-                    self.motor_electrical_architecture)
+                    self.motor_electrical_architecture,
+                    force_model='flexible')
+        elif model.lower() == 'theoretical_cst_efficiency':
+            self.coeffs = _curves_coeffs_theoretical(
+                    self.specs, self.data_completeness,
+                    self.motor_electrical_architecture,
+                    force_model='constant_efficiency')
+        elif model.lower() == 'theoretical_basic':
+            self.coeffs = _curves_coeffs_theoretical(
+                    self.specs, self.data_completeness,
+                    self.motor_electrical_architecture,
+                    force_model='basic')
+        elif model.lower() == 'theoretical_var_efficiency':
+            self.coeffs = _curves_coeffs_theoretical(
+                    self.specs, self.data_completeness,
+                    self.motor_electrical_architecture,
+                    force_model='variable_efficiency')
         else:
             raise NotImplementedError(
                 "The requested modeling method is not available. Check your "
@@ -500,7 +516,7 @@ class Pump:
             return self.functQforPH_Arab()
         if self.modeling_method == 'hamidat':
             return self.functQforPH_Hamidat()
-        if self.modeling_method == 'theoretical':
+        if self.modeling_method == 'theoretical' or 'theoretical_basic':
             return self.functQforPH_theoretical()
         else:
             raise NotImplementedError(
@@ -650,7 +666,7 @@ class Pump:
             # if P is more than maximum
             elif intervals['P'](H)[1] < P:
                 Pmax = intervals['P'](H)[1]
-                Q = funct_mod([P, H], *coeffs)
+                Q = funct_mod([Pmax, H], *coeffs)
                 if Q < 0:  # Case where extrapolation from curve fit is bad
                     Q = 0
                 P_unused = P - Pmax
@@ -706,7 +722,7 @@ class Pump:
             # if P is more than maximum
             elif intervals['P'](H)[1] < P:
                 Pmax = intervals['P'](H)[1]
-                Q = funct_mod([P, H], *coeffs)
+                Q = funct_mod([Pmax, H], *coeffs)
                 P_unused = P - Pmax
             # if P is NaN or other
             else:
@@ -1038,15 +1054,16 @@ def _curves_coeffs_Hamidat08(specs, data_completeness):
             'adjusted_r_squared_f2': stats_f2['adjusted_r_squared']}
 
 
-# TODO: add way to use it with only one data point in the case of mppt
-def _curves_coeffs_theoretical(specs, data_completeness, elec_archi):
+def _curves_coeffs_theoretical(specs, data_completeness, elec_archi,
+                               force_model='flexible'):
     """Compute curve-fitting coefficient following theoretical analysis of
     motor architecture.
 
     This kind of approach is used in [1], [2].
 
     Nevertheless, following function takes some liberties with the model
-    of function f2 described in the mentionned papers.
+    of function f2 described in the mentionned papers, in order not to rely
+    on K_p and K_t that are assumed to be unavailable in pump datasheet.
 
     It uses a equation of the form V = R_a*i + beta(H)*np.sqrt(i) to model
     V(I, TDH) and an equation of the form Q = (a + b*H) * (c + d*P) to model
@@ -1077,79 +1094,33 @@ def _curves_coeffs_theoretical(specs, data_completeness, elec_archi):
     for along the sun PV pumping systems"
 
     """
-    if elec_archi != 'permanent_magnet':
-        raise NotImplementedError(
-            'This model is not implemented yet for electrical architecture '
-            'different from permanent magnet motor.')
+    if elec_archi != 'permanent_magnet' or force_model == 'basic':
+        return _curves_coeffs_theoretical_basic(
+                specs, data_completeness, elec_archi)
 
-#    if not data_completeness['data_number'] >= 2 \
-#            and not data_completeness['voltage_number'] >= 2:
-#        raise errors.InsufficientDataError('Lack of information on lpm, '
-#                                           'current or tdh for pump.')
+    elif force_model == 'constant_efficiency':
+        return _curves_coeffs_theoretical_constant_efficiency(
+                specs, data_completeness, elec_archi)
 
-    # f1: V(I, H) - To change in I(V, H) afterward
-    def funct_mod_1(input_values, R_a, beta_0, beta_1, beta_2):
-        """Returns the equation v(i, h).
-        """
-        i, h = input_values
-        funct_mod_beta = function_models.polynomial_2
-        beta = funct_mod_beta(h, beta_0, beta_1, beta_2)
-        return R_a*i + beta*np.sqrt(i)
+    elif force_model == 'variable_efficiency':
+        return _curves_coeffs_theoretical_variable_efficiency(
+                specs, data_completeness, elec_archi)
 
-    dataxy = [np.array(specs.current),
-              np.array(specs.tdh)]
-    dataz = np.array(specs.voltage)
-    param_f1, matcov = opt.curve_fit(funct_mod_1, dataxy, dataz, maxfev=10000)
-    # computing of statistical figures for f1
-    stats_f1 = function_models.correlation_stats(funct_mod_1, param_f1,
-                                                 dataxy, dataz)
-
-    # f2:; Q=f2(P, H)
-    if data_completeness['data_number'] >= 4 \
-            and data_completeness['voltage_number'] >= 2:
-        # TODO: equivalent to developped form with cross term,
-        # -> take from function_models
-        def funct_mod_2(input_values, a, b, c, d):
-            P, H = input_values
-            return (a + b*H) * (c + d*P)
-            # theoretically it should be the following formula,
-            # but doesn't work:
-            # return (a + b*H + c*H**2) * P/H
-
-        dataxy = [np.array(specs.power),
-                  np.array(specs.tdh)]
-        dataz = np.array(specs.flow)
-
-        param_f2, matcov = opt.curve_fit(funct_mod_2, dataxy, dataz,
-                                         maxfev=10000)
-        # computing of statistical figures for f2
-        stats_f2 = function_models.correlation_stats(funct_mod_2, param_f2,
-                                                     dataxy, dataz)
-    # TODO: Seperate it in a new function, or use new attribute force_model
+    elif force_model == 'flexible':
+        if data_completeness['data_number'] >= 4 \
+                and data_completeness['voltage_number'] >= 2:
+            return _curves_coeffs_theoretical_variable_efficiency(
+                    specs, data_completeness, elec_archi)
+        elif data_completeness['data_number'] >= 2:
+            return _curves_coeffs_theoretical_constant_efficiency(
+                specs, data_completeness, elec_archi)
+        else:
+            return _curves_coeffs_theoretical_basic(
+                specs, data_completeness, elec_archi)
     else:
-        # Simple constant efficiency
-        warnings.warn('Simplistic model of constant efficiency applied.')
-        # NOTE: the value '0.7' in the following line is arbitrary. It was
-        # found to be a value which minimizes the mean relative error
-        # on the whole tdh range, but could be studied deeper.
-        param_f2 = [0.7 * specs.efficiency.max()]
-
-        def funct_Q_for_PH(input_values, efficiency):
-            P, H = input_values
-            return efficiency * (60000 * P) / (H * 9.81 * 1000)
-
-        # TODO: remove the extreme points of the domain as here, because
-        # efficiencies are nearly nil at these points
-        dataxy = [np.array(specs.power[specs.tdh > 7]),
-                  np.array(specs.tdh[specs.tdh > 7])]
-        dataz = np.array(specs.flow[specs.tdh > 7])
-
-        # statistical figures for f2 don't make sense in this case:
-        stats_f2 = {'rmse': np.nan,
-                    'nrmse': np.nan,
-                    'r_squared': np.nan,
-                    'adjusted_r_squared': np.nan,
-                    'nb_data': data_completeness['data_number']}
+        raise errors.InsufficientDataError(
+            'Pump data is too limited to apply the model forced '
+            'by force_model.')
 
     # TODO: add method of Martiré & al, 2008, "A simplified but accurate
     # prevision method for along the sun PV pumping systems"
@@ -1172,6 +1143,235 @@ def _curves_coeffs_theoretical(specs, data_completeness, elec_archi):
 #        alpha = funct_alpha(H, *param_alpha)
 #        return (P/alpha)**(1/3)
     # TO BE CONTINUED (and corrected certainly)
+
+
+def _curves_coeffs_theoretical_basic(specs, data_completeness, elec_archi):
+    """Compute curve-fitting coefficient following theoretical analysis of
+    motor architecture.
+
+    Very basic model only to use with MPPT and assuming a constant efficiency.
+
+    It uses an equation of the form Q = gamma*P/TDH
+    to model Q(P, TDH) from the data.
+
+    Parameters
+    ----------
+    specs: pd.DataFrame
+        DataFrame with specs.
+
+    Returns
+    -------
+    * dict: Contains the coeffs resulting from linear regression under
+        key 'coeffs_f2', and statistical figures on
+        goodness of fit (keys: 'rmse_f2', 'nrmse_f2',
+                         'r_squared_f2', 'adjusted_r_squared_f2')
+
+    Reference
+    ---------
+    [1] Mokkedem & al, 2011, 'Performance of a directly-coupled PV water
+    pumping system', Energy Conversion and Management
+
+    [2] Khatib & Elmenreich, 2016, 'Modeling of Photovoltaic Systems
+    Using MATLAB', Wiley
+
+    """
+
+    # f2:; Q=f2(P, H)
+    # NOTE: the value '0.7' in the following line is arbitrary. It was
+    # found to be a value which minimizes the mean relative error
+    # on the whole tdh range, but could be studied deeper.
+    param_f2 = [0.7 * specs.efficiency.max()]
+
+    def funct_Q_for_PH(input_values, efficiency):
+        P, H = input_values
+        return efficiency * (60000 * P) / (H * 9.81 * 1000)
+
+    if data_completeness['data_number'] >= 4:
+        warnings.warn('Simplistic model of constant efficiency applied.'
+                      'Better model could be used if permanent_magnet')
+        # TODO: remove the extreme points of the domain as here, because
+        # efficiencies are nearly nil at these points
+        dataxy = [np.array(specs.power[specs.tdh > 7]),
+                  np.array(specs.tdh[specs.tdh > 7])]
+        dataz = np.array(specs.flow[specs.tdh > 7])
+
+        param_f2, covmat_f2 = opt.curve_fit(funct_Q_for_PH, dataxy, dataz)
+        # computing of statistical figures for f2
+        stats_f2 = function_models.correlation_stats(funct_Q_for_PH, param_f2,
+                                                     dataxy, dataz)
+    else:
+        # statistical figures for f2 don't make sense if not enough points
+        stats_f2 = {'rmse': np.nan,
+                    'nrmse': np.nan,
+                    'r_squared': np.nan,
+                    'adjusted_r_squared': np.nan,
+                    'nb_data': data_completeness['data_number']}
+
+    return {'coeffs_f2': param_f2,
+            'rmse_f2': stats_f2['rmse'],
+            'nrmse_f2': stats_f2['nrmse'],
+            'r_squared_f2': stats_f2['r_squared'],
+            'adjusted_r_squared_f2': stats_f2['adjusted_r_squared']}
+
+
+def _curves_coeffs_theoretical_variable_efficiency(
+        specs, data_completeness, elec_archi):
+    """Compute curve-fitting coefficient following theoretical analysis of
+    motor architecture.
+
+    This kind of approach is used in [1], [2].
+
+    Nevertheless, following function takes some liberties with the model
+    of function f2 described in the mentionned papers, in order not to rely
+    on K_p and K_t that are assumed to be unavailable in pump datasheet.
+
+    It uses a equation of the form V = R_a*i + beta(H)*np.sqrt(i) to model
+    V(I, TDH) and an equation of the form Q = (a + b*H) * (c + d*P) to model
+    Q(P, TDH) from the data.
+
+    Parameters
+    ----------
+    specs: pd.DataFrame
+        DataFrame with specs.
+
+    Returns
+    -------
+    * dict: Contains the coeffs resulting from linear regression under
+        keys 'coeffs_f1' and 'coeffs_f2', and statistical figures on
+        goodness of fit (keys: 'rmse_f1', 'nrmse_f1', 'r_squared_f1',
+                         'adjusted_r_squared_f1', 'rmse_f2', 'nrmse_f2',
+                         'r_squared_f2', 'adjusted_r_squared_f2')
+
+    Reference
+    ---------
+    [1] Mokkedem & al, 2011, 'Performance of a directly-coupled PV water
+    pumping system', Energy Conversion and Management
+
+    [2] Khatib & Elmenreich, 2016, 'Modeling of Photovoltaic Systems
+    Using MATLAB', Wiley
+
+    """
+    if elec_archi != 'permanent_magnet':
+        raise NotImplementedError(
+            'This model is not implemented yet for electrical architecture '
+            'different from permanent magnet motor.')
+
+    # f1: V(I, H) - To change in I(V, H) afterward
+    def funct_mod_1(input_values, R_a, beta_0, beta_1, beta_2):
+        """Returns the equation v(i, h).
+        """
+        i, h = input_values
+        funct_mod_beta = function_models.polynomial_2
+        beta = funct_mod_beta(h, beta_0, beta_1, beta_2)
+        return R_a*i + beta*np.sqrt(i)
+
+    dataxy = [np.array(specs.current),
+              np.array(specs.tdh)]
+    dataz = np.array(specs.voltage)
+    param_f1, matcov = opt.curve_fit(funct_mod_1, dataxy, dataz, maxfev=10000)
+    # computing of statistical figures for f1
+    stats_f1 = function_models.correlation_stats(funct_mod_1, param_f1,
+                                                 dataxy, dataz)
+
+    # f2:; Q=f2(P, H)
+    def funct_mod_2(input_values, a, b, c, d):
+        P, H = input_values
+        return (a + b*H) * (c + d*P)
+        # theoretically it should be the following formula,
+        # but doesn't work with the curve fit:
+        # return (a + b*H + c*H**2) * P/H
+
+    dataxy = [np.array(specs.power),
+              np.array(specs.tdh)]
+    dataz = np.array(specs.flow)
+
+    param_f2, matcov = opt.curve_fit(funct_mod_2, dataxy, dataz,
+                                     maxfev=10000)
+    # computing of statistical figures for f2
+    stats_f2 = function_models.correlation_stats(funct_mod_2, param_f2,
+                                                 dataxy, dataz)
+
+    return {'coeffs_f1': param_f1,
+            'rmse_f1': stats_f1['rmse'],
+            'nrmse_f1': stats_f1['nrmse'],
+            'r_squared_f1': stats_f1['r_squared'],
+            'adjusted_r_squared_f1': stats_f1['adjusted_r_squared'],
+            'coeffs_f2': param_f2,
+            'rmse_f2': stats_f2['rmse'],
+            'nrmse_f2': stats_f2['nrmse'],
+            'r_squared_f2': stats_f2['r_squared'],
+            'adjusted_r_squared_f2': stats_f2['adjusted_r_squared']}
+
+
+def _curves_coeffs_theoretical_constant_efficiency(
+        specs, data_completeness, elec_archi, force_model='flexible'):
+    """Compute curve-fitting coefficient following theoretical analysis of
+    motor architecture.
+
+    This kind of approach is used in [1], [2].
+
+    Nevertheless, following function takes some liberties with the model
+    of function f2 described in the mentionned papers, in order not to rely
+    on K_p and K_t that are assumed to be unavailable in pump datasheet.
+
+    It uses a equation of the form V = R_a*i + beta(H)*np.sqrt(i) to model
+    V(I, TDH) and an equation of the form Q = (a + b*H) * (c + d*P) to model
+    Q(P, TDH) from the data.
+
+    Parameters
+    ----------
+    specs: pd.DataFrame
+        DataFrame with specs.
+
+    Returns
+    -------
+    * dict: Contains the coeffs resulting from linear regression under
+        keys 'coeffs_f1' and 'coeffs_f2', and statistical figures on
+        goodness of fit (keys: 'rmse_f1', 'nrmse_f1', 'r_squared_f1',
+                         'adjusted_r_squared_f1', 'rmse_f2', 'nrmse_f2',
+                         'r_squared_f2', 'adjusted_r_squared_f2')
+
+    Reference
+    ---------
+    [1] Mokkedem & al, 2011, 'Performance of a directly-coupled PV water
+    pumping system', Energy Conversion and Management
+
+    [2] Khatib & Elmenreich, 2016, 'Modeling of Photovoltaic Systems
+    Using MATLAB', Wiley
+
+    [3] Martiré & al, 2008, "A simplified but accurate prevision method
+    for along the sun PV pumping systems"
+
+    """
+
+    # f1: V(I, H) - To change in I(V, H) afterward
+    def funct_mod_1(input_values, R_a, beta_0, beta_1, beta_2):
+        """Returns the equation v(i, h).
+        """
+        i, h = input_values
+        funct_mod_beta = function_models.polynomial_2
+        beta = funct_mod_beta(h, beta_0, beta_1, beta_2)
+        return R_a*i + beta*np.sqrt(i)
+
+    dataxy = [np.array(specs.current),
+              np.array(specs.tdh)]
+    dataz = np.array(specs.voltage)
+    param_f1, matcov = opt.curve_fit(funct_mod_1, dataxy, dataz, maxfev=10000)
+    # computing of statistical figures for f1
+    stats_f1 = function_models.correlation_stats(funct_mod_1, param_f1,
+                                                 dataxy, dataz)
+
+    # f2: Q=f2(P, H)
+    # Simple constant efficiency
+    res = _curves_coeffs_theoretical_basic(
+            specs, data_completeness, elec_archi)
+    # constant efficiency is following
+    param_f2 = res['coeffs_f2']
+    # statistical figures for f2 don't make sense in this case:
+    stats_f2 = {'rmse': res['rmse_f2'],
+                'nrmse': res['nrmse_f2'],
+                'r_squared': res['r_squared_f2'],
+                'adjusted_r_squared': res['adjusted_r_squared_f2']}
 
     return {'coeffs_f1': param_f1,
             'rmse_f1': stats_f1['rmse'],
@@ -1521,3 +1721,15 @@ def plot_Q_vs_V_H_2d(pump):
     ax1.set_ylim(0, tdh_max*1.1)
     ax1.legend(loc='best')
     ax1.grid(True)
+
+
+if __name__ == '__main__':
+#    pump1 = Pump('data/pump_files/SCB_10_150_120_BL.txt',
+#                 modeling_method='theoretical_cst_efficiency')
+#    pump2 = Pump('data/pump_files/SCB_10_150_120_BL.txt',
+#                 modeling_method='theoretical_basic')
+#    pump3 = Pump('data/pump_files/SCB_10_150_120_BL.txt',
+#                 modeling_method='theoretical')
+    pump9 = Pump('data/pump_files/rosen_SC33-158-D380-9200.txt',
+                 modeling_method='theoretical',
+                 motor_electrical_architecture='permanent_magnet')

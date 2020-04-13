@@ -1,6 +1,6 @@
 PUMP NAME: template
 PRICE: 99999  					# in USD
-ELECTRICAL ARCHITECTURE: permanent magnet	
+ELECTRICAL ARCHITECTURE: permanent_magnet	
 # '.' are mandatory inputs that should be replaced by specifications or the line should be removed. 
 # 'nan' are optional input.
 # Units for columns are in the order: 

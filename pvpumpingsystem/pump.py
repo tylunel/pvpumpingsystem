@@ -5,6 +5,7 @@ Module defining class and functions for modeling the pump.
 @author: Tanguy Lunel, Sergio Gualteros
 
 """
+# flake8: noqa: F523
 
 import numpy as np
 import pandas as pd

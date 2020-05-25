@@ -237,7 +237,7 @@ class Pump:
             raise NotImplementedError(
                 "The requested modeling method is not available. Check your "
                 "spelling, or choose between the following: {0}".format(
-                        'kou', 'arab', 'hamidat', 'theoretical'))
+                        'kou', 'arab', 'hamidat', 'theoretical'))  # noqa: F523
         self._modeling_method = model
 
     # TODO: work on following function

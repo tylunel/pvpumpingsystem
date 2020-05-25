@@ -1721,15 +1721,3 @@ def plot_Q_vs_V_H_2d(pump):
     ax1.set_ylim(0, tdh_max*1.1)
     ax1.legend(loc='best')
     ax1.grid(True)
-
-
-if __name__ == '__main__':
-#    pump1 = Pump('data/pump_files/SCB_10_150_120_BL.txt',
-#                 modeling_method='theoretical_cst_efficiency')
-#    pump2 = Pump('data/pump_files/SCB_10_150_120_BL.txt',
-#                 modeling_method='theoretical_basic')
-#    pump3 = Pump('data/pump_files/SCB_10_150_120_BL.txt',
-#                 modeling_method='theoretical')
-    pump9 = Pump('data/pump_files/rosen_SC33-158-D380-9200.txt',
-                 modeling_method='theoretical',
-                 motor_electrical_architecture='permanent_magnet')

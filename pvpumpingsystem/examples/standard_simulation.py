@@ -25,7 +25,7 @@ pvgen1 = pvgen.PVGeneration(
             # Weather data
             weather_data_and_metadata=(
                     '../data/weather_files/'
-                    'CAN_QC_MONTREAL-INTL-A_7025251_CWEC.epw'),  # to adapt:
+                    'CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'),  # to adapt:
 
             # PV array parameters
             pv_module_name='Canadian_Solar CS6P 200P',

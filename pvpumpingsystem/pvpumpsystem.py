@@ -494,7 +494,7 @@ def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
         R_s = (M_s/M_p) * R_s
         R_sh = (M_s/M_p) * R_sh
 
-    def I_pv_fct(I):
+    def I_pv_fct(I):  # noqa: E741
         return -I + I_L - I_o*(np.exp((V+I*R_s)/nNsVth) - 1) - (V+I*R_s)/R_sh
 
     Varr = np.array(V)

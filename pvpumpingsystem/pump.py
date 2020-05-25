@@ -237,7 +237,7 @@ class Pump:
             raise NotImplementedError(
                 "The requested modeling method is not available. Check your "
                 "spelling, or choose between the following: {0}".format(
-                        'kou', 'arab', 'hamidat', 'theoretical'))
+                        'kou', 'arab', 'hamidat', 'theoretical'))  # noqa: F523
         self._modeling_method = model
 
     # TODO: work on following function
@@ -441,7 +441,7 @@ class Pump:
         intervals_VH = {'V': dom_VH[0],
                         'H': dom_VH[1]}
 
-        def functV(I, H, error_raising=True):
+        def functV(i, H, error_raising=True):
             """Function giving current I according to voltage V and tdh H,
             as theoretical model enables
             """
@@ -449,7 +449,7 @@ class Pump:
             # for being inversed numerically after
             if error_raising is True:
                 pass
-            return funct_mod([I, H], *coeffs)
+            return funct_mod([i, H], *coeffs)
 
         def functI(V, H, error_raising=True):
             """Inverse function of functV.

@@ -74,7 +74,7 @@ def test_shrink_weather_worst_month():
 
 def test_sizing_minimize_npv(databases):
     """
-    Go through following functions:
+    Goes through following functions:
         sizing.subset_respecting_llp_direct()
         sizing.subset_respecting_llp_mppt()
         sizing.sizing_minimize_npv()

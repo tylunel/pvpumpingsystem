@@ -331,9 +331,8 @@ class Pump:
 
         Reference
         ---------
-        [1] Kou Q, Klein S.A. & Beckman W.A., "A method for estimating the
-        long-term performance of direct-coupled PV pumping systems", 1998,
-        Solar Energy
+        [1] Hadj Arab A., Benghanem M. & Chenlo F.,
+        "Motor-pump system modelization", 2006, Renewable Energy
         """
 
         coeffs = self.coeffs['coeffs_f1']
@@ -424,7 +423,7 @@ class Pump:
 
         Reference
         ---------
-        [1]
+        cf References of '_curves_coeffs_theoretical()'
         """
 
         coeffs = self.coeffs['coeffs_f1']
@@ -1388,7 +1387,7 @@ def _curves_coeffs_theoretical_constant_efficiency(
 
 def _domain_I_H(specs, data_completeness):
     """
-    Function giving the domain of cur depending on tdh, and vice versa.
+    Function giving the domain of current I depending on tdh, and vice versa.
 
     Parameters
     ----------

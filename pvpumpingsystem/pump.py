@@ -1351,69 +1351,6 @@ def _curves_coeffs_theoretical_basic(specs, data_completeness, elec_archi):
             'adjusted_r_squared_f2': stats_f2['adjusted_r_squared']}
 
 
-def _domain_I_H(specs, data_completeness):
-    """
-    Function giving the domain of current I depending on tdh, and vice versa.
-
-    Parameters
-    ----------
-    specs: pandas.DataFrame,
-        Specifications typically coming from Pump.specs
-
-    data_completeness: dict,
-        Typically comes from specs_completeness() function.
-
-    Returns
-    -------
-    Tuple containing two lists, the domains on I [A] and on TDH [m]
-
-    """
-
-    funct_mod = function_models.polynomial_2
-
-    # domains of I and tdh depending on each other
-    data_v = specs.voltage.drop_duplicates()
-
-    cur_tips = []
-    tdh_tips = []
-    for v in data_v:
-        cur_tips.append(min(specs[specs.voltage == v].current))
-        tdh_tips.append(max(specs[specs.voltage == v].tdh))
-
-    if data_completeness['voltage_number'] > 2 \
-            and data_completeness['lpm_min'] == 0:
-        # case working fine for SunPumps - not sure about complete data from
-        # other manufacturer
-        param_tdh, pcov_tdh = opt.curve_fit(funct_mod,
-                                            cur_tips, tdh_tips)
-        param_cur, pcov_cur = opt.curve_fit(funct_mod,
-                                            tdh_tips, cur_tips)
-
-        def interval_cur(y):
-            "Interval on x depending on y"
-            return [max(funct_mod(y, *param_cur), min(specs.current)),
-                    max(specs.current)]
-
-        def interval_tdh(x):
-            "Interval on y depending on x"
-            return [0, min(max(funct_mod(x, *param_tdh),
-                               0),
-                           max(specs.tdh))]
-
-    else:
-        # Would need deeper work to fully understand what are the limits
-        # on I and V depending on tdh, and how it affects the flow rate
-        def interval_cur(*args):
-            "Interval on current, independent of tdh"
-            return [min(specs.current), max(specs.current)]
-
-        def interval_tdh(*args):
-            "Interval on tdh, independent of current"
-            return [min(specs.tdh), max(specs.tdh)]
-
-    return interval_cur, interval_tdh
-
-
 def _domain_V_H(specs, data_completeness):
     """
     Function giving the range of voltage and head in which the pump will

@@ -37,18 +37,6 @@ class Pump:
         path: str, default=''
             The path to the txt file with the pump specifications.
 
-        lpm: dict, default is None
-            Dictionary containing pump specs: voltage as keys and
-            flow rate as values.
-
-        tdh: dict, default is None
-            Dictionary containing pump specs: voltage as keys and
-            total dynamic head as values.
-
-        current: dict, default is None
-            Dictionary containing pump specs: voltage as keys and
-            current drawn by pump as values.
-
         motor_electrical_architecture: str, default is None
             'permanent_magnet', 'series_excited', 'shunt_excited',
             'separately_excited'.
@@ -86,7 +74,6 @@ class Pump:
     _ids = count(1)
 
     def __init__(self, path,  # noqa: C901
-                 lpm=None, tdh=None, current=None,
                  motor_electrical_architecture=None,
                  idname=None,
                  price=np.nan,
@@ -99,59 +86,38 @@ class Pump:
         self.controller = controller
 
         # retrieve pump data from txt datasheet given by path
-        if None in (lpm, tdh, current):
-            self.specs, metadata = get_data_pump(path)
-            self.voltage_list = self.specs.voltage.drop_duplicates()
-            try:
-                self.price = float(metadata['price'])
-                if not np.isnan(price):
-                    self.price = price
-                    warnings.warn('price attribute overwritten.')
-            except KeyError:
+        self.specs, metadata = get_data_pump(path)
+        self.voltage_list = self.specs.voltage.drop_duplicates()
+        # retrieve price, or overwrite it if given in __init__
+        try:
+            self.price = float(metadata['price'])
+            if not np.isnan(price):
                 self.price = price
-
-            try:
-                self.idname = metadata['pump name']
-                if idname is not None:
-                    self.idname = idname
-                    warnings.warn('idname attribute overwritten.')
-            except KeyError:
+                warnings.warn('price attribute overwritten.')
+        except KeyError:
+            self.price = price
+        # retrieve name, or overwrite it if given in __init__
+        try:
+            self.idname = metadata['pump name']
+            if idname is not None:
                 self.idname = idname
-
-            try:
-                self.motor_electrical_architecture = \
-                    metadata['electrical architecture']
-                if motor_electrical_architecture is not None:
-                    self.motor_electrical_architecture = \
-                        motor_electrical_architecture
-                    warnings.warn('motor_electrical_architecture '
-                                  'attribute overwritten.')
-            except KeyError:
+                warnings.warn('idname attribute overwritten.')
+        except KeyError:
+            self.idname = idname
+        # retrieve motor_architecture, or overwrite it if given in __init__
+        try:
+            self.motor_electrical_architecture = \
+                metadata['electrical architecture']
+            if motor_electrical_architecture is not None:
                 self.motor_electrical_architecture = \
                     motor_electrical_architecture
+                warnings.warn('motor_electrical_architecture '
+                              'attribute overwritten.')
+        except KeyError:
+            self.motor_electrical_architecture = \
+                motor_electrical_architecture
 
-        # retrieve pump data from dict given in parameter
-        else:
-            self.voltage_list = list(lpm.keys())
-            # put data in the form of DataFrame
-            vol = []
-            head = []
-            cur = []
-            flow = []
-            power = []
-            for V in self.voltage_list:
-                for i, Idata in enumerate(current[V]):
-                    vol.append(V)
-                    head.append(tdh[V][i])
-                    cur.append(Idata)
-                    flow.append(lpm[V][i])
-                    power.append(V*Idata)
-            self.specs = pd.DataFrame({'voltage': vol,
-                                       'tdh': head,
-                                       'current': cur,
-                                       'flow': flow,
-                                       'power': power})
-
+        # compute the ranges of each parameters of specs
         self.range = pd.DataFrame([self.specs.max(), self.specs.min()],
                                   index=['max', 'min'])
 

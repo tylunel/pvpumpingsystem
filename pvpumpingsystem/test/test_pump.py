@@ -36,11 +36,13 @@ def test_init(pumpset):
 
 
 def test_incomplete_pump_data():
+    """tests 'theoretical_constant_efficiency' model and recalculation of
+    specs when some are lacking"""
     # This pump data has no information on efficiency
     pump_testfile = os.path.join(
             test_dir, '../data/pump_files/rosen_SC33-158-D380-9200.txt')
     # The initialization recalculates the current used based on a constant
-    # efficiency.
+    # efficiency
     pumpset = pp.Pump(path=pump_testfile,
                       modeling_method='theoretical',
                       motor_electrical_architecture='permanent_magnet')
@@ -58,10 +60,31 @@ def test_incomplete_pump_data():
     np.testing.assert_allclose(res, res_expected, rtol=0.05)
 
 
+def test_min_pump_data():
+    """Tests 'theoretical_basic' model."""
+    # This pump data has only one data point
+    pump_testfile = os.path.join(
+            test_dir, '../data/pump_files/min_specs.txt')
+    # The pump is modeled with extremely basic model
+    pumpset = pp.Pump(path=pump_testfile,
+                      modeling_method='theoretical',
+                      motor_electrical_architecture='permanent_magnet')
+
+    functQ, intervals = pumpset.functQforPH()
+    res = functQ(540, 50)['Q']
+    res_expected = 2.1
+    np.testing.assert_allclose(res, res_expected, rtol=0.05)
+
+    res = functQ(540, 1)['Q']
+    res_expected = 105  # not physically consistent! Work on the model needed
+    np.testing.assert_allclose(res, res_expected, rtol=0.05)
+
+
 def test_all_models_coeffs(pumpset):
     """
     Assert that all models manage to have a r_squared value of minimum 0.8
     after the curve_fit.
+    'theoretical' here corresponds to 'theoretical_variable_efficiency'
     """
 
     for model in ['arab', 'kou', 'theoretical', 'hamidat']:

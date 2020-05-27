@@ -1,0 +1,11 @@
+PUMP NAME: min_specs
+PRICE: 99999  					# in USD
+ELECTRICAL ARCHITECTURE: permanent_magnet	
+# NOTE that the model used to model a pump with so few specs is extremely simplified, and not really consistent with physics...
+# '.' are mandatory inputs that should be replaced by specifications or the line should be removed. 
+# 'nan' are optional input.
+# Units for columns are in the order: 
+# [V]	[m]	[A]	[L/min]	[W]	[no unit]
+voltage	tdh	current	flow	power	efficiency
+24	30	2.5	5	nan	nan
+

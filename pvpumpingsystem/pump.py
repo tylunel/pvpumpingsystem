@@ -117,10 +117,6 @@ class Pump:
             self.motor_electrical_architecture = \
                 motor_electrical_architecture
 
-        # compute the ranges of each parameters of specs
-        self.range = pd.DataFrame([self.specs.max(), self.specs.min()],
-                                  index=['max', 'min'])
-
         # complete power data
         if 'power' not in self.specs.columns or \
                 self.specs.power.isna().any():
@@ -152,6 +148,10 @@ class Pump:
                                             * self.specs.tdh * 9.81 * 1000) \
                                             / self.specs.power
 
+        # compute the ranges for each parameters of the specs
+        self.range = pd.DataFrame([self.specs.max(), self.specs.min()],
+                                  index=['max', 'min'])
+
         self.data_completeness = specs_completeness(
                 self.specs,
                 self.motor_electrical_architecture)
@@ -159,10 +159,10 @@ class Pump:
         self.modeling_method = modeling_method
 
     def __repr__(self):
-        affich = "name: " + str(self.idname) + \
+        text = "name: " + str(self.idname) + \
                  "\nprice: " + str(self.price) + \
                  "\nmodeling method: " + str(self.modeling_method)
-        return affich
+        return text
 
     @property  # getter
     def modeling_method(self):
@@ -1111,75 +1111,6 @@ def _curves_coeffs_theoretical(specs, data_completeness, elec_archi,
     # TO BE CONTINUED (and corrected certainly)
 
 
-def _curves_coeffs_theoretical_basic(specs, data_completeness, elec_archi):
-    """Compute curve-fitting coefficient following theoretical analysis of
-    motor architecture.
-
-    Very basic model only to use with MPPT and assuming a constant efficiency.
-
-    It uses an equation of the form Q = gamma*P/TDH
-    to model Q(P, TDH) from the data.
-
-    Parameters
-    ----------
-    specs: pd.DataFrame
-        DataFrame with specs.
-
-    Returns
-    -------
-    * dict: Contains the coeffs resulting from linear regression under
-        key 'coeffs_f2', and statistical figures on
-        goodness of fit (keys: 'rmse_f2', 'nrmse_f2',
-                         'r_squared_f2', 'adjusted_r_squared_f2')
-
-    Reference
-    ---------
-    [1] Mokkedem & al, 2011, 'Performance of a directly-coupled PV water
-    pumping system', Energy Conversion and Management
-
-    [2] Khatib & Elmenreich, 2016, 'Modeling of Photovoltaic Systems
-    Using MATLAB', Wiley
-
-    """
-
-    # f2:; Q=f2(P, H)
-    # NOTE: the value '0.7' in the following line is arbitrary. It was
-    # found to be a value which minimizes the mean relative error
-    # on the whole tdh range, but could be studied deeper.
-    param_f2 = [0.7 * specs.efficiency.max()]
-
-    def funct_Q_for_PH(input_values, efficiency):
-        P, H = input_values
-        return efficiency * (60000 * P) / (H * 9.81 * 1000)
-
-    if data_completeness['data_number'] >= 4:
-        warnings.warn('Simplistic model of constant efficiency applied.'
-                      'Better model could be used if permanent_magnet')
-        # TODO: remove the extreme points of the domain as here, because
-        # efficiencies are nearly nil at these points
-        dataxy = [np.array(specs.power[specs.tdh > 7]),
-                  np.array(specs.tdh[specs.tdh > 7])]
-        dataz = np.array(specs.flow[specs.tdh > 7])
-
-        param_f2, covmat_f2 = opt.curve_fit(funct_Q_for_PH, dataxy, dataz)
-        # computing of statistical figures for f2
-        stats_f2 = function_models.correlation_stats(funct_Q_for_PH, param_f2,
-                                                     dataxy, dataz)
-    else:
-        # statistical figures for f2 don't make sense if not enough points
-        stats_f2 = {'rmse': np.nan,
-                    'nrmse': np.nan,
-                    'r_squared': np.nan,
-                    'adjusted_r_squared': np.nan,
-                    'nb_data': data_completeness['data_number']}
-
-    return {'coeffs_f2': param_f2,
-            'rmse_f2': stats_f2['rmse'],
-            'nrmse_f2': stats_f2['nrmse'],
-            'r_squared_f2': stats_f2['r_squared'],
-            'adjusted_r_squared_f2': stats_f2['adjusted_r_squared']}
-
-
 def _curves_coeffs_theoretical_variable_efficiency(
         specs, data_completeness, elec_archi):
     """Compute curve-fitting coefficient following theoretical analysis of
@@ -1345,6 +1276,75 @@ def _curves_coeffs_theoretical_constant_efficiency(
             'r_squared_f1': stats_f1['r_squared'],
             'adjusted_r_squared_f1': stats_f1['adjusted_r_squared'],
             'coeffs_f2': param_f2,
+            'rmse_f2': stats_f2['rmse'],
+            'nrmse_f2': stats_f2['nrmse'],
+            'r_squared_f2': stats_f2['r_squared'],
+            'adjusted_r_squared_f2': stats_f2['adjusted_r_squared']}
+
+
+def _curves_coeffs_theoretical_basic(specs, data_completeness, elec_archi):
+    """Compute curve-fitting coefficient following theoretical analysis of
+    motor architecture.
+
+    Very basic model only to use with MPPT and assuming a constant efficiency.
+
+    It uses an equation of the form Q = gamma*P/TDH
+    to model Q(P, TDH) from the data.
+
+    Parameters
+    ----------
+    specs: pd.DataFrame
+        DataFrame with specs.
+
+    Returns
+    -------
+    * dict: Contains the coeffs resulting from linear regression under
+        key 'coeffs_f2', and statistical figures on
+        goodness of fit (keys: 'rmse_f2', 'nrmse_f2',
+                         'r_squared_f2', 'adjusted_r_squared_f2')
+
+    Reference
+    ---------
+    [1] Mokkedem & al, 2011, 'Performance of a directly-coupled PV water
+    pumping system', Energy Conversion and Management
+
+    [2] Khatib & Elmenreich, 2016, 'Modeling of Photovoltaic Systems
+    Using MATLAB', Wiley
+
+    """
+
+    # f2:; Q=f2(P, H)
+    # NOTE: the value '0.7' in the following line is arbitrary. It was
+    # found to be a value which minimizes the mean relative error
+    # on the whole tdh range, but could be studied deeper.
+    param_f2 = [0.7 * specs.efficiency.max()]
+
+    def funct_Q_for_PH(input_values, efficiency):
+        P, H = input_values
+        return efficiency * (60000 * P) / (H * 9.81 * 1000)
+
+    if data_completeness['data_number'] >= 4:
+        warnings.warn('Simplistic model of constant efficiency applied.'
+                      'Better model could be used if permanent_magnet')
+        # TODO: remove the extreme points of the domain as here, because
+        # efficiencies are nearly nil at these points
+        dataxy = [np.array(specs.power[specs.tdh > 7]),
+                  np.array(specs.tdh[specs.tdh > 7])]
+        dataz = np.array(specs.flow[specs.tdh > 7])
+
+        param_f2, covmat_f2 = opt.curve_fit(funct_Q_for_PH, dataxy, dataz)
+        # computing of statistical figures for f2
+        stats_f2 = function_models.correlation_stats(funct_Q_for_PH, param_f2,
+                                                     dataxy, dataz)
+    else:
+        # statistical figures for f2 don't make sense if not enough points
+        stats_f2 = {'rmse': np.nan,
+                    'nrmse': np.nan,
+                    'r_squared': np.nan,
+                    'adjusted_r_squared': np.nan,
+                    'nb_data': data_completeness['data_number']}
+
+    return {'coeffs_f2': param_f2,
             'rmse_f2': stats_f2['rmse'],
             'nrmse_f2': stats_f2['nrmse'],
             'r_squared_f2': stats_f2['r_squared'],

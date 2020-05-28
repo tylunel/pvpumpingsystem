@@ -1209,7 +1209,7 @@ def _curves_coeffs_theoretical_constant_efficiency(
 
     Nevertheless, following function takes some liberties with the model
     of function f2 described in the mentionned papers, in order not to rely
-    on K_p and K_t that are assumed to be unavailable in pump datasheet.
+    on K_p and K_t that are here assumed to be unavailable in pump datasheet.
 
     It uses a equation of the form V = R_a*i + beta(H)*np.sqrt(i) to model
     V(I, TDH) and an equation of the form Q = (a + b*H) * (c + d*P) to model

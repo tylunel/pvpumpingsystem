@@ -35,10 +35,36 @@ def test_init(pumpset):
     assert type(pumpset.coeffs['coeffs_f1']) is np.ndarray
 
 
-def test_incomplete_pump_data():
-    """tests 'theoretical_constant_efficiency' model and recalculation of
-    specs when some are lacking"""
-    # This pump data has no information on efficiency
+def test_limited_pump_data_1():
+    """Tests 'theoretical_basic' model.
+
+    This pump data has only one data point"""
+
+    pump_testfile = os.path.join(
+            test_dir, '../data/pump_files/min_specs.txt')
+    # The pump is modeled with extremely basic model
+    pumpset = pp.Pump(path=pump_testfile,
+                      modeling_method='theoretical',
+                      motor_electrical_architecture='permanent_magnet')
+
+    functQ, intervals = pumpset.functQforPH()
+    res = functQ(540, 50)['Q']
+    res_expected = 2.1
+    np.testing.assert_allclose(res, res_expected, rtol=0.05)
+
+    res = functQ(540, 1)['Q']
+    res_expected = 105  # not physically consistent! Work on the model needed
+    np.testing.assert_allclose(res, res_expected, rtol=0.05)
+
+
+def test_limited_pump_data_3():
+    """Tests 'theoretical_constant_efficiency' model and recalculation of
+    specs when some are lacking.
+
+    This pump data has 8 points given at one same voltage, and
+    with no information on efficiency.
+    """
+
     pump_testfile = os.path.join(
             test_dir, '../data/pump_files/rosen_SC33-158-D380-9200.txt')
     # The initialization recalculates the current used based on a constant
@@ -57,26 +83,6 @@ def test_incomplete_pump_data():
     functQ, intervals = pumpset.functQforVH()
     res = functQ(540, 50)['Q']
     res_expected = 487
-    np.testing.assert_allclose(res, res_expected, rtol=0.05)
-
-
-def test_min_pump_data():
-    """Tests 'theoretical_basic' model."""
-    # This pump data has only one data point
-    pump_testfile = os.path.join(
-            test_dir, '../data/pump_files/min_specs.txt')
-    # The pump is modeled with extremely basic model
-    pumpset = pp.Pump(path=pump_testfile,
-                      modeling_method='theoretical',
-                      motor_electrical_architecture='permanent_magnet')
-
-    functQ, intervals = pumpset.functQforPH()
-    res = functQ(540, 50)['Q']
-    res_expected = 2.1
-    np.testing.assert_allclose(res, res_expected, rtol=0.05)
-
-    res = functQ(540, 1)['Q']
-    res_expected = 105  # not physically consistent! Work on the model needed
     np.testing.assert_allclose(res, res_expected, rtol=0.05)
 
 

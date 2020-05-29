@@ -117,36 +117,25 @@ class Pump:
             self.motor_electrical_architecture = \
                 motor_electrical_architecture
 
-        # complete power data
-        if 'power' not in self.specs.columns or \
-                self.specs.power.isna().any():
-            self.specs['power'] = self.specs.voltage * self.specs.current
-
-        # complete efficiency data
+        # complete power and efficiency data
         if 'efficiency' not in self.specs.columns or \
                 self.specs.efficiency.isna().any():
-            # TODO: first condition only used by theoretical model,
-            # put it in _curves_coeffs_theoretical or algo asi
-            if (self.specs.power == self.specs.power.max()).all():
-                # Case with very few data
-                hydrau_power = self.specs.flow/60000 * self.specs.tdh * 9810
-                rated_data = self.specs[hydrau_power == hydrau_power.max()]
-                rated_efficiency = float(hydrau_power.max()/rated_data.power)
-                if not 0 < rated_efficiency < 1:
-                    raise ValueError('The rated efficiency is found to be '
-                                     'out of the range [0, 1].')
-                # arbitrary coeff
-                coeff = 1
-                global_efficiency = coeff * rated_efficiency
-                self.specs['efficiency'] = global_efficiency
-                warnings.warn('Power and current data will be redetermined'
-                              'from efficiency.')
-                self.specs.power = hydrau_power / global_efficiency
-                self.specs.current = self.specs.power / self.specs.voltage
+            # Case with 1 curve Q vs TDH , but only 1 (I,V) point given
+            if (self.specs.current == self.specs.current.max()).all() and \
+                    (self.specs.voltage == self.specs.voltage.max()).all():
+                self.specs = _extrapolate_pow_eff_with_cst_efficiency(
+                        self.specs, efficiency_coeff=1)
+            # Case with Q&P vs TDH given at 1 or multiple voltage
             else:
-                self.specs['efficiency'] = ((self.specs.flow/60000)
-                                            * self.specs.tdh * 9.81 * 1000) \
-                                            / self.specs.power
+                # complete column 'power' if needed
+                if 'power' not in self.specs.columns or \
+                        self.specs.power.isna().any():
+                    self.specs['power'] = self.specs.voltage \
+                        * self.specs.current
+                # complete column 'efficiency'
+                self.specs['efficiency'] = (
+                    ((self.specs.flow/60000) * self.specs.tdh * 9.81 * 1000)
+                    / self.specs.power)
 
         # compute the ranges for each parameters of the specs
         self.range = pd.DataFrame([self.specs.max(), self.specs.min()],
@@ -1499,6 +1488,53 @@ def _domain_P_H(specs, data_completeness):
             return [0, max(datay_ar)]
 
     return interval_power, interval_tdh
+
+
+def _extrapolate_pow_eff_with_cst_efficiency(specs, efficiency_coeff=1):
+    """
+    Adapt/complete specifications of a limite pump datasheet.
+    Used in '__init__()'
+
+    Works on the assumption that the available (I, V, Q, TDH) point is the
+    rated operating point, and that the efficiency is constant then
+    (oversimplification!). In order to mitigate this last assumption,
+    a coeff can be used to consider the mean efficiency as a ratio
+    of the rated efficiency.
+
+    Parameters
+    ----------
+    specs: pandas.DataFrame,
+        Attribute specs of Pump().
+
+    efficiency_coeff: float, in range [0, 1]
+        The ratio between the mean efficiency and the rated efficiency
+        -> mean_efficiency = efficiency_coeff * rated_efficiency
+
+    Returns
+    -------
+    specs: pandas.DataFrame,
+        Attribute specs of Pump().
+    """
+    # computes all the hydraulic power through tdh and Q
+    hydrau_power = specs.flow/60000 * specs.tdh * 9810
+    # keep the data where hydraulic power is the highest, and
+    # assumes that this is the rated flowrate point
+    rated_data = specs[hydrau_power == hydrau_power.max()]
+    rated_power = rated_data.voltage * rated_data.current
+    rated_efficiency = float(hydrau_power.max()/rated_power)
+    # check consistency:
+    if not 0 < rated_efficiency < 1:
+        raise ValueError('The rated efficiency is found to be '
+                         'out of the range [0, 1].')
+    # arbitrary coeff
+    efficiency_coeff = 1
+    mean_efficiency = efficiency_coeff * rated_efficiency
+    specs['efficiency'] = mean_efficiency
+    warnings.warn('Power and current data will be recomputed'
+                  'with constant efficiency assumption.')
+    specs.power = hydrau_power / mean_efficiency
+    specs.current = specs.power / specs.voltage
+    return specs
 
 
 def plot_Q_vs_P_H_3d(pump):

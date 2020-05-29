@@ -72,56 +72,103 @@ def test_shrink_weather_worst_month():
     assert worst_month == 12  # 12 = december
 
 
-def test_sizing_minimize_npv(databases):
+def test_sizing_minimize_npv_mppt(databases):
     """
     Goes through following functions:
-        sizing.subset_respecting_llp_direct()
+        sizing.subset_respecting_llp_direct() -- NO, not yet
         sizing.subset_respecting_llp_mppt()
         sizing.sizing_minimize_npv()
     """
 
-    for coupling_method in ['mppt', 'direct']:
+    pump_database = databases['pumps']
+    pv_database = databases['pv_modules']
+    mppt1 = databases['mppt']
+    reservoir1 = res.Reservoir(size=5000)
 
-        pump_database = databases['pumps']
-        pv_database = databases['pv_modules']
-        mppt1 = databases['mppt']
-        reservoir1 = res.Reservoir(size=5000)
+    # weather data
+    weather_path = os.path.join(
+        test_dir,
+        '../data/weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw')
+    weather_data, weather_metadata = pvlib.iotools.epw.read_epw(
+            weather_path, coerce_year=2005)
+    weather_shrunk = siz.shrink_weather_representative(weather_data)
 
-        # weather data
-        weather_path = os.path.join(
-            test_dir,
-            '../data/weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw')
-        weather_data, weather_metadata = pvlib.iotools.epw.read_epw(
-                weather_path, coerce_year=2005)
-        weather_shrunk = siz.shrink_weather_representative(weather_data)
+    # rest of pumping system
+    pipes = pn.PipeNetwork(h_stat=20, l_tot=100, diam=0.08,
+                           material='plastic', optimism=True)
+    consum = cs.Consumption(constant_flow=1)
 
-        # rest of pumping system
-        pipes = pn.PipeNetwork(h_stat=20, l_tot=100, diam=0.08,
-                               material='plastic', optimism=True)
-        consum = cs.Consumption(constant_flow=1)
+    pvgene = pvgen.PVGeneration(
+            weather_data_and_metadata={
+                    'weather_data': weather_shrunk,
+                    'weather_metadata': weather_metadata},
+            pv_module_name='Canadian Solar 200P')
 
-        pvgene = pvgen.PVGeneration(
-                weather_data_and_metadata={
-                        'weather_data': weather_shrunk,
-                        'weather_metadata': weather_metadata},
-                pv_module_name='Canadian Solar 200P')
+    pvps_fixture = pvps.PVPumpSystem(pvgene,
+                                     pump_database[0],
+                                     coupling='mppt',
+                                     mppt=mppt1,
+                                     consumption=consum,
+                                     reservoir=reservoir1,
+                                     pipes=pipes)
 
-        pvps_fixture = pvps.PVPumpSystem(pvgene,
-                                         pump_database[0],
-                                         coupling=coupling_method,
-                                         mppt=mppt1,
-                                         consumption=consum,
-                                         reservoir=reservoir1,
-                                         pipes=pipes)
+    selection, _ = siz.sizing_minimize_npv(
+            pv_database, pump_database,
+            weather_shrunk, weather_metadata,
+            pvps_fixture,
+            llp_accepted=0.01,
+            M_s_guess=1)
+    assert ('Shurflo_9325' in selection.pump.values and
+            'Canadian_Solar_Inc__CS5C_80M' in selection.pv_module.values)
 
-        selection, _ = siz.sizing_minimize_npv(
-                pv_database, pump_database,
-                weather_shrunk, weather_metadata,
-                pvps_fixture,
-                llp_accepted=0.01,
-                M_s_guess=1)
-        assert ('Shurflo_9325' in selection.pump.values and
-                'Canadian_Solar_Inc__CS5C_80M' in selection.pv_module.values)
+
+def test_sizing_minimize_npv_direct(databases):
+    """
+    Goes through following functions:
+        sizing.subset_respecting_llp_direct()
+        sizing.sizing_minimize_npv()
+    """
+
+    pump_database = databases['pumps']
+    pv_database = databases['pv_modules']
+    mppt1 = databases['mppt']
+    reservoir1 = res.Reservoir(size=5000)
+
+    # weather data
+    weather_path = os.path.join(
+        test_dir,
+        '../data/weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw')
+    weather_data, weather_metadata = pvlib.iotools.epw.read_epw(
+            weather_path, coerce_year=2005)
+    weather_shrunk = siz.shrink_weather_representative(weather_data)
+
+    # rest of pumping system
+    pipes = pn.PipeNetwork(h_stat=20, l_tot=100, diam=0.08,
+                           material='plastic', optimism=True)
+    consum = cs.Consumption(constant_flow=1)
+
+    pvgene = pvgen.PVGeneration(
+            weather_data_and_metadata={
+                    'weather_data': weather_shrunk,
+                    'weather_metadata': weather_metadata},
+            pv_module_name='Canadian Solar 200P')
+
+    pvps_fixture = pvps.PVPumpSystem(pvgene,
+                                     pump_database[0],
+                                     coupling='direct',
+                                     mppt=mppt1,
+                                     consumption=consum,
+                                     reservoir=reservoir1,
+                                     pipes=pipes)
+
+    selection, _ = siz.sizing_minimize_npv(
+            pv_database, pump_database,
+            weather_shrunk, weather_metadata,
+            pvps_fixture,
+            llp_accepted=0.01,
+            M_s_guess=1)
+    assert ('SCB_10' in selection.pump.values and
+            'Canadian_Solar_Inc__CS5C_80M' in selection.pv_module.values)
 
 
 if __name__ == '__main__':

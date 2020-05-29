@@ -253,7 +253,9 @@ class PVGeneration:
                 '(company_name)_(reference_code)_(peak_power)')
         # Retrieve the pv module concerned from the pv database, and
         # convert in pandas.Series by selecting first column: iloc[:, 0]
-        self.pv_module = pv_database[pv_idname].iloc[:, 0]
+        self.pv_module = pv_database[pv_idname].iloc[:, 0]  # to remove
+        if hasattr(self, 'system'):
+            self.system.module = pv_database[pv_idname].iloc[:, 0]
         self.price_per_module = self.price_per_watt * self.pv_module.STC
 
     def run_model(self):

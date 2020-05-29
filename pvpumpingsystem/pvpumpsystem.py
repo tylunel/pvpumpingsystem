@@ -388,8 +388,8 @@ class PVPumpSystem(object):
             calculation time.
 
         """
-        if not hasattr(self.pvgeneration.modelchain, 'diode_params'):
-            self.pvgeneration.run_model()
+#        if not hasattr(self.pvgeneration.modelchain, 'diode_params'):
+        self.pvgeneration.run_model()
 
         # 'disable' removes the progress bar
         self.calc_flow(disable=True, iteration=iteration)

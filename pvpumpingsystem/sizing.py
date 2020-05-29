@@ -18,6 +18,7 @@ import pvpumpingsystem.pipenetwork as pn
 import pvpumpingsystem.consumption as cs
 import pvpumpingsystem.pvpumpsystem as pvps
 import pvpumpingsystem.mppt as mppt
+import pvpumpingsystem.reservoir as res
 import pvpumpingsystem.pvgeneration as pvgen
 
 
@@ -170,6 +171,8 @@ def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
     # initalization of variables
     preselection = pd.DataFrame()
 
+
+
     pvps_fixture.pvgeneration.weather_data_and_metadata = {
             'weather_data': weather_data,
             'weather_metadata': weather_metadata}
@@ -289,15 +292,72 @@ def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
     return preselection
 
 
+def size_nb_pv_mod_mppt(pvps_fixture, llp_accepted, M_s_guess):
+    """
+    """
+
+    def funct_llp_for_Ms(pvps, M_s, **kwargs):
+        pvps.pvgeneration.system.modules_per_string = M_s
+        pvps.pvgeneration.system.strings_per_inverter = 1
+        pvps.pvgeneration.run_model()
+        pvps.run_model(**kwargs)
+        return pvps.llp
+
+    llp_max = funct_llp_for_Ms(pvps_fixture, 0)
+
+    # Guess a M_s to start with:
+    if M_s_guess is None:
+        M_s = (pvps_fixture.motorpump.range.power['max'] //
+               pvps_fixture.pvgeneration.pv_module.PTC)
+    else:
+        M_s = M_s_guess
+
+    # initialization of variable for first round
+    llp_prev = 1.1
+
+    while True:  # while loop with break statement
+        # new LLP:
+        llp = funct_llp_for_Ms(pvps_fixture, M_s)
+        # printing (useful for debug):
+        print('module: {0} / pump: {1} / M_s: {2} /'
+              ' llp: {3} / npv: {4}'.format(
+                pvps_fixture.pvgeneration.pv_module_name,
+                pvps_fixture.motorpump.idname,
+                M_s,
+                llp,
+                pvps_fixture.npv))
+        # decision tree:
+        if llp <= llp_accepted and llp_prev > 1:  # first round
+            M_s -= 1
+        elif llp <= llp_accepted and llp_prev <= llp_accepted:
+            M_s -= 1
+        elif llp <= llp_accepted and 1 > llp_prev > llp_accepted \
+                and llp != llp_max:
+            break
+        elif llp > llp_accepted and llp_prev != llp:
+            M_s += 1
+        elif llp > llp_accepted and llp_prev == llp and llp != llp_max:
+            break  # unsatisfying llp, removed later
+        elif llp > llp_accepted and llp_prev == llp and llp == llp_max:
+            M_s += 1
+        else:
+            raise Exception('This case had not been figured out'
+                            ' it could happen')
+        # preparation for next turn
+        llp_prev = llp
+
+    return M_s
+
+
 # TODO: make this function work with the voltage range of mppt (once available)
 # so as to size M_s and M_p. For now only M_s changes, but correponds
 # actually more to the number of pv module than to nb of pv modules in series.
-def subset_respecting_llp_mppt(pv_database, pump_database,    # noqa: C901
-                               weather_data, weather_metadata,
-                               pvps_fixture,
-                               llp_accepted=0.01,
-                               M_s_guess=None,
-                               **kwargs):
+def subset_respecting_llp_mppt_old(pv_database, pump_database,    # noqa: C901
+                                   weather_data, weather_metadata,
+                                   pvps_fixture,
+                                   llp_accepted=0.01,
+                                   M_s_guess=None,
+                                   **kwargs):
     """
     Function returning the configurations of PV modules and pump
     that will minimize the net present value of the system and will insure
@@ -379,7 +439,7 @@ def subset_respecting_llp_mppt(pv_database, pump_database,    # noqa: C901
             # initialization of variable for first round
             llp_prev = 1.1
 
-            # TODO: put this code in a new function 'size_nb_pv_mod()' for
+            # TODO: put this code in a new function 'size_nb_pv_mod_mppt()' for
             # more readability
             while True:
                 llp = funct_llp_for_Ms(pvps_fixture, M_s)
@@ -403,6 +463,97 @@ def subset_respecting_llp_mppt(pv_database, pump_database,    # noqa: C901
                     raise Exception('This case had not been figured out'
                                     ' it could happen')
                 llp_prev = llp
+
+            preselection = preselection.append(
+                pd.Series({
+                    'pv_module': pvps_fixture.pvgeneration.pv_module.name,
+                    'M_s': M_s,
+                    'M_p': 1,
+                    'pump': pump.idname,
+                    'llp': pvps_fixture.llp,
+                    'npv': pvps_fixture.npv}),
+                ignore_index=True)
+
+    # Remove not satifying LLP
+    preselection = preselection[preselection.llp <= llp_accepted]
+
+    return preselection
+
+
+def subset_respecting_llp_mppt(pv_database, pump_database,    # noqa: C901
+                               weather_data, weather_metadata,
+                               pvps_fixture,
+                               llp_accepted=0.01,
+                               M_s_guess=None,
+                               **kwargs):
+    """
+    Function returning the configurations of PV modules and pump
+    that will minimize the net present value of the system and will insure
+    the Loss of Load Probability (llp) is inferior to the one given.
+
+    Parameters
+    ----------
+    pv_database: list of strings,
+        List of pv module names to try. If name is not eact, it will search
+        a pv module database to find the best match.
+
+    pump_database: list of pvpumpingssytem.Pump objects
+        List of motor-pump to try.
+
+    weather_data: pd.DataFrame
+        Weather file of the location.
+        Typically comes from pvlib.iotools.epw.read_epw()
+
+    weather_metadata: dict
+        Weather file metadata of the location.
+        Typically comes from pvlib.iotools.epw.read_epw()
+
+    pvps_fixture: pvpumpingsystem.PVPumpSystem object
+        The PV pumping system to size.
+
+    llp_accepted: float, default is 0.01
+        Maximum Loss of Load Probability that can be accepted. Between 0 and 1
+
+    M_S_guess: integer, default is None
+        Estimated number of modules in series in the PV array. Will be sized
+        by the function.
+
+    Returns
+    -------
+    preselection: pd.Dataframe,
+        All configurations tested respecting the LLP.
+    """
+    if pvps_fixture.coupling != 'mppt':
+        pvps_fixture.coupling = 'mppt'
+        warnings.warn("Pvps coupling method changed to 'mppt'.")
+
+    # initalization of variables
+    preselection = pd.DataFrame()
+
+    for pv_mod_name in tqdm.tqdm(pv_database,
+                                 desc='Research of best combination: ',
+                                 total=len(pv_database)):
+
+        # --------- Why first line does not work ?? ------------
+        # pvps_fixture.pvgeneration.pv_module_name = pv_mod_name
+        pvps_fixture.pvgeneration = pvgen.PVGeneration(
+            weather_data_and_metadata={
+                    'weather_data': weather_data,
+                    'weather_metadata': weather_metadata},
+            pv_module_name=pv_mod_name
+            )
+        # ----------------------------------------------------------
+
+        for pump in pump_database:
+            # check that pump can theoretically match
+            if pvps_fixture.pipes.h_stat > 0.9*pump.range.tdh['max']:
+                warnings.warn('Pump {0} does not match '
+                              'the required head'.format(pump.idname))
+                continue  # skip this round
+
+            pvps_fixture.motorpump = pump
+
+            M_s = size_nb_pv_mod_mppt(pvps_fixture, llp_accepted, M_s_guess)
 
             preselection = preselection.append(
                 pd.Series({
@@ -476,7 +627,7 @@ def sizing_minimize_npv(pv_database, pump_database,
     # TODO: check following for a discrete optimization:
     # https://towardsdatascience.com/linear-programming-and-discrete-optimization-with-python-using-pulp-449f3c5f6e99
 
-    if pvps_fixture == 'direct':
+    if pvps_fixture.coupling == 'direct':
         preselection = subset_respecting_llp_direct(pv_database,
                                                     pump_database,
                                                     weather_data,
@@ -528,23 +679,16 @@ if __name__ == '__main__':
     weather_worst_month = shrink_weather_worst_month(weather_data)
 
     # Consumption input
-    consumption_data = cs.Consumption(constant_flow=3,
-                                      length=len(weather_short))
+    consumption_data = cs.Consumption(constant_flow=3)
 
     # Pipes set-up
     pipes = pn.PipeNetwork(h_stat=20, l_tot=100, diam=0.08,
                            material='plastic', optimism=True)
 
+    reservoir1 = res.Reservoir(size=5000)
+
     mppt1 = mppt.MPPT(efficiency=0.96,
                       price=1000)
-
-    pvps1 = pvps.PVPumpSystem(None,
-                              None,
-                              coupling='direct',
-                              mppt=mppt1,
-                              motorpump_model='arab',
-                              pipes=pipes,
-                              consumption=consumption_data)
 
     # ------------ PUMP DATABASE ---------------------
     pump_sunpump_120 = pp.Pump(path="data/pump_files/SCB_10_265_180_BL.txt",
@@ -566,7 +710,7 @@ if __name__ == '__main__':
 
     # ------------ PV DATABASE ---------------------
 
-    pv_database = ['Canadian_solar 340', 'Canadian_solar 200']
+    pv_database = ['Canadian_solar 80M', 'Canadian_solar 340M']
 
     pvgen1 = pvgen.PVGeneration(
         weather_data_and_metadata={
@@ -576,6 +720,14 @@ if __name__ == '__main__':
         )
 
     # -- TESTS (Temporary) --
+    pvps1 = pvps.PVPumpSystem(pvgen1,
+                              None,
+                              coupling='direct',
+                              mppt=mppt1,
+                              motorpump_model='arab',
+                              pipes=pipes,
+                              consumption=consumption_data,
+                              reservoir=reservoir1)
 
 #    selection, preselection1 = sizing_minimize_npv(
 #           pv_database, pump_database,
@@ -583,16 +735,22 @@ if __name__ == '__main__':
 #           pvps1,
 #           llp_accepted=0.05, M_s_guess=5)
 #
-    preselection_direct = subset_respecting_llp_direct(
+#    preselection_direct = subset_respecting_llp_direct(
+#       pv_database, pump_database,
+#       weather_short, weather_metadata,
+#       pvps1,
+#       llp_accepted=0.05)
+
+#    preselection_mppt = subset_respecting_llp_mppt(
+#       pv_database, pump_database,
+#       weather_short, weather_metadata,
+#       pvps1,
+#       llp_accepted=0.05)
+
+    preselection_mppt_alt = subset_respecting_llp_mppt_alt(
        pv_database, pump_database,
-       weather_short, weather_metadata,
+       weather_worst_month, weather_metadata,
        pvps1,
        llp_accepted=0.05)
 
-    preselection_mppt = subset_respecting_llp_mppt(
-       pv_database, pump_database,
-       weather_short, weather_metadata,
-       pvps1,
-       llp_accepted=0.05)
-
-    print(preselection_mppt)
+    print(preselection_mppt_alt)

@@ -156,6 +156,7 @@ class Pump:
                 self.specs,
                 self.motor_electrical_architecture)
 
+        # triggers the calculation of the pump model with decorator below
         self.modeling_method = modeling_method
 
     def __repr__(self):

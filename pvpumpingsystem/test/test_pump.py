@@ -42,7 +42,7 @@ def test_limited_pump_data_1():
 
     pump_testfile = os.path.join(
             test_dir, '../data/pump_files/min_specs.txt')
-    # The pump is modeled with extremely basic model
+    # The pump is modeled with extremely basic model, considering only f2
     pumpset = pp.Pump(path=pump_testfile,
                       modeling_method='theoretical',
                       motor_electrical_architecture='permanent_magnet')
@@ -53,11 +53,11 @@ def test_limited_pump_data_1():
     np.testing.assert_allclose(res, res_expected, rtol=0.05)
 
     res = functQ(540, 1)['Q']
-    res_expected = 105  # not physically consistent! Work on the model needed
+    res_expected = 105  # not physically consistent! Work needed on the model
     np.testing.assert_allclose(res, res_expected, rtol=0.05)
 
 
-def test_limited_pump_data_3():
+def test_limited_pump_data_2():
     """Tests 'theoretical_constant_efficiency' model and recalculation of
     specs when some are lacking.
 

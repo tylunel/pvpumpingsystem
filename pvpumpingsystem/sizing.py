@@ -171,8 +171,6 @@ def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
     # initalization of variables
     preselection = pd.DataFrame()
 
-
-
     pvps_fixture.pvgeneration.weather_data_and_metadata = {
             'weather_data': weather_data,
             'weather_metadata': weather_metadata}

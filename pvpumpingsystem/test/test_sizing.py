@@ -167,7 +167,7 @@ def test_sizing_minimize_npv_direct(databases):
             pvps_fixture,
             llp_accepted=0.01,
             M_s_guess=1)
-    assert ('SCB_10' in selection.pump.values and
+    assert ('Shurflo_9325' in selection.pump.values and
             'Canadian_Solar_Inc__CS5C_80M' in selection.pv_module.values)
 
 

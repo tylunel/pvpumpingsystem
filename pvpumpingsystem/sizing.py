@@ -439,8 +439,6 @@ def subset_respecting_llp_mppt_old(pv_database, pump_database,    # noqa: C901
             # initialization of variable for first round
             llp_prev = 1.1
 
-            # TODO: put this code in a new function 'size_nb_pv_mod_mppt()' for
-            # more readability
             while True:
                 llp = funct_llp_for_Ms(pvps_fixture, M_s)
                 print('module: {0} / pump: {1} / M_s: {2} /'
@@ -533,16 +531,13 @@ def subset_respecting_llp_mppt(pv_database, pump_database,    # noqa: C901
     for pv_mod_name in tqdm.tqdm(pv_database,
                                  desc='Research of best combination: ',
                                  total=len(pv_database)):
-
-        # --------- Why first line does not work ?? ------------
-        # pvps_fixture.pvgeneration.pv_module_name = pv_mod_name
+        # Sets the PV module
         pvps_fixture.pvgeneration = pvgen.PVGeneration(
             weather_data_and_metadata={
                     'weather_data': weather_data,
                     'weather_metadata': weather_metadata},
             pv_module_name=pv_mod_name
             )
-        # ----------------------------------------------------------
 
         for pump in pump_database:
             # check that pump can theoretically match
@@ -551,8 +546,10 @@ def subset_respecting_llp_mppt(pv_database, pump_database,    # noqa: C901
                               'the required head'.format(pump.idname))
                 continue  # skip this round
 
+            # Sets the motorpump
             pvps_fixture.motorpump = pump
 
+            # Sizes the PV generator for respecting the llp_accepted
             M_s = size_nb_pv_mod_mppt(pvps_fixture, llp_accepted, M_s_guess)
 
             preselection = preselection.append(
@@ -747,7 +744,7 @@ if __name__ == '__main__':
 #       pvps1,
 #       llp_accepted=0.05)
 
-    preselection_mppt_alt = subset_respecting_llp_mppt_alt(
+    preselection_mppt_alt = subset_respecting_llp_mppt(
        pv_database, pump_database,
        weather_worst_month, weather_metadata,
        pvps1,

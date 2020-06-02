@@ -130,7 +130,7 @@ class PVPumpSystem(object):
 
     def __repr__(self):
         infos = ('PVPSystem made of: \npvgeneration: {0} \npump: {1})'
-                 .format(self.pvgeneration, self.motorpump.idname))
+                 .format(self.pvgeneration, self.motorpump))
         return infos
 
     # TODO: turn it into a decorator

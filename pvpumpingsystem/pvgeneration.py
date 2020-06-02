@@ -160,6 +160,7 @@ class PVGeneration:
 
         self.pv_database_name = pv_database_name
         self.price_per_watt = price_per_watt
+        # goes through setter (picks right module and sets self.pv_module)
         self.pv_module_name = pv_module_name
         # Import of weather
         self.weather_data_and_metadata = weather_data_and_metadata
@@ -255,7 +256,12 @@ class PVGeneration:
         # convert in pandas.Series by selecting first column: iloc[:, 0]
         self.pv_module = pv_database[pv_idname].iloc[:, 0]  # to remove
         if hasattr(self, 'system'):
+            # update system.module
             self.system.module = pv_database[pv_idname].iloc[:, 0]
+            # update system.module_parameters:
+            for key in dict(self.pv_module):
+                self.system.module_parameters[key] = dict(self.pv_module)[key]
+
         self.price_per_module = self.price_per_watt * self.pv_module.STC
 
     def run_model(self):

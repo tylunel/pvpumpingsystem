@@ -290,8 +290,11 @@ def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
     return preselection
 
 
-def size_nb_pv_mod_mppt(pvps_fixture, llp_accepted, M_s_guess):
+def size_nb_pv_mppt(pvps_fixture, llp_accepted, M_s_guess):
     """
+    Function sizing the PV generator (i.e. the number of PV modules) for
+    a specified llp_accepted. Here 'M_s' represents the total number
+    of PV module (because M_p = 1).
     """
 
     def funct_llp_for_Ms(pvps, M_s, **kwargs):

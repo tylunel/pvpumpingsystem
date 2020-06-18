@@ -11,14 +11,6 @@ import pandas as pd
 import tqdm
 import warnings
 
-import pvlib
-
-import pvpumpingsystem.pump as pp
-import pvpumpingsystem.pipenetwork as pn
-import pvpumpingsystem.consumption as cs
-import pvpumpingsystem.pvpumpsystem as pvps
-import pvpumpingsystem.mppt as mppt
-import pvpumpingsystem.reservoir as res
 import pvpumpingsystem.pvgeneration as pvgen
 
 
@@ -161,19 +153,19 @@ def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
         pvps_fixture.coupling = 'direct'
         warnings.warn("Pvps coupling method changed to 'direct'.")
 
-#    def funct_llp_for_Ms_Mp(pvps, M_s, M_p, **kwargs):
-#        pvps.pvgeneration.system.modules_per_string = M_s
-#        pvps.pvgeneration.system.strings_per_inverter = M_p
-#        pvps.pvgeneration.run_model()
-#        pvps.run_model(**kwargs)
-#        return pvps.llp
+    # def funct_llp_for_Ms_Mp(pvps, M_s, M_p, **kwargs):
+    #     pvps.pvgeneration.system.modules_per_string = M_s
+    #     pvps.pvgeneration.system.strings_per_inverter = M_p
+    #     pvps.pvgeneration.run_model()
+    #     pvps.run_model(**kwargs)
+    #     return pvps.llp
 
     # initialization of variables
     preselection = pd.DataFrame()
 
-#    pvps_fixture.pvgeneration.weather_data_and_metadata = {
-#            'weather_data': weather_data,
-#            'weather_metadata': weather_metadata}
+    # pvps_fixture.pvgeneration.weather_data_and_metadata = {
+    #         'weather_data': weather_data,
+    #         'weather_metadata': weather_metadata}
 
     for pv_mod_name in tqdm.tqdm(pv_database,
                                  desc='PV database exploration: ',
@@ -184,7 +176,32 @@ def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
             weather_data_and_metadata={
                     'weather_data': weather_data,
                     'weather_metadata': weather_metadata},
-            pv_module_name=pv_mod_name
+            pv_module_name=pv_mod_name,
+
+            price_per_watt=2.5,  # in US dollars
+            surface_tilt=45,  # 0 = horizontal, 90 = vertical
+            surface_azimuth=180,  # 180 = South, 90 = East
+            albedo=0,  # between 0 and 1
+            modules_per_string=1,
+            strings_in_parallel=1,
+            # PV module glazing parameters (not always given in specs)
+            glass_params={'K': 4,  # extinction coefficient [1/m]
+                          'L': 0.002,  # thickness [m]
+                          'n': 1.526},  # refractive index
+            racking_model='open_rack',  # or'close_mount' or 'insulated_back'
+
+            # Models used (check pvlib.modelchain for all available models)
+            orientation_strategy='south_at_latitude_tilt',  # or 'flat' or None
+            clearsky_model='ineichen',
+            transposition_model='isotropic',
+            solar_position_method='nrel_numpy',
+            airmass_model='kastenyoung1989',
+            dc_model='desoto',  # 'desoto' or 'cec'.
+            ac_model='pvwatts',
+            aoi_model='physical',
+            spectral_model='first_solar',
+            temperature_model='sapm',
+            losses_model='pvwatts'
             )
 
         for pump in tqdm.tqdm(pump_database,
@@ -229,60 +246,60 @@ def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
                     pvps_fixture, llp_accepted,
                     M_s_min, M_s_max, M_p_min, M_p_max,)
 
-#            # Guess a M_s to start with or take the given M_s_guess:
-#            if M_s_guess is None:
-#                M_s = M_s_min
-#            else:
-#                M_s = M_s_guess
-#            # Guess a M_p to start with or take the given M_p_guess:
-#            if M_p_guess is None:
-#                M_p = M_p_min
-#            else:
-#                M_p = M_p_guess
-#
-#            # initialization of variable for first round
-#            llp_prev_Ms = 1.1
-#            llp_prev_Mp = 1.1
-#            M_s_prev = M_s_min
-#
-#            while True:
-#                llp = funct_llp_for_Ms_Mp(pvps_fixture, M_s, M_p)
-#                print('module: {0} / pump: {1} / M_s: {2} /'
-#                      '/ M_p: {3} / llp: {4} / npv: {5}'.format(
-#                        pv_mod_name, pump.idname, M_s, M_p,
-#                        llp, pvps_fixture.npv))
-#                # changing M_s
-#                if llp <= llp_accepted:
-#                    break
-#                elif llp > llp_accepted:
-#                    if llp < llp_prev_Ms and M_s < M_s_max:
-#                        M_s_prev = M_s
-#                        M_s += 1
-#                        M_s_change_efficient = True
-#                    elif llp >= llp_prev_Ms:
-#                        M_s = M_s_prev
-#                        M_s_change_efficient = False
-#                    else:
-#                        pass  # keep current M_s
-#                llp_prev_Ms = llp
-#
-#                if not M_s_change_efficient:  # then change M_p
-#                    llp = funct_llp_for_Ms_Mp(pvps_fixture, M_s, M_p)
-#                    print('module: {0} / pump: {1} / M_s: {2} /'
-#                          '/ M_p: {3} / llp: {4} / npv: {5}'.format(
-#                                  pv_mod_name, pump.idname, M_s, M_p,
-#                                  llp, pvps_fixture.npv))
-#                    # changing M_p
-#                    if llp <= llp_accepted:
-#                        break
-#                    elif llp > llp_accepted:
-#                        if llp < llp_prev_Mp and M_p < M_p_max:
-#                            M_p += 1
-#                        elif M_p == M_p_max:
-#                            break
-#                        else:
-#                            break
-#                    llp_prev_Mp = llp
+            # # Guess a M_s to start with or take the given M_s_guess:
+            # if M_s_guess is None:
+            #     M_s = M_s_min
+            # else:
+            #     M_s = M_s_guess
+            # # Guess a M_p to start with or take the given M_p_guess:
+            # if M_p_guess is None:
+            #     M_p = M_p_min
+            # else:
+            #     M_p = M_p_guess
+
+            # # initialization of variable for first round
+            # llp_prev_Ms = 1.1
+            # llp_prev_Mp = 1.1
+            # M_s_prev = M_s_min
+
+            # while True:
+            #     llp = funct_llp_for_Ms_Mp(pvps_fixture, M_s, M_p)
+            #     print('module: {0} / pump: {1} / M_s: {2} /'
+            #           '/ M_p: {3} / llp: {4} / npv: {5}'.format(
+            #             pv_mod_name, pump.idname, M_s, M_p,
+            #             llp, pvps_fixture.npv))
+            #     # changing M_s
+            #     if llp <= llp_accepted:
+            #         break
+            #     elif llp > llp_accepted:
+            #         if llp < llp_prev_Ms and M_s < M_s_max:
+            #             M_s_prev = M_s
+            #             M_s += 1
+            #             M_s_change_efficient = True
+            #         elif llp >= llp_prev_Ms:
+            #             M_s = M_s_prev
+            #             M_s_change_efficient = False
+            #         else:
+            #             pass  # keep current M_s
+            #     llp_prev_Ms = llp
+
+            #     if not M_s_change_efficient:  # then change M_p
+            #         llp = funct_llp_for_Ms_Mp(pvps_fixture, M_s, M_p)
+            #         print('module: {0} / pump: {1} / M_s: {2} /'
+            #               '/ M_p: {3} / llp: {4} / npv: {5}'.format(
+            #                       pv_mod_name, pump.idname, M_s, M_p,
+            #                       llp, pvps_fixture.npv))
+            #         # changing M_p
+            #         if llp <= llp_accepted:
+            #             break
+            #         elif llp > llp_accepted:
+            #             if llp < llp_prev_Mp and M_p < M_p_max:
+            #                 M_p += 1
+            #             elif M_p == M_p_max:
+            #                 break
+            #             else:
+            #                 break
+            #         llp_prev_Mp = llp
 
             preselection = preselection.append(
                 pd.Series({
@@ -293,6 +310,8 @@ def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
                         'llp': pvps_fixture.llp,
                         'npv': pvps_fixture.npv}),
                 ignore_index=True)
+            # for debug:
+            pvps_fixture.operating_point_noiteration(plot=True)
 
     # Remove not satifying LLP
     preselection = preselection[preselection.llp <= llp_accepted]
@@ -300,7 +319,7 @@ def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
     return preselection
 
 
-def size_nb_pv_direct(pvps_fixture, llp_accepted,
+def size_nb_pv_direct(pvps_fixture, llp_accepted,    # noqa: C901
                       M_s_min, M_s_max, M_p_min, M_p_max,
                       M_s_guess=None, M_p_guess=None):
     """
@@ -313,6 +332,7 @@ def size_nb_pv_direct(pvps_fixture, llp_accepted,
         pvps.pvgeneration.system.strings_per_inverter = M_p
         pvps.pvgeneration.run_model()
         pvps.run_model(**kwargs)
+        # pvps.operating_point_noiteration(plot=True)
         return pvps.llp
 
     # Guess a M_s to start with or take the given M_s_guess:
@@ -379,66 +399,6 @@ def size_nb_pv_direct(pvps_fixture, llp_accepted,
     return M_s, M_p
 
 
-def size_nb_pv_mppt(pvps_fixture, llp_accepted, M_s_guess):
-    """
-    Function sizing the PV generator (i.e. the number of PV modules) for
-    a specified llp_accepted. Here 'M_s' represents the total number
-    of PV module (because M_p = 1).
-    """
-
-    def funct_llp_for_Ms(pvps, M_s, **kwargs):
-        pvps.pvgeneration.system.modules_per_string = M_s
-        pvps.pvgeneration.system.strings_per_inverter = 1
-        pvps.pvgeneration.run_model()
-        pvps.run_model(**kwargs)
-        return pvps.llp
-
-    llp_max = funct_llp_for_Ms(pvps_fixture, 0)
-
-    # Guess a M_s to start with:
-    if M_s_guess is None:
-        M_s = (pvps_fixture.motorpump.range.power['max'] //
-               pvps_fixture.pvgeneration.pv_module.PTC)
-    else:
-        M_s = M_s_guess
-
-    # initialization of variable for first round
-    llp_prev = 1.1
-
-    while True:  # while loop with break statement
-        # new LLP:
-        llp = funct_llp_for_Ms(pvps_fixture, M_s)
-        # printing (useful for debug):
-        print('module: {0} / pump: {1} / M_s: {2} /'
-              ' llp: {3} / npv: {4}'.format(
-                pvps_fixture.pvgeneration.pv_module_name,
-                pvps_fixture.motorpump.idname,
-                M_s,
-                llp,
-                pvps_fixture.npv))
-        # decision tree:
-        if llp <= llp_accepted and llp_prev > 1:  # first round
-            M_s -= 1
-        elif llp <= llp_accepted and llp_prev <= llp_accepted:
-            M_s -= 1
-        elif llp <= llp_accepted and 1 > llp_prev > llp_accepted \
-                and llp != llp_max:
-            break
-        elif llp > llp_accepted and llp_prev != llp:
-            M_s += 1
-        elif llp > llp_accepted and llp_prev == llp and llp != llp_max:
-            break  # unsatisfying llp, removed later
-        elif llp > llp_accepted and llp_prev == llp and llp == llp_max:
-            M_s += 1
-        else:
-            raise Exception('This case had not been figured out'
-                            ' it could happen')
-        # preparation for next turn
-        llp_prev = llp
-
-    return M_s
-
-
 # TODO: make this function work with the voltage range of mppt (once available)
 # so as to size M_s and M_p. For now only M_s changes, but correponds
 # actually more to the number of pv module than to nb of pv modules in series.
@@ -500,7 +460,32 @@ def subset_respecting_llp_mppt(pv_database, pump_database,    # noqa: C901
             weather_data_and_metadata={
                     'weather_data': weather_data,
                     'weather_metadata': weather_metadata},
-            pv_module_name=pv_mod_name
+            pv_module_name=pv_mod_name,
+
+            price_per_watt=2.5,  # in US dollars
+            surface_tilt=45,  # 0 = horizontal, 90 = vertical
+            surface_azimuth=180,  # 180 = South, 90 = East
+            albedo=0,  # between 0 and 1
+            modules_per_string=1,
+            strings_in_parallel=1,
+            # PV module glazing parameters (not always given in specs)
+            glass_params={'K': 4,  # extinction coefficient [1/m]
+                          'L': 0.002,  # thickness [m]
+                          'n': 1.526},  # refractive index
+            racking_model='open_rack',  # or'close_mount' or 'insulated_back'
+
+            # Models used (check pvlib.modelchain for all available models)
+            orientation_strategy='south_at_latitude_tilt',  # or 'flat' or None
+            clearsky_model='ineichen',
+            transposition_model='isotropic',
+            solar_position_method='nrel_numpy',
+            airmass_model='kastenyoung1989',
+            dc_model='desoto',  # 'desoto' or 'cec'.
+            ac_model='pvwatts',
+            aoi_model='physical',
+            spectral_model='first_solar',
+            temperature_model='sapm',
+            losses_model='pvwatts'
             )
 
         for pump in pump_database:
@@ -530,6 +515,66 @@ def subset_respecting_llp_mppt(pv_database, pump_database,    # noqa: C901
     preselection = preselection[preselection.llp <= llp_accepted]
 
     return preselection
+
+
+def size_nb_pv_mppt(pvps_fixture, llp_accepted, M_s_guess):
+    """
+    Function sizing the PV generator (i.e. the number of PV modules) for
+    a specified llp_accepted. Here 'M_s' represents the total number
+    of PV module (because M_p = 1).
+    """
+
+    def funct_llp_for_Ms(pvps, M_s, **kwargs):
+        pvps.pvgeneration.system.modules_per_string = M_s
+        pvps.pvgeneration.system.strings_per_inverter = 1
+        pvps.pvgeneration.run_model()
+        pvps.run_model(**kwargs)
+        return pvps.llp
+
+    llp_max = funct_llp_for_Ms(pvps_fixture, 0)
+
+    # Guess a M_s to start with:
+    if M_s_guess is None:
+        M_s = (pvps_fixture.motorpump.range.power['max'] //
+               pvps_fixture.pvgeneration.pv_module.PTC)
+    else:
+        M_s = M_s_guess
+
+    # initialization of variable for first round
+    llp_prev = 1.1
+
+    while True:  # while loop with break statement
+        # new LLP:
+        llp = funct_llp_for_Ms(pvps_fixture, M_s)
+        # printing (useful for debug):
+        print('module: {0} / pump: {1} / M_s: {2} /'
+              ' llp: {3} / npv: {4}'.format(
+                pvps_fixture.pvgeneration.pv_module_name,
+                pvps_fixture.motorpump.idname,
+                M_s,
+                llp,
+                pvps_fixture.npv))
+        # decision tree:
+        if llp <= llp_accepted and llp_prev > 1:  # first round
+            M_s -= 1
+        elif llp <= llp_accepted and llp_prev <= llp_accepted:
+            M_s -= 1
+        elif llp <= llp_accepted and 1 > llp_prev > llp_accepted \
+                and llp != llp_max:
+            break
+        elif llp > llp_accepted and llp_prev != llp:
+            M_s += 1
+        elif llp > llp_accepted and llp_prev == llp and llp != llp_max:
+            break  # unsatisfying llp, removed later
+        elif llp > llp_accepted and llp_prev == llp and llp == llp_max:
+            M_s += 1
+        else:
+            raise Exception('This case had not been figured out'
+                            ' it could happen')
+        # preparation for next turn
+        llp_prev = llp
+
+    return M_s
 
 
 def sizing_minimize_npv(pv_database, pump_database,
@@ -597,7 +642,7 @@ def sizing_minimize_npv(pv_database, pump_database,
                                                     llp_accepted=llp_accepted,
                                                     M_s_guess=M_s_guess,
                                                     M_p_guess=M_p_guess)
-    else:  # mppt coupling
+    elif pvps_fixture.coupling == 'mppt':
         preselection = subset_respecting_llp_mppt(pv_database,
                                                   pump_database,
                                                   weather_data,
@@ -605,6 +650,8 @@ def sizing_minimize_npv(pv_database, pump_database,
                                                   pvps_fixture,
                                                   llp_accepted=llp_accepted,
                                                   M_s_guess=M_s_guess)
+    else:
+        raise ValueError('Unknown coupling method.')
 
     if np.isnan(preselection.npv).any():
         warnings.warn('The NPV could not be calculated, so optimized '
@@ -630,14 +677,22 @@ def sizing_Ms_vs_tank_size():
 
 
 if __name__ == '__main__':
+    import pvlib
+
+    import pvpumpingsystem.pump as pp
+    import pvpumpingsystem.pipenetwork as pn
+    import pvpumpingsystem.consumption as cs
+    import pvpumpingsystem.pvpumpsystem as pvps
+    import pvpumpingsystem.mppt as mppt
+    import pvpumpingsystem.reservoir as res
+
     # ------------ MAIN INPUTS -------------------------
     # Weather input
     weather_path = (
         'data/weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw')
     weather_data, weather_metadata = pvlib.iotools.epw.read_epw(
             weather_path, coerce_year=2005)
-    weather_short = shrink_weather_representative(weather_data)
-    weather_worst_month = shrink_weather_worst_month(weather_data)
+    weather_shrunk = shrink_weather_representative(weather_data)
 
     # Consumption input
     consumption_data = cs.Consumption(constant_flow=1)
@@ -652,11 +707,11 @@ if __name__ == '__main__':
                       price=1000)
 
     # ------------ PUMP DATABASE ---------------------
-    pump_sunpump_120 = pp.Pump(path="data/pump_files/SCB_10_265_180_BL.txt",
-                               idname='SCB_10_265_180_BL',
-                               price=1100)
+#    pump_sunpump_180 = pp.Pump(path="data/pump_files/SCB_10_265_180_BL.txt",
+#                               idname='SCB_10_265_180_BL',
+#                               price=1100)
 
-    pump_sunpump_180 = pp.Pump(path="data/pump_files/SCB_10_150_180_BL.txt",
+    pump_sunpump_120 = pp.Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
                                idname='SCB_10_150_180_BL',
                                price=1200)
 
@@ -665,20 +720,12 @@ if __name__ == '__main__':
                            price=700,
                            motor_electrical_architecture='permanent_magnet')
 
-    pump_database = [pump_sunpump_120,
-                     pump_sunpump_180,
-                     pump_shurflo]
+    pump_database = [pump_shurflo, pump_sunpump_120]
 
     # ------------ PV DATABASE ---------------------
 
-    pv_database = ['Canadian_solar 80M', 'Canadian_solar 340M']
-
-    pvgen1 = pvgen.PVGeneration(
-        weather_data_and_metadata={
-                'weather_data': weather_short,
-                'weather_metadata': weather_metadata},
-        pv_module_name=pv_database[0]
-        )
+    # pv_database = ['Canadian_solar_CS5C 80M', 'Canadian_solar_CS1U 340M']
+    pv_database = ['Canadian_solar_CS5C 80M']
 
     # -- TESTS (Temporary) --
     pvps1 = pvps.PVPumpSystem(None,
@@ -690,28 +737,11 @@ if __name__ == '__main__':
                               consumption=consumption_data,
                               reservoir=reservoir1)
 
-#    selection, preselection1 = sizing_minimize_npv(
-#           pv_database, pump_database,
-#           weather_short, weather_metadata,
-#           pvps1,
-#           llp_accepted=0.05, M_s_guess=5)
-#
-#    preselection_direct = subset_respecting_llp_direct(
-#       pv_database, pump_database,
-#       weather_short, weather_metadata,
-#       pvps1,
-#       llp_accepted=0.05)
-
-#    preselection_mppt = subset_respecting_llp_mppt(
-#       pv_database, pump_database,
-#       weather_short, weather_metadata,
-#       pvps1,
-#       llp_accepted=0.05)
-
     preselection = subset_respecting_llp_direct(
        pv_database, pump_database,
-       weather_short, weather_metadata,
+       weather_shrunk, weather_metadata,
        pvps1,
-       llp_accepted=0.05)
+       llp_accepted=0.01,
+       M_s_guess=1)
 
     print(preselection)

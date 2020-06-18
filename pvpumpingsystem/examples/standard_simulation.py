@@ -8,6 +8,9 @@ Example of a simulation with pvpumpingsystem package.
 import matplotlib.pyplot as plt
 import pandas as pd
 
+import pvlib
+import pvpumpingsystem.sizing as siz
+
 import pvpumpingsystem.pump as pp
 import pvpumpingsystem.pipenetwork as pn
 import pvpumpingsystem.reservoir as rv
@@ -21,20 +24,26 @@ pd.plotting.register_matplotlib_converters()
 
 # ------------ LOCATION & PV MODELING -----------------------
 
+weather_path = (
+    '../data/weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw')
+weather_data, weather_metadata = pvlib.iotools.epw.read_epw(
+        weather_path, coerce_year=2005)
+weather_shrunk = siz.shrink_weather_representative(weather_data)
+
 pvgen1 = pvgen.PVGeneration(
             # Weather data
-            weather_data_and_metadata=(
-                    '../data/weather_files/'
-                    'CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'),  # to adapt:
+            weather_data_and_metadata={
+                    'weather_data': weather_shrunk,
+                    'weather_metadata': weather_metadata},  # to adapt:
 
             # PV array parameters
-            pv_module_name='Canadian_Solar CS6P 200P',
+            pv_module_name='Canadian_Solar CS5C 80M',
             price_per_watt=2.5,  # in US dollars
             surface_tilt=45,  # 0 = horizontal, 90 = vertical
             surface_azimuth=180,  # 180 = South, 90 = East
             albedo=0,  # between 0 and 1
-            modules_per_string=3,
-            strings_in_parallel=1,
+            modules_per_string=1,
+            strings_in_parallel=2,
             # PV module glazing parameters (not always given in specs)
             glass_params={'K': 4,  # extinction coefficient [1/m]
                           'L': 0.002,  # thickness [m]
@@ -44,7 +53,7 @@ pvgen1 = pvgen.PVGeneration(
             # Models used (check pvlib.modelchain for all available models)
             orientation_strategy='south_at_latitude_tilt',  # or 'flat' or None
             clearsky_model='ineichen',
-            transposition_model='haydavies',
+            transposition_model='isotropic',
             solar_position_method='nrel_numpy',
             airmass_model='kastenyoung1989',
             dc_model='desoto',  # 'desoto' or 'cec'.
@@ -79,7 +88,7 @@ pump_shurflo = pp.Pump("../data/pump_files/Shurflo_9325.txt",
 
 
 # ------------ RESERVOIRS ------------------
-reservoir1 = rv.Reservoir(size=3500,  # [L]
+reservoir1 = rv.Reservoir(size=5000,  # [L]
                           water_volume=0,  # [L] at beginning
                           price=(1010+210))  # 210 is pipes price
 
@@ -92,7 +101,7 @@ no_reservoir = rv.Reservoir()
 
 # ------------ CONSUMPTION PROFILES ------------------
 # represents 288L/day
-consumption_cst = cs.Consumption(constant_flow=0.4)  # output flow rate [L/min]
+consumption_cst = cs.Consumption(constant_flow=1)  # output flow rate [L/min]
 
 # represents 288L/day
 consumption_daily_1 = cs.Consumption(
@@ -115,9 +124,9 @@ mppt1 = mppt.MPPT(efficiency=0.96,
                   idname='PCA-120-BLS-M2'
                   )
 
-pipes1 = pn.PipeNetwork(h_stat=30,  # static head [m]
+pipes1 = pn.PipeNetwork(h_stat=20,  # static head [m]
                         l_tot=100,  # length of pipes [m]
-                        diam=0.02,  # diameter [m]
+                        diam=0.08,  # diameter [m]
                         material='plastic',
                         fittings=None,  # Not available yet
                         optimism=True)
@@ -125,17 +134,17 @@ pipes1 = pn.PipeNetwork(h_stat=30,  # static head [m]
 # ------------ PVPS DEFINITION -----------
 # Here you gather all components of you PV pumping system previously defined:
 pvps1 = pvps.PVPumpSystem(pvgen1,
-                          pump_sunpump,
+                          pump_shurflo,
                           coupling='direct',  # to adapt: 'mppt' or 'direct',
                           mppt=mppt1,
                           pipes=pipes1,
-                          consumption=consumption_daily_1,
-                          reservoir=reservoir2)
+                          consumption=consumption_cst,
+                          reservoir=reservoir1)
 
 
 # ------------ RUNNING MODEL -----------------
 
-pvps1.run_model(iteration=False, starting_soc=0.5)
+pvps1.run_model(iteration=False, starting_soc='morning')
 
 print(pvps1)
 print('LLP = ', pvps1.llp)

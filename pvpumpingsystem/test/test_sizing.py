@@ -118,7 +118,7 @@ def test_sizing_minimize_npv_mppt(databases):
 
 
 # TODO: Wait for the PR#987 to be accepted in pvlib-python repo
-# before uncomment this test (if not, does not pass the CI checks)
+# before uncommenting this test (if not, does not pass the CI checks)
 # def test_sizing_minimize_npv_direct(databases):
 #     """
 #     Goes through following functions:

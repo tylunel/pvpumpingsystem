@@ -153,19 +153,8 @@ def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
         pvps_fixture.coupling = 'direct'
         warnings.warn("Pvps coupling method changed to 'direct'.")
 
-    # def funct_llp_for_Ms_Mp(pvps, M_s, M_p, **kwargs):
-    #     pvps.pvgeneration.system.modules_per_string = M_s
-    #     pvps.pvgeneration.system.strings_per_inverter = M_p
-    #     pvps.pvgeneration.run_model()
-    #     pvps.run_model(**kwargs)
-    #     return pvps.llp
-
     # initialization of variables
     preselection = pd.DataFrame()
-
-    # pvps_fixture.pvgeneration.weather_data_and_metadata = {
-    #         'weather_data': weather_data,
-    #         'weather_metadata': weather_metadata}
 
     for pv_mod_name in tqdm.tqdm(pv_database,
                                  desc='PV database exploration: ',
@@ -246,61 +235,6 @@ def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
                     pvps_fixture, llp_accepted,
                     M_s_min, M_s_max, M_p_min, M_p_max,)
 
-            # # Guess a M_s to start with or take the given M_s_guess:
-            # if M_s_guess is None:
-            #     M_s = M_s_min
-            # else:
-            #     M_s = M_s_guess
-            # # Guess a M_p to start with or take the given M_p_guess:
-            # if M_p_guess is None:
-            #     M_p = M_p_min
-            # else:
-            #     M_p = M_p_guess
-
-            # # initialization of variable for first round
-            # llp_prev_Ms = 1.1
-            # llp_prev_Mp = 1.1
-            # M_s_prev = M_s_min
-
-            # while True:
-            #     llp = funct_llp_for_Ms_Mp(pvps_fixture, M_s, M_p)
-            #     print('module: {0} / pump: {1} / M_s: {2} /'
-            #           '/ M_p: {3} / llp: {4} / npv: {5}'.format(
-            #             pv_mod_name, pump.idname, M_s, M_p,
-            #             llp, pvps_fixture.npv))
-            #     # changing M_s
-            #     if llp <= llp_accepted:
-            #         break
-            #     elif llp > llp_accepted:
-            #         if llp < llp_prev_Ms and M_s < M_s_max:
-            #             M_s_prev = M_s
-            #             M_s += 1
-            #             M_s_change_efficient = True
-            #         elif llp >= llp_prev_Ms:
-            #             M_s = M_s_prev
-            #             M_s_change_efficient = False
-            #         else:
-            #             pass  # keep current M_s
-            #     llp_prev_Ms = llp
-
-            #     if not M_s_change_efficient:  # then change M_p
-            #         llp = funct_llp_for_Ms_Mp(pvps_fixture, M_s, M_p)
-            #         print('module: {0} / pump: {1} / M_s: {2} /'
-            #               '/ M_p: {3} / llp: {4} / npv: {5}'.format(
-            #                       pv_mod_name, pump.idname, M_s, M_p,
-            #                       llp, pvps_fixture.npv))
-            #         # changing M_p
-            #         if llp <= llp_accepted:
-            #             break
-            #         elif llp > llp_accepted:
-            #             if llp < llp_prev_Mp and M_p < M_p_max:
-            #                 M_p += 1
-            #             elif M_p == M_p_max:
-            #                 break
-            #             else:
-            #                 break
-            #         llp_prev_Mp = llp
-
             preselection = preselection.append(
                 pd.Series({
                         'pv_module': pvps_fixture.pvgeneration.pv_module.name,
@@ -310,8 +244,6 @@ def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
                         'llp': pvps_fixture.llp,
                         'npv': pvps_fixture.npv}),
                 ignore_index=True)
-            # for debug:
-            pvps_fixture.operating_point_noiteration(plot=True)
 
     # Remove not satifying LLP
     preselection = preselection[preselection.llp <= llp_accepted]
@@ -674,74 +606,3 @@ def sizing_Ms_vs_tank_size():
     Sustainable Energy Technologies and Assessments
     """
     raise NotImplementedError
-
-
-if __name__ == '__main__':
-    import pvlib
-
-    import pvpumpingsystem.pump as pp
-    import pvpumpingsystem.pipenetwork as pn
-    import pvpumpingsystem.consumption as cs
-    import pvpumpingsystem.pvpumpsystem as pvps
-    import pvpumpingsystem.mppt as mppt
-    import pvpumpingsystem.reservoir as res
-
-    # ------------ MAIN INPUTS -------------------------
-    # Weather input
-    weather_path = (
-        'data/weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw')
-    weather_data, weather_metadata = pvlib.iotools.epw.read_epw(
-            weather_path, coerce_year=2005)
-    weather_shrunk = shrink_weather_representative(weather_data)
-
-    # Consumption input
-    consumption_data = cs.Consumption(constant_flow=1)
-
-    # Pipes set-up
-    pipes = pn.PipeNetwork(h_stat=20, l_tot=100, diam=0.08,
-                           material='plastic', optimism=True)
-
-    reservoir1 = res.Reservoir(size=5000)
-
-    mppt1 = mppt.MPPT(efficiency=0.96,
-                      price=1000)
-
-    # ------------ PUMP DATABASE ---------------------
-#    pump_sunpump_180 = pp.Pump(path="data/pump_files/SCB_10_265_180_BL.txt",
-#                               idname='SCB_10_265_180_BL',
-#                               price=1100)
-
-    pump_sunpump_120 = pp.Pump(path="data/pump_files/SCB_10_150_120_BL.txt",
-                               idname='SCB_10_150_180_BL',
-                               price=1200)
-
-    pump_shurflo = pp.Pump(path="data/pump_files/Shurflo_9325.txt",
-                           idname='Shurflo_9325',
-                           price=700,
-                           motor_electrical_architecture='permanent_magnet')
-
-    pump_database = [pump_shurflo, pump_sunpump_120]
-
-    # ------------ PV DATABASE ---------------------
-
-    # pv_database = ['Canadian_solar_CS5C 80M', 'Canadian_solar_CS1U 340M']
-    pv_database = ['Canadian_solar_CS5C 80M']
-
-    # -- TESTS (Temporary) --
-    pvps1 = pvps.PVPumpSystem(None,
-                              None,
-                              coupling='direct',
-                              mppt=mppt1,
-                              motorpump_model='arab',
-                              pipes=pipes,
-                              consumption=consumption_data,
-                              reservoir=reservoir1)
-
-    preselection = subset_respecting_llp_direct(
-       pv_database, pump_database,
-       weather_shrunk, weather_metadata,
-       pvps1,
-       llp_accepted=0.01,
-       M_s_guess=1)
-
-    print(preselection)

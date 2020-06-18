@@ -8,9 +8,6 @@ Example of a simulation with pvpumpingsystem package.
 import matplotlib.pyplot as plt
 import pandas as pd
 
-import pvlib
-import pvpumpingsystem.sizing as siz
-
 import pvpumpingsystem.pump as pp
 import pvpumpingsystem.pipenetwork as pn
 import pvpumpingsystem.reservoir as rv
@@ -22,19 +19,13 @@ import pvpumpingsystem.pvgeneration as pvgen
 # allows pandas to convert timestamp for matplotlib
 pd.plotting.register_matplotlib_converters()
 
-# ------------ LOCATION & PV MODELING -----------------------
-
-weather_path = (
-    '../data/weather_files/CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw')
-weather_data, weather_metadata = pvlib.iotools.epw.read_epw(
-        weather_path, coerce_year=2005)
-weather_shrunk = siz.shrink_weather_representative(weather_data)
+# ------------ LOCATION & PV MODELING ----------------------
 
 pvgen1 = pvgen.PVGeneration(
-            # Weather data
-            weather_data_and_metadata={
-                    'weather_data': weather_shrunk,
-                    'weather_metadata': weather_metadata},  # to adapt:
+            # Weather data path
+            weather_data_and_metadata=(
+                '../data/weather_files/'
+                'CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'),  # to adapt:
 
             # PV array parameters
             pv_module_name='Canadian_Solar CS5C 80M',

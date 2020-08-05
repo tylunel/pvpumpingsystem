@@ -9,19 +9,29 @@ or to choose some elements of the pumping station depending on the consumption o
 It relies on pvlib-python for the photovoltaic power generation, and implements
 different models of pump for the simulation. 
 
+# Installation 
+pvpumpingsystem works with Python 3.5 and superior only.
 
-# Installation
+## For active users
 
-For manual installation, the following dependencies are required:
+If you are new to Python we recommend to use Anaconda to install and use Python. You can find it here: https://www.anaconda.com/products/individual.
 
-- Python 3.7 (https://www.python.org/download/releases/3.7/)
-- fluids (pip install fluids)
-- pvlib-python 0.7 (pip install pvlib==0.7)
-- numpy-financial (pip install numpy_financial)
+If you plan on editing the software and you are on Windows, install Git to simplify the download and the versioning of the package (on Linux, Git should be native).
 
-and common scientific dependencies that you can more easily install via Anaconda:
-- conda (pip install conda)
+Once you have Anaconda and git installed, open the command line interface 'Anaconda prompt', change directory to the one you want to install pvpumpingsystem in, and type in:
+'''
+pip install -e git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
+'''
 
+
+To ensure 'pvpumpingsystem' and its dependencies are properly installed, run the tests by going to the directory of pvpumpingsystem and by running pytest:
+'''
+cd src/pvpumpingsystem
+pytest
+'''
+
+## For passive users
+----Still to come----
 
 # Hands-on start
 

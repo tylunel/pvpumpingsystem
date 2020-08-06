@@ -38,6 +38,12 @@ extensions = [
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
+# If you have your own conf.py file, it overrides Read the Doc's default 
+# conf.py. By default, Sphinx expects the master doc to be contents. 
+# Read the Docs will set master doc to index instead (or whatever it is
+# you have specified in your settings).
+master_doc = 'index'
+
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.

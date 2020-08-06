@@ -1,0 +1,13 @@
+name: pvpumpingsystemdocs
+
+dependencies:
+    - python>=3.5
+    - numpy
+    - scipy
+    - pandas
+    - matplotlib
+    - sphinx=3.0.4
+    - pvlib>=0.7
+    - numpy-financial
+    - fluids
+

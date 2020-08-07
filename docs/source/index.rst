@@ -24,12 +24,6 @@ Technologie Superieure, Montreal, Qc, Canada, by Tanguy Lunel.
 The software is published under the open source license GPL-v3.
 
 
-Citing pvpumpingsystem
-======================
------still to come------ 
-Paper currently under review at Journal of Open Source Software.
-
-
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
@@ -47,3 +41,9 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
+
+
+Citing pvpumpingsystem
+======================
+-----still to come------ 
+Paper currently under review at Journal of Open Source Software.

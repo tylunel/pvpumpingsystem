@@ -7,7 +7,9 @@ Welcome to pvpumpingsystem's documentation!
 ===========================================
 
 *pvpumpingsystem* is a package providing tools for modeling and sizing 
-photovoltaic water pumping systems.
+offgrid photovoltaic water pumping systems. It is specially designed for
+small to medium size systems, the type of pumping system typically used
+for isolated communities.
 
 It allows to find the quantity of water pumped from the pumping station 
 characteristics given, or to choose some elements of the pumping station 
@@ -16,7 +18,7 @@ for the photovoltaic power generation, and implements different models
 of pump for the simulation.
 
 The source code for pvpumpingsystem is hosted on GitHub:
-<https://github.com/tylunel/pvpumpingsystem>`_
+https://github.com/tylunel/pvpumpingsystem
 
 The package was originally developped at T3E research group, in Ecole de 
 Technologie Superieure, Montreal, Qc, Canada, by Tanguy Lunel.

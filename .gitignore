@@ -6,3 +6,4 @@ pvpumpingsystem/data/weather_files/Melbourne_hourly_and_minutely/melbourne_minut
 
 # Other
 .coverage
+pvpumpingsystem.egg-info

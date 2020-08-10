@@ -96,16 +96,16 @@ def test_sizing_minimize_npv_mppt(databases):
 
     # rest of pumping system
     pipes = pn.PipeNetwork(h_stat=20, l_tot=100, diam=0.08,
-                           material='plastic', optimism=True)
+                            material='plastic', optimism=True)
     consum = cs.Consumption(constant_flow=1)
 
     pvps_fixture = pvps.PVPumpSystem(None,
-                                     None,
-                                     coupling='mppt',
-                                     mppt=mppt1,
-                                     consumption=consum,
-                                     reservoir=reservoir1,
-                                     pipes=pipes)
+                                      None,
+                                      coupling='mppt',
+                                      mppt=mppt1,
+                                      consumption=consum,
+                                      reservoir=reservoir1,
+                                      pipes=pipes)
 
     selection, _ = siz.sizing_minimize_npv(
             pv_database, pump_database,
@@ -157,7 +157,7 @@ def test_sizing_minimize_npv_direct(databases):
             llp_accepted=0.01,
             M_s_guess=1)
 
-    assert ('SCB_10' in selection.pump.values and
+    assert ('Shurflo_9325' in selection.pump.values and
             'Canadian_Solar_Inc__CS5C_80M' in selection.pv_module.values)
 
 

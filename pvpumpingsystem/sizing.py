@@ -4,7 +4,6 @@ Module implementing sizing procedure to facilitate pv pumping station sizing.
 
 @author: Tanguy Lunel
 """
-# TODO: simplify function to remove C901 complexity issues
 
 import numpy as np
 import pandas as pd
@@ -190,7 +189,7 @@ def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
             aoi_model='physical',
             spectral_model='first_solar',
             temperature_model='sapm',
-            losses_model='pvwatts'
+            losses_model='no_loss'
             )
 
         for pump in tqdm.tqdm(pump_database,
@@ -417,7 +416,7 @@ def subset_respecting_llp_mppt(pv_database, pump_database,    # noqa: C901
             aoi_model='physical',
             spectral_model='first_solar',
             temperature_model='sapm',
-            losses_model='pvwatts'
+            losses_model='no_loss'
             )
 
         for pump in pump_database:
@@ -521,8 +520,6 @@ def sizing_minimize_npv(pv_database, pump_database,
     that the Loss of Load Probability (llp) is inferior to the one given.
     It selects the pump and the pv module in databases and size the number
     of pv modules used.
-
-    //!\\ Works fine only for MPPT coupling for now.
 
     Parameters
     ----------

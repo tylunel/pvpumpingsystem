@@ -13,7 +13,7 @@ can modify it to their liking.
     to install pvpumpingsystem along with Anaconda and Git.
 
     If the answer to this is *No*, follow the :ref:`simple` instructions
-    to install pvpumpingsystem alone in not editable mode.
+    to install pvpumpingsystem alone.
 
 
 Installing pvpumpingsystem is similar to installing most scientific python
@@ -28,41 +28,49 @@ optional packages that are needed for some pvpumpingsystem features.
 Install pvpumpingsystem with Anaconda and Git
 ---------------------------------------------
 
-- Anaconda
+.. note::
+
+    *pvpumpingsystem* is not available yet with conda-forge or with PyPI,
+    therefore it must be installed through a VCS or from the local source code.
+
+- Anaconda:
 
 The Anaconda distribution is an open source distribution providing Python 
 and others softwares and libraries useful for data science. Anaconda includes 
 many of the libraries needed for pvpumpingsystem (Pandas, NumPy, SciPy, etc).
 
-#. **Install** the Anaconda Python distribution available at
-   `<https://www.anaconda.com/download/>`_.
+Anaconda Python distribution is available at `<https://www.anaconda.com/download/>`_.
 
 See `What is Anaconda? <https://www.anaconda.com/what-is-anaconda/>`_
 and the `Anaconda Documentation <https://docs.anaconda.com/anaconda/>`_
 for more information.
 
 
-- Git
+- Git:
 
 Git is a version control system that widely help contribution and development 
 for open source softwares. Git should be native on most of Linux distribution,
 but must be installed on Windows.
 
-#. **Install** Git for Windows is available at
-   `<https://gitforwindows.org/>`_.
+Git for Windows is available at `<https://gitforwindows.org/>`_.
 
+
+- pvpumpingsystem:
 
 Once you have Anaconda and git installed, open the command line interface 
 'Anaconda prompt', change directory to the one you want to install 
 pvpumpingsystem in, and type in:
+
 ```
 pip install -e git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
 ```
-*N.B.: *pvpumpingsystem* is not available yet with conda-forge or with PyPI,
-therefore it must be installed through a VCS or from the local source code.
 
-To ensure 'pvpumpingsystem' and its dependencies are properly installed, 
+
+- Test pvpumpingsystem:
+
+To ensure *pvpumpingsystem* and its dependencies are properly installed, 
 run the tests by going to the directory of pvpumpingsystem and by running pytest:
+
 ```
 cd src/pvpumpingsystem
 pytest
@@ -76,60 +84,38 @@ Install pvpumpingsystem alone
 
 .. note::
 
-    This is a note.
+    Even if you decide not to use Anaconda or Git, you minimally need a Python
+    version superior to 3.5, and to have pip and setuptools installed (installed
+    by default with Python).
 
-
-The second option implies to download the Python source code manually.
-Either clone the `git repository <https://github.com/tylunel/pvpumpingsystem>`_ 
-or go to the `Releases page 
+This second option implies to download the Python source code manually.
+Either go to `git repository <https://github.com/tylunel/pvpumpingsystem>`_ 
+or to the `releases page 
 <https://github.com/tylunel/pvpumpingsystem/releases>`_ to
 download the zip file of the most recent release.
 
+Extract the folder in the directory where you want to have it installed.
 
-Installing pvpumpingsystem as an editable library involves 3 steps:
+```
+pip install <relative/path/to/the/directory>
+```
 
-1. :ref:`step1`
-2. :ref:`setupenvironment`
-3. :ref:`installsource`
+If you want to install it in editable mode, use the `-e` option:
 
-None of these steps are particularly challenging, but they become
-more difficult when combined.
-With a little bit of practice the process will be fast and easy.
-Experienced users can easily execute these steps in less than a minute.
-You'll get there.
-
-.. _step1:
-
-Obtain the source code
-~~~~~~~~~~~~~~~~~~~~~~
-
-blablabla
-
-Follow these steps ...:
-
-#. **Download** 
-#. **Fork** 
-#. **Clone** your
+```
+pip install -e <relative/path/to/pvpumpingsystem/directory>
+```
 
 
-.. _setupenvironment:
+- Test pvpumpingsystem:
 
-Set up a virtual environment
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+To ensure *pvpumpingsystem* and its dependencies are properly installed, 
+run the tests by going to the directory of pvpumpingsystem and by running pytest:
 
-blabla
-
-.. _installsource:
-
-Install the source code
-~~~~~~~~~~~~~~~~~~~~~~~
-
-blabla
-
-#. **Install** 
-#. **Test** your installation by running ``python -c 'import pvlib'``.
-   You're good to go if it returns without an exception.
-
+```
+cd <relative/path/to/pvpumpingsystem/directory>
+pytest
+```
 
 .. _compatibility:
 

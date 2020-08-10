@@ -34,7 +34,7 @@ Consult the docs for more information: https://pvpumpingsystem.readthedocs.io/en
 
 # Hands-on start
 
-Two examples of how the software can be run are in the folder 'examples'. 
+Two examples of how the software can be run are in the folder 'docs/examples'. 
 The first shows how to model the water output from a given pumpset, and the second shows how to optimize the selection of one or more component on the pumping station.
 
 

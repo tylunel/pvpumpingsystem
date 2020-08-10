@@ -14,5 +14,6 @@ setup(
    url='https://github.com/tylunel/pvpumpingsystem',
    packages=['pvpumpingsystem'],  # same as name
    # external dependencies packages
-   install_requires=['pvlib', 'fluids', 'numpy-financial'],
+   install_requires=['pvlib', 'fluids', 'numpy-financial',
+                     'matplotlib', 'pytest', 'sklearn', 'tqdm'],
    )

@@ -8,13 +8,13 @@ Example of a simulation with pvpumpingsystem package.
 import matplotlib.pyplot as plt
 import pandas as pd
 
+import pvpumpingsystem.pvgeneration as pvgen
+import pvpumpingsystem.mppt as mppt
 import pvpumpingsystem.pump as pp
 import pvpumpingsystem.pipenetwork as pn
 import pvpumpingsystem.reservoir as rv
 import pvpumpingsystem.consumption as cs
 import pvpumpingsystem.pvpumpsystem as pvps
-import pvpumpingsystem.mppt as mppt
-import pvpumpingsystem.pvgeneration as pvgen
 
 # allows pandas to convert timestamp for matplotlib
 pd.plotting.register_matplotlib_converters()

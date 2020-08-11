@@ -22,7 +22,7 @@ Defines a MPPT
 
 class MPPT(object):
     """
-    Class defining a MPPT.
+    Class defining a DC/DC converter with a MPPT controller.
 
     Attributes
     ----------

@@ -77,6 +77,8 @@ database is natively available in `pvpumpingsystem/data/pump_files/`.
 In this same folder, a file named `0_template_for_pump_specs` is proposed
 to help enter another pump specifications. Good specification must give
 the maximum data points possible (current I, voltage V, head TDH, flow rate Q).
+Note that the class corresponding to the motor-pump has been shortened to
+``Pump`` for simplification.
 
   - ``path``
 

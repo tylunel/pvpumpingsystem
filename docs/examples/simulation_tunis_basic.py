@@ -28,11 +28,8 @@ pvgen1 = pvgen.PVGeneration(
     albedo=0.3,  # in [0, 1]. Albedo of soil, 0.3 is typical of dry soils.
 
     # Models used (check pvlib.modelchain for all available models)
-    orientation_strategy='south_at_latitude_tilt',  # or 'flat' or None
+    orientation_strategy='south_at_latitude_tilt'  # or 'flat' or None
     )
-
-# Runs the PV generation model
-pvgen1.run_model()
 
 # ------------ MPPT/DC-DC CONVERTER ---------
 
@@ -74,7 +71,7 @@ pvps1 = pvps.PVPumpSystem(pvgen1,
 pvps1.run_model()
 
 print(pvps1)
-print('total water pumped in the year = ', pvps1.flow.Qlpm.sum())
+print('Total water pumped in the year = ', pvps1.flow.Qlpm.sum())
 print('LLP = ', pvps1.llp)
 print('Initial investment = {0} USD'.format(pvps1.initial_investment))
 print('NPV = {0} USD'.format(pvps1.npv))

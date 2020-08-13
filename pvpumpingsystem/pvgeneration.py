@@ -101,11 +101,14 @@ class PVGeneration:
         'ashrae', 'sapm', 'martin_ruiz', 'no_loss'. The ModelChain instance
         will be passed as the first argument to a user-defined function.
 
-    spectral_model: None, str, or function, default None
+    spectral_model: None, str, or function, default 'no_loss'
         If None, the model will be inferred from the contents of
         system.module_parameters. Valid strings are 'sapm',
         'first_solar', 'no_loss'. The ModelChain instance will be passed
         as the first argument to a user-defined function.
+        'no_loss' is recommended if the user is not sure that the weather
+        file contains complete enough information like for example
+        'precipitable_water'.
 
     temperature_model: None, str or function, default None
         Valid strings are 'sapm' and 'pvsyst'. The ModelChain instance will be
@@ -159,7 +162,7 @@ class PVGeneration:
                  dc_model='desoto',  # to choose between 'desoto' and 'cec'.
                  ac_model='pvwatts',
                  aoi_model='physical',
-                 spectral_model='first_solar',
+                 spectral_model='no_loss',
                  temperature_model='sapm',
                  losses_model='pvwatts',
                  **kwargs

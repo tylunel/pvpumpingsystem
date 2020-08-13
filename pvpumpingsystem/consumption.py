@@ -82,7 +82,7 @@ def adapt_to_flow_pumped(Q_consumption, Q_pumped):
 
     timezone = Q_pumped.index.tz
 
-    # test if Q_consumption.index is naive iff:
+    # test if Q_consumption.index is timezone naive:
     if Q_consumption.index.tzinfo is None or \
             Q_consumption.index.tzinfo.utcoffset(Q_consumption.index) \
             is None:

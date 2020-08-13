@@ -22,18 +22,33 @@ class PipeNetwork(object):
 
     Attributes
     ----------
-        h_stat: float,
-            static head [m]
-        l_tot: float,
-            total length of pipes (not necessarily horizontal) [m]
-        diam: float,
-            fixed pipe diameter for all the network (propose to correct
-            with fluids.piping.nearest_pipe()? ) [m]
-        roughness: float,
-            roughness of pipes [m]
-        fittings: dict, NOT IMPLEMENTED YET.
-            dictionnary of fittings, with angles as keys and
-            number as values (check in fluids module how to define it)
+    h_stat: float,
+        static head [m]
+
+    l_tot: float,
+        total length of pipes (not necessarily horizontal) [m]
+
+    diam: float,
+        fixed pipe diameter for all the network (propose to correct
+        with fluids.piping.nearest_pipe()? ) [m]
+
+    roughness: float, default is 0
+        roughness of pipes [m]
+
+    material: str, default is None
+        If given and roughness == 0, the roughness will be changed to the one
+        of the material if the material is found in a database of roughnesses.
+
+    fittings: dict, NOT IMPLEMENTED YET. default is None
+        dictionnary of fittings, with angles as keys and
+        number as values (check in fluids module how to define it)
+
+    optimism: boolean, default is None
+        For values of roughness coming from material, a minimum, maximum,
+        and average value is normally given;
+        if True, returns the minimum roughness;
+        if False, the maximum roughness;
+        if None, the average roughness.
     """
 
     def __init__(self, h_stat, l_tot, diam, roughness=0, material=None,

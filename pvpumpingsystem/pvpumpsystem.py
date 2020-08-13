@@ -405,7 +405,10 @@ class PVPumpSystem(object):
                 self.water_stored.extra_water < 0])
 
         # water shortage probability
-        self.llp = total_water_lacking / total_water_required
+        try:
+            self.llp = total_water_lacking / total_water_required
+        except ZeroDivisionError:
+            self.llp = np.nan
 
         # Price of motorpump, pv modules, reservoir, mppt
         self.initial_investment = fin.initial_investment(self)

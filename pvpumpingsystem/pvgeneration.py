@@ -22,9 +22,16 @@ class PVGeneration:
         '(company_name)_(reference_code)_(peak_power)'
 
     weather_data_and_metadata: str or dict (containing pd.DataFrame and dict),
-        Path to the weather file if string recognized,
-        or the weather data itself if not string. In the latter case,
-        the dict must contains keys 'weather_data' and 'weather_metadata'.
+        Path to the weather file if it is .epw file,
+        or the weather data itself otherwise.
+        In the latter case, the dict must contains keys 'weather_data'
+        and 'weather_metadata'. It should be created prior to the PVGeneration
+        with the help of the corresponding pvlib function:
+        (see https://pvlib-python.readthedocs.io/en/stable/api.html#io-tools).
+        Possible weather file formats are numerous, including tmy2, tmy3, epw,
+        and other more US related format. Note that Function 'get_pvgis_tmy'
+        allows to get a tmy file according to the latitude and longitude of a
+        location.
 
     price_per_watt: float, default is 2.5
         Price per watt for the module referenced by pv_module_name [US dollars]
@@ -127,7 +134,7 @@ class PVGeneration:
                  weather_data_and_metadata,  # path or weather data
                  # PV array parameters
                  pv_module_name,  # As precised as possible
-                 price_per_watt=2.5,  # in US dollars
+                 price_per_watt=float('NaN'),  # in US dollars
                  surface_tilt=0,  # 0 = horizontal, 90 = vertical
                  surface_azimuth=180,  # 180 = South, 90 = East
                  albedo=0,  # between 0 and 1

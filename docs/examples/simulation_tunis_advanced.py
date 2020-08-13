@@ -22,42 +22,50 @@ pd.plotting.register_matplotlib_converters()
 # ------------ LOCATION & PV MODELING ----------------------
 
 pvgen1 = pvgen.PVGeneration(
-            # Weather data path
-            weather_data_and_metadata=(
-                '../data/weather_files/'
-                'CAN_PQ_Montreal.Intl.AP.716270_CWEC.epw'),  # to adapt:
+    # Weather data path
+    weather_data_and_metadata=(
+        '../../pvpumpingsystem/data/weather_files/'
+        'TUN_Tunis.607150_IWEC.epw'),  # to adapt:
 
-            # PV array parameters
-            pv_module_name='Canadian_Solar CS5C 80M',
-            price_per_watt=2.5,  # in US dollars
-            surface_tilt=45,  # 0 = horizontal, 90 = vertical
-            surface_azimuth=180,  # 180 = South, 90 = East
-            albedo=0,  # between 0 and 1
-            modules_per_string=1,
-            strings_in_parallel=2,
-            # PV module glazing parameters (not always given in specs)
-            glass_params={'K': 4,  # extinction coefficient [1/m]
-                          'L': 0.002,  # thickness [m]
-                          'n': 1.526},  # refractive index
-            racking_model='open_rack',  # or'close_mount' or 'insulated_back'
+    # PV array parameters
+    pv_module_name='Canadian Solar CS5C 80M',
+    price_per_watt=2.5,  # in US dollars,
+    # The price must be given in dollar per watt
+    # (if a 200W module costs 400USD, the price is 400/200 = 2 USD/W)
+    surface_tilt=45,  # 0 = horizontal, 90 = vertical
+    surface_azimuth=180,  # 180 = South, 90 = East
+    albedo=0.3,  # between 0 and 1
+    modules_per_string=4,
+    strings_in_parallel=1,
+    # PV module glazing parameters (not always given in specs)
+    glass_params={'K': 4,  # extinction coefficient [1/m]
+                  'L': 0.002,  # thickness [m]
+                  'n': 1.526},  # refractive index
+    racking_model='open_rack',  # or'close_mount' or 'insulated_back'
 
-            # Models used (check pvlib.modelchain for all available models)
-            orientation_strategy='south_at_latitude_tilt',  # or 'flat' or None
-            clearsky_model='ineichen',
-            transposition_model='isotropic',
-            solar_position_method='nrel_numpy',
-            airmass_model='kastenyoung1989',
-            dc_model='desoto',  # 'desoto' or 'cec'.
-            ac_model='pvwatts',
-            aoi_model='physical',
-            spectral_model='first_solar',
-            temperature_model='sapm',
-            losses_model='pvwatts'
-            )
+    # Models used (check pvlib.modelchain for all available models)
+    orientation_strategy='south_at_latitude_tilt',  # or 'flat' or None
+    clearsky_model='ineichen',
+    transposition_model='isotropic',
+    solar_position_method='nrel_numpy',
+    airmass_model='kastenyoung1989',
+    dc_model='desoto',  # 'desoto' or 'cec'.
+    ac_model='pvwatts',
+    aoi_model='physical',
+    spectral_model='first_solar',
+    temperature_model='sapm',
+    losses_model='pvwatts'
+    )
 
-# Runs of the PV generation model
+# Runs the PV generation model
 pvgen1.run_model()
 
+# ------------ MPPT/DC-DC CONVERTER -------
+
+mppt1 = mppt.MPPT(efficiency=0.96,
+                  price=410,
+                  idname='PCA-120-BLS-M2'
+                  )
 
 # ------------ PUMPS -----------------
 
@@ -68,17 +76,28 @@ pvgen1.run_model()
 # 4) and close the file.
 #
 # To use it here then, download it with the path as follows:
-pump_sunpump = pp.Pump(path="../data/pump_files/SCB_10_150_120_BL.txt",
+pump_sunpump = pp.Pump(path="../../pvpumpingsystem/data/"
+                       "pump_files/SCB_10_150_120_BL.txt",
                        modeling_method='arab')
 
-pump_shurflo = pp.Pump("../data/pump_files/Shurflo_9325.txt",
+pump_shurflo = pp.Pump(path="../../pvpumpingsystem/data/"
+                       "../data/pump_files/Shurflo_9325.txt",
                        idname='Shurflo_9325',
                        price=640,  # USD
                        motor_electrical_architecture='permanent_magnet',
                        modeling_method='arab')  # to adapt:
 
+# ------------ PIPES ------------------------
+
+pipes1 = pn.PipeNetwork(h_stat=20,  # static head [m]
+                        l_tot=100,  # length of pipes [m]
+                        diam=0.08,  # diameter [m]
+                        material='plastic',
+                        fittings=None,  # Not available yet
+                        optimism=True)
 
 # ------------ RESERVOIRS ------------------
+
 reservoir1 = rv.Reservoir(size=5000,  # [L]
                           water_volume=0,  # [L] at beginning
                           price=(1010+210))  # 210 is pipes price
@@ -91,6 +110,7 @@ reservoir2 = rv.Reservoir(size=1000,  # [L]
 no_reservoir = rv.Reservoir()
 
 # ------------ CONSUMPTION PROFILES ------------------
+
 # represents 288L/day
 consumption_cst = cs.Consumption(constant_flow=1)  # output flow rate [L/min]
 
@@ -108,24 +128,11 @@ consumption_daily_2 = cs.Consumption(
                    2.4, 3.4, 1.4, 1.9, 2.2, 2.9,
                    4.7, 2.6, 0.8, 0.4, 0.1,   0])
 
-# ------------ REST OF PVPS ------------------------
-
-mppt1 = mppt.MPPT(efficiency=0.96,
-                  price=410,
-                  idname='PCA-120-BLS-M2'
-                  )
-
-pipes1 = pn.PipeNetwork(h_stat=20,  # static head [m]
-                        l_tot=100,  # length of pipes [m]
-                        diam=0.08,  # diameter [m]
-                        material='plastic',
-                        fittings=None,  # Not available yet
-                        optimism=True)
-
 # ------------ PVPS DEFINITION -----------
+
 # Here you gather all components of you PV pumping system previously defined:
 pvps1 = pvps.PVPumpSystem(pvgen1,
-                          pump_shurflo,
+                          pump_sunpump,
                           coupling='direct',  # to adapt: 'mppt' or 'direct',
                           mppt=mppt1,
                           pipes=pipes1,

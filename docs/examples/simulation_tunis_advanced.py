@@ -8,7 +8,6 @@ name in the same folder.
 """
 
 import matplotlib.pyplot as plt
-import pandas as pd
 import pvlib
 
 import pvpumpingsystem.pvgeneration as pvgen
@@ -20,7 +19,8 @@ import pvpumpingsystem.consumption as cs
 import pvpumpingsystem.pvpumpsystem as pvps
 
 # allows pandas to convert timestamp for matplotlib
-pd.plotting.register_matplotlib_converters()
+# import pandas as pd
+# pd.plotting.register_matplotlib_converters()
 
 # ------------ LOCATION & WEATHER FILE IMPORT ---------------
 
@@ -53,7 +53,7 @@ pvgen1 = pvgen.PVGeneration(
     surface_tilt=50,  # 0 = horizontal, 90 = vertical
     # More tilted to increase the yield in winter (at the expense of summer)
     surface_azimuth=180,  # 180 = South, 90 = East
-    albedo=0.3,  # between 0 and 1
+    albedo=0.3,  # in [0, 1]. Albedo of soil, 0.3 is typical of dry soils.
     modules_per_string=5,  # 4 for mppt, 5 for direct (llp smaller, cheaper)
     strings_in_parallel=1,
     # PV module glazing parameters (not always given in specs)
@@ -125,27 +125,19 @@ reservoir2 = rv.Reservoir(size=1000,  # [L]
                           water_volume=0,  # [L] at beginning
                           price=(500+210))  # 210 is pipes price
 
-# no reservoir:
-no_reservoir = rv.Reservoir()
 
 # ------------ CONSUMPTION PROFILES ------------------
 
-# represents 2880L/day
+# represents 2880L/day ~ continuous drip irrigation of 1000m² of garden
 consumption_cst = cs.Consumption(constant_flow=2)  # output flow rate [L/min]
 
-# represents 288L/day
-consumption_daily_1 = cs.Consumption(
-        repeated_flow=[0,   0,   0,   0,   0,   0,
-                       0,   0, 0.2, 0.1, 0.1, 0.3,
-                       0.9, 0.7, 0.3, 0.3, 0.3, 0.5,
-                       0.6, 0.3, 0.1, 0.1,   0,  0])
+# represents 2880L/day ~ domestic water use of 40 people
+consumption_daily = cs.Consumption(
+    repeated_flow=[0, 0, 0, 0, 0, 0,
+                   0, 0, 2, 1, 1, 3,
+                   9, 7, 3, 3, 3, 5,
+                   6, 3, 1, 1, 0, 0])
 
-# represents 1746L/day ~ domestic water use of 25 people
-consumption_daily_2 = cs.Consumption(
-    repeated_flow=[0,   0,   0,   0,   0,   0,
-                   0.4,   0.8, 0.7, 1.3, 1.5, 1.6,
-                   2.4, 3.4, 1.4, 1.9, 2.2, 2.9,
-                   4.7, 2.6, 0.8, 0.4, 0.1,   0])
 
 # ------------ PVPS DEFINITION -----------
 
@@ -155,7 +147,7 @@ pvps1 = pvps.PVPumpSystem(pvgen1,
                           coupling='direct',  # to adapt: 'mppt' or 'direct',
                           mppt=mppt1,
                           pipes=pipes1,
-                          consumption=consumption_cst,
+                          consumption=consumption_daily,
                           reservoir=reservoir1)
 
 
@@ -171,28 +163,35 @@ print('Total water pumped in the year = ', pvps1.flow.Qlpm.sum())
 print('LLP = ', pvps1.llp)
 print('Initial investment = {0} USD'.format(pvps1.initial_investment))
 print('NPV = {0} USD'.format(pvps1.npv))
+
 if pvps1.coupling == 'direct':
     pvps1.operating_point_noiteration(plot=True)
 
 
-# ------------ GRAPHS -----------------------
+#%% ------------ GRAPHS -----------------------
+# Part of data to plot
+truncated_flow = pvps1.flow['2005-02-15' <= pvps1.flow.index]
+truncated_flow = truncated_flow[truncated_flow.index <= '2005-02-20']
 
+truncated_tank = pvps1.water_stored['2005-02-15' <= pvps1.water_stored.index]
+truncated_tank = truncated_tank[truncated_tank.index <= '2005-02-20']
 
 # Water volume in reservoir and output flow rate
 fig, ax1 = plt.subplots()
 
 ax1.set_xlabel('time')
 ax1.set_ylabel('Water volume in tank [L]', color='r')
-ax1.plot(pvps1.water_stored.index, pvps1.water_stored.volume, color='r',
+ax1.plot(truncated_tank.index, truncated_tank.volume, color='r',
          linewidth=1)
 ax1.tick_params(axis='y', labelcolor='r')
 
 ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
 
 ax2.set_ylabel('Pump output flow-rate [L/min]', color='b')
-ax2.plot(pvps1.efficiency.index, pvps1.flow.Qlpm, color='b',
+ax2.plot(truncated_flow.index, truncated_flow.Qlpm, color='b',
          linewidth=1)
 ax2.tick_params(axis='y', labelcolor='b')
 
 fig.tight_layout()  # otherwise the right y-label is slightly clipped
+
 plt.show()

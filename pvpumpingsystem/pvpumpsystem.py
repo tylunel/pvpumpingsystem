@@ -376,7 +376,7 @@ class PVPumpSystem(object):
 
     def run_model(self, iteration=False, **kwargs):
         """
-        Comprehesive modeling of the PVPS. Computes Loss of Power Supply (LLP)
+        Comprehensive modeling of the PVPS. Computes Loss of Power Supply (LLP)
         and stores it as an attribute. Re-run eveything even if already
         computed before.
 
@@ -414,7 +414,7 @@ class PVPumpSystem(object):
         self.initial_investment = fin.initial_investment(self)
 
         # TODO: add opex in __init__ as attribute and add a way to change
-        # lifespans
+        # lifespans. Add labour_coefficient as parameter as well.
         self.npv = fin.net_present_value(self,
                                          opex=500,
                                          discount_rate=self.discount_rate,

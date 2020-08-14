@@ -25,7 +25,6 @@ pvgen1 = pvgen.PVGeneration(
     pv_module_name='Canadian Solar CS5C 80M',
     modules_per_string=4,  # number of modules in series
     strings_in_parallel=1,  # number of strings in parallel
-    albedo=0.3,  # in [0, 1]. Albedo of soil, 0.3 is typical of dry soils.
 
     # Models used (check pvlib.modelchain for all available models)
     orientation_strategy='south_at_latitude_tilt'  # or 'flat' or None

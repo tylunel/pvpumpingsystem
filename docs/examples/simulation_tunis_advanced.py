@@ -128,7 +128,8 @@ reservoir2 = rv.Reservoir(size=1000,  # [L]
 
 # ------------ CONSUMPTION PROFILES ------------------
 
-# represents 2880L/day ~ continuous drip irrigation of 1000m² of garden
+# represents 2880L/day ~ continuous drip irrigation of 1000m² of garden in a
+# dry climate
 consumption_cst = cs.Consumption(constant_flow=2)  # output flow rate [L/min]
 
 # represents 2880L/day ~ domestic water use of 40 people
@@ -168,7 +169,7 @@ if pvps1.coupling == 'direct':
     pvps1.operating_point_noiteration(plot=True)
 
 
-## ------------ GRAPHS -----------------------
+# ------------ GRAPHS -----------------------
 # Part of data to plot
 truncated_flow = pvps1.flow['2005-02-15' <= pvps1.flow.index]
 truncated_flow = truncated_flow[truncated_flow.index <= '2005-02-20']

@@ -27,19 +27,22 @@ from pvpumpingsystem import sizing
 # ------------- Pumps -----------
 # Three pumps are available here. The user wants to find the one which fits
 # best for the application. First the 3 pumps must be imported.
+
+# Note that the motor-pumps coming from 'sunpump' follow a naming convention:
+# The 3 numbers are respectively the flow rate in GPM, the Head in feet, and
+# the voltage in V at the rated operating point. Note that the rated voltage
+# is also the maximum input voltage for the pump.
 pump_1 = pp.Pump(
     path="../../pvpumpingsystem/data/pump_files/SCB_10_150_120_BL.txt")
 
 pump_2 = pp.Pump(
     path="../../pvpumpingsystem/data/pump_files/SCB_10_150_180_BL.txt")
 
-# Note that this pump does not have complete information given in the file,
-# so some details are added here.
+# For the pump remember that the details given in the text file can be
+# overwritten in its definition: for example the price is overwritten here.
 pump_3 = pp.Pump(
-    path="../../pvpumpingsystem/data/pump_files/Shurflo_9325.txt",
-    idname='Shurflo_9325',
-    price=700,
-    motor_electrical_architecture='permanent_magnet')
+    path="../../pvpumpingsystem/data/pump_files/SCS_12_127_60_BL.txt",
+    price=1300)
 
 # The database must be provided under the form of a list for the sizing:
 pump_database = [pump_1,
@@ -47,39 +50,21 @@ pump_database = [pump_1,
                  pump_3]
 
 # ------------- PV Modules -----------
+# Two different modules are investigated here
 # PV array database:
 pv_database = ['Kyocera solar KU270 6MCA',
                'Canadian Solar CS5C 80M']
 
 
-# --------- MAIN INPUTS --------------------------------------------------
+# --------- REST OF THE SYSTEM ----------------------------------------------
 
 # Weather input
 weather_data, weather_metadata = pvlib.iotools.epw.read_epw(
     '../../pvpumpingsystem/data/weather_files/TUN_Tunis.607150_IWEC.epw',
     coerce_year=2005)
-
 # shorten the weather data by keeping the worst month only (based on GHI)
 # in order to compute faster.
 weather_data = sizing.shrink_weather_worst_month(weather_data)
-
-# Consumption input
-consumption_data = cs.Consumption(constant_flow=5)  # in L/min
-
-# Pipes set-up
-pipes = pn.PipeNetwork(h_stat=20,  # vertical static head [m]
-                       l_tot=100,  # length of pipes [m]
-                       diam=0.05,  # diameter of pipes [m]
-                       material='plastic')
-
-# Reservoir
-reservoir1 = rv.Reservoir(size=5000,  # [L]
-                          water_volume=0,  # [L] at beginning
-                          price=(1010+210))  # 210 is pipes price
-
-# MPPT
-mppt1 = mppt.MPPT(efficiency=0.96,
-                  price=1000)
 
 # PV generator parameters
 pvgen1 = pvgen.PVGeneration(
@@ -96,7 +81,7 @@ pvgen1 = pvgen.PVGeneration(
             albedo=0.3,  # between 0 and 1
             racking_model='open_rack',  # or'close_mount' or 'insulated_back'
 
-            # Models used (check pvlib.modelchain for all available models)
+            # Models used
             orientation_strategy=None,  # or 'flat' or 'south_at_latitude_tilt'
             clearsky_model='ineichen',
             transposition_model='haydavies',
@@ -110,6 +95,26 @@ pvgen1 = pvgen.PVGeneration(
             losses_model='no_loss'
             )
 
+# MPPT
+mppt1 = mppt.MPPT(efficiency=0.96,
+                  price=1000)
+
+# Pipes set-up
+pipes1 = pn.PipeNetwork(h_stat=20,  # vertical static head [m]
+                        l_tot=100,  # length of pipes [m]
+                        diam=0.05,  # diameter of pipes [m]
+                        material='plastic')
+
+# Reservoir
+reservoir1 = rv.Reservoir(size=5000,  # [L]
+                          water_volume=0,  # [L] at beginning
+                          price=(1010+210))  # 210 is pipes price
+
+
+# Consumption input
+# represents 7200L/day
+consumption_data = cs.Consumption(constant_flow=5)  # in L/min
+
 # Definition of the system. PVGeneration object must be given even
 # if it will be changed afterward by the sizing function. Pump attribute can
 # be kept as None.
@@ -119,7 +124,7 @@ pvps_fixture = pvps.PVPumpSystem(pvgen1,
                                  coupling='mppt',
                                  mppt=mppt1,
                                  reservoir=reservoir1,
-                                 pipes=pipes,
+                                 pipes=pipes1,
                                  consumption=consumption_data)
 
 

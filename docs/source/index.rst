@@ -27,12 +27,11 @@ The software is published under the open source license GPL-v3.
 
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Contents:
    
    package_overview
    installation
-   beginnerguide
    apireference
 
 

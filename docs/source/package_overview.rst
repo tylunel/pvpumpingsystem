@@ -54,11 +54,26 @@ services allow checking for lint in the code and to automatize the tests.
 Each class and function are documented in the docstring with reference to the
 literature when applicable.
 
+In *pvpumpingsystem*, in order to increase the understandability of the code,
+the physical components of the PV pumping system corresponds to a class
+when possible, like for example the classes Pump(), MPPT(), PipeNetwork(),
+Reservoir() and PVGeneration().
+Moreover, each of these classes are gathered into separate modules with
+appropriate names (`pump.py`, `mppt.py`, etc).
+The previous objects are then gathered in the class PVPumpSystem() which
+allows running partial or comprehensive modeling of the pumping system.
+
+A separate module `sizing.py` is dedicated to functions allowing to size these
+systems. These functions are globally numerical methods, relying on numerous
+simulations run according to an algorithm or to a factorial design.
+`sizing.py` module can be expanded a lot as many strategies can be imagined to
+size such a system.
+
 Pvpumpingsystem relies on already existing packages for photovoltaic
 and fluid mechanics modeling, namely *pvlib-python* and *fluids*.
 *pvpumpingsystem*'s originality lies in the implementation of various
 motor-pump models for finite power sources and in the coupling
-of the distinct component models.
+of the distinct components models.
 
 Pvpumpingsystem is released under a GPL-v3 license.
 

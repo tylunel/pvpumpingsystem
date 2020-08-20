@@ -55,8 +55,9 @@ class PVGeneration:
         user, but will complicate life of intermediate user.
 
     racking_model: str, default is 'open_rack'
+        The type of racking for the PV array.s
 
-    system : pvlib.PVSystem
+    system: pvlib.PVSystem
         A :py:class:`~pvlib.pvsystem.PVSystem` object that represents
         the connected set of modules, inverters, etc. Uses the previous
         attributes.

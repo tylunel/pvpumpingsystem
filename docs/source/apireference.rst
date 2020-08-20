@@ -11,6 +11,7 @@ Classes
 The different classes of *pvpumpingsystem*.
 
 .. autosummary::
+   :toctree: generated/
 
    pvgeneration.PVGeneration
    mppt.MPPT
@@ -23,19 +24,20 @@ The different classes of *pvpumpingsystem*.
 
 Functions and methods
 =====================
-   
+
 
 Components modeling
 -------------------
 
 .. autosummary::
+   :toctree: generated/
 
    reservoir.Reservoir.change_water_volume
-   
+
    consumption.adapt_to_flow_pumped
-   
+
    pipenetwork.PipeNetwork.dynamichead
-   
+
    pvgeneration.PVGeneration.run_model
 
    pump.Pump.iv_curve_data
@@ -64,7 +66,7 @@ Components modeling
    pump.plot_Q_vs_P_H_3d
    pump.plot_I_vs_V_H_3d
    pump.plot_Q_vs_V_H_2d
-   
+
 
 
 
@@ -72,6 +74,7 @@ Global modeling
 -------------------
 
 .. autosummary::
+   :toctree: generated/
 
    pvpumpsystem.PVPumpSystem.define_motorpump_model
    pvpumpsystem.PVPumpSystem.operating_point_noiteration
@@ -89,6 +92,7 @@ Sizing tools
 ------------
 
 .. autosummary::
+   :toctree: generated/
 
    sizing.shrink_weather_representative
    sizing.shrink_weather_worst_month
@@ -104,6 +108,7 @@ Ancillary functions
 -------------------
 
 .. autosummary::
+   :toctree: generated/
 
    function_models.correlation_stats
    function_models.compound_polynomial_1_2
@@ -123,10 +128,10 @@ Ancillary functions
    function_models.polynomial_2
    function_models.polynomial_1
    function_models.polynomial_divided_2_1
-   
+
    waterproperties.water_prop
-   
+
    finance.initial_investment
    finance.net_present_value
-   
-   
+
+

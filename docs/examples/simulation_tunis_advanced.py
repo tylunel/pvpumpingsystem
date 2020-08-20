@@ -168,7 +168,7 @@ if pvps1.coupling == 'direct':
     pvps1.operating_point_noiteration(plot=True)
 
 
-#%% ------------ GRAPHS -----------------------
+## ------------ GRAPHS -----------------------
 # Part of data to plot
 truncated_flow = pvps1.flow['2005-02-15' <= pvps1.flow.index]
 truncated_flow = truncated_flow[truncated_flow.index <= '2005-02-20']

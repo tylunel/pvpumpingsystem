@@ -1,44 +1,64 @@
 [![CI general checks](https://github.com/tylunel/pvpumpingsystem/workflows/CI%20general%20checks/badge.svg)](https://github.com/tylunel/pvpumpingsystem/actions)
 [![Documentation Status](https://readthedocs.org/projects/pvpumpingsystem/badge/?version=latest)](https://pvpumpingsystem.readthedocs.io/en/latest/?badge=latest)
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/tylunel/pvpumpingsystem/master)
 
 # pvpumpingsystem
-*pvpumpingsystem* is a package providing tools for modeling and sizing photovoltaic water pumping systems.
+*pvpumpingsystem* is a package providing tools for modeling and sizing
+photovoltaic water pumping systems.
 
-It allows to find the quantity of water pumped from the pumping station characteristic given,
-or to choose some elements of the pumping station depending on the consumption of water needed.
+It can model the whole functioning of such pumping system on an hourly basis
+and eventually provide key financial and technical findings on a year.
+Conversely it can help choose some elements of the pumping station
+depending on output values wanted (like daily water consumption and
+acceptable risk of water shortage).
 
-It relies on pvlib-python for the photovoltaic power generation, and implements
-different models of pump for the simulation. 
+
+# Documentation
+The package documentation is available on readthedocs:
+`pvpumpingsystem docs <https://pvpumpingsystem.readthedocs.io/en/latest/?badge=latest>`_
 
 
-# Installation 
+# Installation
 *pvpumpingsystem* works with Python 3.5 and superior only.
 
 ## With Anaconda and Git already installed
 
-In *Anaconda prompt*, change directory to the one you want to install pvpumpingsystem in, and type in:
+In *Anaconda prompt*, change directory to the one you want to install
+pvpumpingsystem in, and type:
 ```
 pip install -e git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
 ```
 
-
-To ensure *pvpumpingsystem* and its dependencies are properly installed, run the tests by going to the directory of pvpumpingsystem and by running pytest:
+To ensure *pvpumpingsystem* and its dependencies are properly installed,
+run the tests by going to the directory of pvpumpingsystem and
+by running pytest:
 ```
 cd src/pvpumpingsystem
 pytest
 ```
 
-## Other installation
-Consult the docs for more information: https://pvpumpingsystem.readthedocs.io/en/latest/installation.html
+## Other installations
+Consult the docs for more information:
+https://pvpumpingsystem.readthedocs.io/en/latest/installation.html
 
 
 # Hands-on start
 
-Two examples of how the software can be run are in the folder 'docs/examples'. 
-The first shows how to model the water output from a given pumpset, and the second shows how to optimize the selection of one or more component on the pumping station.
+Three examples of how the software can be used are in the folder
+'docs/examples'.
+For a given system, the first two show how to obtain the outflows,
+probability of water shortage, life cycle cost and many other results:
+https://nbviewer.jupyter.org/github/tylunel/pvpumpingsystem/blob/master/docs/examples/simulation_tunis_basic.ipynb
+https://nbviewer.jupyter.org/github/tylunel/pvpumpingsystem/blob/master/docs/examples/simulation_tunis_advanced.ipynb
+
+The third shows how to optimize the selection of one or more component
+on the pumping station.
+https://nbviewer.jupyter.org/github/tylunel/pvpumpingsystem/blob/master/docs/examples/sizing_example.ipynb
 
 
 # Contributions
 
-All kind of contributions (documentation, testing, bug reports, new features, suggestions...) are highly appreciated.
-They can be reported as issues, pull requests, or simple message via Github (prefered) or via mail of the maintainer.
+All kind of contributions (documentation, testing, bug reports,
+new features, suggestions...) are highly appreciated.
+They can be reported as issues, pull requests, or simple message via
+Github (prefered) or via mail of the maintainer.

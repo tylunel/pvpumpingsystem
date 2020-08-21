@@ -35,7 +35,7 @@ class Pump:
     Attributes
     ----------
         path: str, default=''
-            The path to the txt file with the pump specifications.
+            The path to the .txt file with the pump specifications.
 
         motor_electrical_architecture: str, default is None
             'permanent_magnet', 'series_excited', 'shunt_excited',

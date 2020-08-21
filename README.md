@@ -15,7 +15,8 @@ acceptable risk of water shortage).
 
 # Documentation
 The package documentation is available on readthedocs:
-`pvpumpingsystem docs <https://pvpumpingsystem.readthedocs.io/en/latest/?badge=latest>`_
+
+[pvpumpingsystem docs](https://pvpumpingsystem.readthedocs.io/en/latest/?badge=latest)
 
 
 # Installation
@@ -46,14 +47,18 @@ https://pvpumpingsystem.readthedocs.io/en/latest/installation.html
 
 Three examples of how the software can be used are in the folder
 'docs/examples'.
+
 For a given system, the first two show how to obtain the outflows,
 probability of water shortage, life cycle cost and many other results:
-https://nbviewer.jupyter.org/github/tylunel/pvpumpingsystem/blob/master/docs/examples/simulation_tunis_basic.ipynb
-https://nbviewer.jupyter.org/github/tylunel/pvpumpingsystem/blob/master/docs/examples/simulation_tunis_advanced.ipynb
+
+[basic usage example](https://nbviewer.jupyter.org/github/tylunel/pvpumpingsystem/blob/master/docs/examples/simulation_tunis_basic.ipynb)
+
+[more advanced usage example](https://nbviewer.jupyter.org/github/tylunel/pvpumpingsystem/blob/master/docs/examples/simulation_tunis_advanced.ipynb)
 
 The third shows how to optimize the selection of one or more component
-on the pumping station.
-https://nbviewer.jupyter.org/github/tylunel/pvpumpingsystem/blob/master/docs/examples/sizing_example.ipynb
+on the pumping station based on user requirements:
+
+[sizing example](https://nbviewer.jupyter.org/github/tylunel/pvpumpingsystem/blob/master/docs/examples/sizing_example.ipynb)
 
 
 # Contributions

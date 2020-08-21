@@ -1,12 +1,11 @@
 .. currentmodule:: pvpumpingsystem
 
-#############
 API reference
-#############
+=============
 
 
 Classes
-=======
+-------
 
 The different classes of *pvpumpingsystem*.
 
@@ -23,11 +22,10 @@ The different classes of *pvpumpingsystem*.
 
 
 Functions and methods
-=====================
-
+---------------------
 
 Components modeling
--------------------
+^^^^^^^^^^^^^^^^^^^
 
 .. autosummary::
    :toctree: generated/
@@ -68,10 +66,8 @@ Components modeling
    pump.plot_Q_vs_V_H_2d
 
 
-
-
 Global modeling
--------------------
+^^^^^^^^^^^^^^^
 
 .. autosummary::
    :toctree: generated/
@@ -88,8 +84,9 @@ Global modeling
    pvpumpsystem.calc_flow_mppt_coupled
    pvpumpsystem.calc_efficiency
 
+
 Sizing tools
-------------
+^^^^^^^^^^^^
 
 .. autosummary::
    :toctree: generated/
@@ -103,9 +100,8 @@ Sizing tools
    sizing.sizing_minimize_npv
 
 
-
 Ancillary functions
--------------------
+^^^^^^^^^^^^^^^^^^^
 
 .. autosummary::
    :toctree: generated/
@@ -133,5 +129,3 @@ Ancillary functions
 
    finance.initial_investment
    finance.net_present_value
-
-

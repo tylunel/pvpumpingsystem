@@ -40,7 +40,8 @@ based on different selection criteria or algorithms.
 
 
 To better understand the possibilities of *pvpumpingsystem* and how it works,
-you are invited to consult the Jupyter Notebook examples available in
+you are invited to consult the examples available in the form of
+Jupyter Notebook in :ref:`examples` or the corresponding python files in
 ``docs/examples``.
 
 

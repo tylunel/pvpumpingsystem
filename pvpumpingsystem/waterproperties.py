@@ -39,29 +39,29 @@ def water_prop(name,  T):
     Parameters
     ----------
     name: str
-        Options are :
-            'temp',
-            'pres',
-            'vf': fluid specific volume [m3/kg],
-            'rhof': fluid density [kg/m3] - reverse of vf,
-            'vg',
-            'hfg',
-            'Cpf',
-            'Cpg',
-            'muf': dynamic viscosity,
-            'mug',
-            'nug': cinematic viscosity of vapor (gas),
-            'nuf': cinematic viscosity of fluid water (uses 'muf' and 'rhof')
-            'kf',
-            'kg',
-            'Prf',
-            'Prg',
-            'st',
-            'betaf'
+        Options are:
+        'temp',
+        'pres',
+        'vf': fluid specific volume [m3/kg],
+        'rhof': fluid density [kg/m3] - reverse of vf,
+        'vg',
+        'hfg',
+        'Cpf',
+        'Cpg',
+        'muf': dynamic viscosity,
+        'mug',
+        'nug': cinematic viscosity of vapor (gas),
+        'nuf': cinematic viscosity of fluid water (uses 'muf' and 'rhof')
+        'kf',
+        'kg',
+        'Prf',
+        'Prg',
+        'st',
+        'betaf'
+
     T: float,
         Temperature for which the property is searched
-        N.B.:
-            if name == 'temp', T must be replaced by pression [in bar]
+        N.B.: if name == 'temp', T must be replaced by pression [in bar]
 
     Returns
     -------

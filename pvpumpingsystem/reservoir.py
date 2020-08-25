@@ -16,16 +16,16 @@ import numpy as np
 class Reservoir(object):
     """Class defining a reservoir.
 
-        Attributes:
-        --------
-        size: float, default is 0, i.e. like if there was no reservoir
-            Volume of reservoir [L]
-        water_volume: float, default is 0
-            Volume of water in the reservoir [L]. 0 = empty
-        material: str, default is None
-            Material of the reservoir
-        price: float, default is 0
-            Price of the reservoir [USD]
+    Attributes
+    ----------
+    size: float, default is 0, i.e. like if there was no reservoir
+        Volume of reservoir [L]
+    water_volume: float, default is 0
+        Volume of water in the reservoir [L]. 0 = empty
+    material: str, default is None
+        Material of the reservoir
+    price: float, default is 0
+        Price of the reservoir [USD]
     """
 
     def __init__(self, size=0,
@@ -43,15 +43,15 @@ class Reservoir(object):
     def change_water_volume(self, quantity, verbose=False):
         """Function for adding or removing water in the reservoir.
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         quantity: numeric
             amount of water too add or remove (in liters)
 
-        Returns:
-        --------
-            - tuple with:
-                (water_volume, extra (+) or lacking water(-))
+        Returns
+        -------
+        tuple with:
+            (water_volume, extra (+) or lacking water(-))
         """
 
         self.water_volume = np.nansum([self.water_volume, quantity])

@@ -285,8 +285,8 @@ class Pump:
         """
         Function using [1] for modeling I vs V of pump.
 
-        Reference
-        ---------
+        References
+        ----------
         [1] Hadj Arab A., Benghanem M. & Chenlo F.,
         "Motor-pump system modelization", 2006, Renewable Energy
         """
@@ -333,8 +333,8 @@ class Pump:
         """
         Function using [1] for modeling I vs V of pump.
 
-        Reference
-        ---------
+        References
+        ----------
         [1] Kou Q, Klein S.A. & Beckman W.A., "A method for estimating the
         long-term performance of direct-coupled PV pumping systems", 1998,
         Solar Energy
@@ -377,8 +377,8 @@ class Pump:
         """
         Function using electrical architecture for modeling V vs I of pump.
 
-        Reference
-        ---------
+        References
+        ----------
         cf References of '_curves_coeffs_theoretical()'
         """
 
@@ -459,11 +459,11 @@ class Pump:
 
         Returns
         -------
-        * a tuple containing :
+        tuple containing:
             - the function giving Q according to power P and head H
-            for the pump : Q = f2(P, H)
+                for the pump : Q = f2(P, H)
             - the domains of validity for P and H. Can be functions, so as the
-            range of one depends on the other, or fixed ranges.
+                range of one depends on the other, or fixed ranges.
         """
 
         if self.modeling_method == 'kou':
@@ -484,8 +484,8 @@ class Pump:
         """
         Function using [1] for output flow rate modeling.
 
-        Reference
-        ---------
+        References
+        ----------
         [1] Hamidat A., Benyoucef B., Mathematic models of photovoltaic
         motor-pump systems, 2008, Renewable Energy
         """
@@ -538,7 +538,7 @@ class Pump:
         Function using [1] and [2] for output flow rate modeling.
 
         References
-        ---------
+        ----------
         [1] Hadj Arab A., Benghanem M. & Chenlo F.,
         "Motor-pump system modelization", 2006, Renewable Energy
         [2] Djoudi Gherbi, Hadj Arab A., Salhi H., "Improvement and validation
@@ -591,8 +591,8 @@ class Pump:
         """
         Function using [1] for output flow rate modeling.
 
-        Reference
-        ---------
+        References
+        ----------
         [1] Kou Q, Klein S.A. & Beckman W.A., "A method for estimating the
         long-term performance of direct-coupled PV pumping systems", 1998,
         Solar Energy
@@ -638,9 +638,9 @@ class Pump:
         """
         Function using theoretical approach for output flow rate modeling.
 
-        Reference
-        ---------
-        [1]
+        References
+        ----------
+        cf 'References' sections of '_curves_coeffs_theoretical_*'
         """
 
         if self.data_completeness['data_number'] >= 4 \
@@ -825,13 +825,14 @@ def _curves_coeffs_Arab06(specs, data_completeness):
     * dict: Contains the coeffs resulting from linear regression under
         keys 'coeffs_f1' and 'coeffs_f2', and statistical figures on
         goodness of fit (keys: 'rmse_f1', 'nrmse_f1', 'r_squared_f1',
-                         'adjusted_r_squared_f1', 'rmse_f2', 'nrmse_f2',
-                         'r_squared_f2', 'adjusted_r_squared_f2')
+        'adjusted_r_squared_f1', 'rmse_f2', 'nrmse_f2',
+        'r_squared_f2', 'adjusted_r_squared_f2')
 
-    Reference
-    ---------
+    References
+    ----------
     [1] Hadj Arab A., Benghanem M. & Chenlo F.,
     "Motor-pump system modelization", 2006, Renewable Energy
+
     [2] Djoudi Gherbi, Hadj Arab A., Salhi H., "Improvement and validation
     of PV motor-pump model for PV pumping system performance analysis", 2017
 
@@ -908,11 +909,11 @@ def _curves_coeffs_Kou98(specs, data_completeness):
     * dict: Contains the coeffs resulting from linear regression under
         keys 'coeffs_f1' and 'coeffs_f2', and statistical figures on
         goodness of fit (keys: 'rmse_f1', 'nrmse_f1', 'r_squared_f1',
-                         'adjusted_r_squared_f1', 'rmse_f2', 'nrmse_f2',
-                         'r_squared_f2', 'adjusted_r_squared_f2')
+        'adjusted_r_squared_f1', 'rmse_f2', 'nrmse_f2',
+        'r_squared_f2', 'adjusted_r_squared_f2')
 
-    Reference
-    ---------
+    References
+    ----------
     [1] Kou Q, Klein S.A. & Beckman W.A., "A method for estimating the
     long-term performance of direct-coupled PV pumping systems", 1998,
     Solar Energy
@@ -976,10 +977,10 @@ def _curves_coeffs_Hamidat08(specs, data_completeness):
     * dict: Contains the coeffs resulting from linear regression under
         key 'coeffs_f2', and statistical figures on
         goodness of fit (keys: 'rmse_f2', 'nrmse_f2',
-                         'r_squared_f2', 'adjusted_r_squared_f2')
+        'r_squared_f2', 'adjusted_r_squared_f2')
 
-    Reference
-    ---------
+    References
+    ----------
     [1] Hamidat A., Benyoucef B., Mathematic models of photovoltaic
     motor-pump systems, 2008, Renewable Energy
     """
@@ -1035,11 +1036,11 @@ def _curves_coeffs_theoretical(specs, data_completeness, elec_archi,
     * dict: Contains the coeffs resulting from linear regression under
         keys 'coeffs_f1' and 'coeffs_f2', and statistical figures on
         goodness of fit (keys: 'rmse_f1', 'nrmse_f1', 'r_squared_f1',
-                         'adjusted_r_squared_f1', 'rmse_f2', 'nrmse_f2',
-                         'r_squared_f2', 'adjusted_r_squared_f2')
+        'adjusted_r_squared_f1', 'rmse_f2', 'nrmse_f2',
+        'r_squared_f2', 'adjusted_r_squared_f2')
 
-    Reference
-    ---------
+    References
+    ----------
     [1] Mokkedem & al, 2011, 'Performance of a directly-coupled PV water
     pumping system', Energy Conversion and Management
 
@@ -1126,11 +1127,11 @@ def _curves_coeffs_theoretical_variable_efficiency(
     * dict: Contains the coeffs resulting from linear regression under
         keys 'coeffs_f1' and 'coeffs_f2', and statistical figures on
         goodness of fit (keys: 'rmse_f1', 'nrmse_f1', 'r_squared_f1',
-                         'adjusted_r_squared_f1', 'rmse_f2', 'nrmse_f2',
-                         'r_squared_f2', 'adjusted_r_squared_f2')
+        'adjusted_r_squared_f1', 'rmse_f2', 'nrmse_f2',
+        'r_squared_f2', 'adjusted_r_squared_f2')
 
-    Reference
-    ---------
+    References
+    ----------
     [1] Mokkedem & al, 2011, 'Performance of a directly-coupled PV water
     pumping system', Energy Conversion and Management
 
@@ -1215,11 +1216,11 @@ def _curves_coeffs_theoretical_constant_efficiency(
     * dict: Contains the coeffs resulting from linear regression under
         keys 'coeffs_f1' and 'coeffs_f2', and statistical figures on
         goodness of fit (keys: 'rmse_f1', 'nrmse_f1', 'r_squared_f1',
-                         'adjusted_r_squared_f1', 'rmse_f2', 'nrmse_f2',
-                         'r_squared_f2', 'adjusted_r_squared_f2')
+        'adjusted_r_squared_f1', 'rmse_f2', 'nrmse_f2',
+        'r_squared_f2', 'adjusted_r_squared_f2')
 
-    Reference
-    ---------
+    References
+    ----------
     [1] Mokkedem & al, 2011, 'Performance of a directly-coupled PV water
     pumping system', Energy Conversion and Management
 
@@ -1283,7 +1284,7 @@ def _curves_coeffs_theoretical_basic(specs, data_completeness, elec_archi):
 
     Parameters
     ----------
-    specs: pd.DataFrame
+    specs: pd.DataFrame,
         DataFrame with specs.
 
     Returns
@@ -1291,10 +1292,10 @@ def _curves_coeffs_theoretical_basic(specs, data_completeness, elec_archi):
     * dict: Contains the coeffs resulting from linear regression under
         key 'coeffs_f2', and statistical figures on
         goodness of fit (keys: 'rmse_f2', 'nrmse_f2',
-                         'r_squared_f2', 'adjusted_r_squared_f2')
+        'r_squared_f2', 'adjusted_r_squared_f2')
 
-    Reference
-    ---------
+    References
+    ----------
     [1] Mokkedem & al, 2011, 'Performance of a directly-coupled PV water
     pumping system', Energy Conversion and Management
 
@@ -1541,9 +1542,10 @@ def plot_Q_vs_P_H_3d(pump):
     """
     Print the graph of Q [L/min] vs tdh [m] and P [W] in 3 dimensions.
 
-    Prints
+    Returns
     -------
     * Graph Q (H, P): matplotlib.figure
+
     """
 
     f2, intervals = pump.functQforPH()
@@ -1578,9 +1580,10 @@ def plot_I_vs_V_H_3d(pump):
     """
     Print the graph of I [A] vs tdh [m] and V [V] in 3 dimensions.
 
-    Prints
+    Returns
     -------
     * Graph I (V, H): matplotlib.figure
+
     """
 
     f1, intervals = pump.functIforVH()
@@ -1615,7 +1618,7 @@ def plot_Q_vs_V_H_2d(pump):
     """
     Print the graph of Q [L/min] vs tdh [m] for each voltage available.
 
-    Prints
+    Returns
     -------
     * Graph Q (H, V): matplotlib.figure
 

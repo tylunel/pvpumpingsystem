@@ -49,6 +49,7 @@ class PipeNetwork(object):
         if True, returns the minimum roughness;
         if False, the maximum roughness;
         if None, the average roughness.
+
     """
 
     def __init__(self, h_stat, l_tot, diam, roughness=0, material=None,
@@ -75,19 +76,18 @@ class PipeNetwork(object):
 
         Parameters
         -----------
-        Q: numeric,
+        Q: float,
             water flow in liter per minute [lpm]
-        T: numeric,
+        T: float,
             water temperature [°C]
         verbose: boolean,
             allows printing of Re numbers of the computing
-            more details (for improvements):
-                'https://stackoverflow.com/questions/5980042/
-                how-to-implement-the-verbose-or-v-option-into-a-script
 
         Returns
         --------
-            h_dyna: dynamic head [m]
+        h_dyna: float,
+            dynamic head [m]
+
         """
         if Qlpm == 0:
             if verbose:

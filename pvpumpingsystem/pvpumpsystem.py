@@ -266,7 +266,7 @@ class PVPumpSystem(object):
             number of data on which the computation is run
 
         Returns
-        --------
+        -------
         df : pandas.DataFrame
             pd.Dataframe with following attributes:
                 'I': Current in A at the operating point between
@@ -274,12 +274,13 @@ class PVPumpSystem(object):
                 'V': Voltage in V at the operating point.
                 'Qlpm': Flow rate of water in L/minute
 
-        Note / Issues
-        ---------
-        - takes ~20 sec for computing 8760 iterations with mppt coupling and
-        atol=0.1lpm
-        - takes ~60 sec for computing 8760 iterations with direct coupling and
-        atol=0.1lpm
+        Notes
+        -----
+        Takes ~20 sec for computing 8760 iterations with mppt coupling and
+            atol=0.1lpm
+        Takes ~60 sec for computing 8760 iterations with direct coupling and
+            atol=0.1lpm
+
         """
         if self.coupling == 'mppt':
             self.flow = calc_flow_mppt_coupled(self.pvgeneration,
@@ -330,8 +331,8 @@ class PVPumpSystem(object):
     def calc_reservoir(self, starting_soc='morning', **kwargs):
         """Wrapper of pvlib.pvpumpsystem.calc_reservoir.
 
-        Parameter
-        ---------
+        Parameters
+        ----------
         starting_soc: str or float, default is 'morning'
             State of Charge of the reservoir at the beginning of
             the simulation [%]
@@ -380,8 +381,8 @@ class PVPumpSystem(object):
         and stores it as an attribute. Re-run eveything even if already
         computed before.
 
-        Parameter
-        ---------
+        Parameters
+        ----------
         iteration: boolean, default is False
             Decide if the friction head is taken into account in the
             computation. Turning it to True multiply by three the
@@ -547,9 +548,9 @@ def operating_point_noiteration(  # noqa: C901
         load and pv array. I and V are float. It is 0 when there is no
         irradiance, and np.nan when pv array and load don't match.
 
-    Note / Issues
-    ---------
-    - takes ~10sec for computing 8760 iterations
+    Notes
+    -----
+    Takes ~10sec for computing 8760 iterations
     """
     result = []
 
@@ -648,17 +649,18 @@ def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
         number of data on which the computation is run
 
     Returns
-    --------
-    df : pandas.DataFrame
+    -------
+    df: pandas.DataFrame,
         pd.Dataframe with following attributes:
             'I': Current in A at the operating point between
                 load and pv array.
             'V': Voltage in V at the operating point.
             'Qlpm': Flow rate of water in L/minute
 
-    Note / Issues
-    ---------
-    - takes ~15 sec for computing 8760 iterations with atol=0.1lpm
+    Notes
+    -----
+    Takes ~15 sec for computing 8760 iterations with atol=0.1lpm
+
     """
     result = []
     modelchain = pvgeneration.modelchain
@@ -780,23 +782,24 @@ def calc_flow_mppt_coupled(pvgeneration, motorpump, pipes, mppt,
 
     atol: numeric
         absolute tolerance on the uncertainty of the flow in l/min.
-        Used if iteration = True.
+        Used if iteration=True.
 
     stop: numeric
         number of data on which the computation is run
 
     Returns
-    --------
-    df : pandas.DataFrame
+    -------
+    df: pandas.DataFrame
         pd.Dataframe with following attributes:
             'I': Current in A at the operating point between
                 load and pv array.
             'V': Voltage in V at the operating point.
             'Qlpm': Flow rate of water in L/minute
 
-    Note / Issues
-    ---------
-    - takes ~15 sec for computing 8760 iterations with atol=0.1lpm
+    Notes
+    -----
+    Takes ~15 sec for computing 8760 iterations with atol=0.1lpm
+
     """
     result = []
     modelchain = pvgeneration.modelchain

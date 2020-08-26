@@ -8,7 +8,7 @@ dependencies:
     - fluids
     - tqdm
     - sklearn
-    - sphinx==1.8.5
+    - sphinx==3.0.4
 
 depndencies of the dependencies:
     - numpy

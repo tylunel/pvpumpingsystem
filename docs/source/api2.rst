@@ -20,6 +20,34 @@ The different classes of *pvpumpingsystem*.
    generated/pvpumpingsystem.pvpumpsystem.PVPumpSystem
 
 
+Classes 2
+---------
+
+attempt
+
+.. autosummary::
+
+   pvgeneration.PVGeneration
+   mppt.MPPT
+   pump.Pump
+   pipenetwork.PipeNetwork
+   reservoir.Reservoir
+   consumption.Consumption
+   pvpumpsystem.PVPumpSystem
+
+More details:
+
+.. toctree::
+
+   generated/pvpumpingsystem.pvgeneration.PVGeneration
+   generated/pvpumpingsystem.mppt.MPPT
+   generated/pvpumpingsystem.pump.Pump
+   generated/pvpumpingsystem.pipenetwork.PipeNetwork
+   generated/pvpumpingsystem.reservoir.Reservoir
+   generated/pvpumpingsystem.consumption.Consumption
+   generated/pvpumpingsystem.pvpumpsystem.PVPumpSystem
+
+
 Functions and methods
 ---------------------
 

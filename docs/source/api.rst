@@ -3,6 +3,20 @@
 API reference
 =============
 
+Modules
+-------
+
+.. autosummary::
+   :toctree: modules
+
+   pvgeneration
+   mppt
+   pump
+   pipenetwork
+   reservoir
+   consumption
+   pvpumpsystem
+   
 
 Classes
 -------

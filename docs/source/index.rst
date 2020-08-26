@@ -35,6 +35,7 @@ The software is published under the open source license GPL-v3.
    installation
    examples
    apireference
+   api2
 
 
 

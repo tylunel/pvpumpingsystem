@@ -3,22 +3,6 @@
 API reference
 =============
 
-
-Modules
--------
-
-.. autosummary::
-   :toctree: modules
-
-   pvgeneration
-   mppt
-   pump
-   pipenetwork
-   reservoir
-   consumption
-   pvpumpsystem
-
-
 Classes
 -------
 
@@ -39,20 +23,16 @@ The different classes of *pvpumpingsystem*.
 Functions and methods
 ---------------------
 
-Components modeling
-^^^^^^^^^^^^^^^^^^^
+
+Pump modeling
+^^^^^^^^^^^^^
+
+The core of the software's originality lies in the implementation of
+different motor-pump models and in their coupling with the PV generator.
 
 .. autosummary::
    :toctree: generated/
-
-   reservoir.Reservoir.change_water_volume
-
-   consumption.adapt_to_flow_pumped
-
-   pipenetwork.PipeNetwork.dynamichead
-
-   pvgeneration.PVGeneration.run_model
-
+   
    pump.Pump.iv_curve_data
    pump.Pump.functIforVH
    pump.Pump.functIforVH_Arab
@@ -79,6 +59,21 @@ Components modeling
    pump.plot_Q_vs_P_H_3d
    pump.plot_I_vs_V_H_3d
    pump.plot_Q_vs_V_H_2d
+
+
+Other components modeling
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. autosummary::
+   :toctree: generated/
+
+   reservoir.Reservoir.change_water_volume
+
+   consumption.adapt_to_flow_pumped
+
+   pipenetwork.PipeNetwork.dynamichead
+
+   pvgeneration.PVGeneration.run_model
 
 
 Global modeling

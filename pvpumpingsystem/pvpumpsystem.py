@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Defines a whole PVPS, with PV array, pump, pipes... and provide
+Defines a whole PVPS, with PV array, pump, pipes, etc, and provide
 functions for computing main output (water discharge,...) from input
 (weather, pv array, water consumption)
 
@@ -40,7 +40,7 @@ class PVPumpSystem(object):
         pvgeneration: pvpumpingsystem.PVGeneration,
             //!\\ The weather file used here should not smooth the extreme
             conditions (avoid TMY or IWEC).
-            /!\\ the pvgeneration.modelchain.dc_model must be a Single Diode
+            //!\\ the pvgeneration.modelchain.dc_model must be a Single Diode
             model if the system is directly-coupled
 
         motorpump: pvpumpingsystem.Pump
@@ -168,7 +168,7 @@ class PVPumpSystem(object):
             number of points on graph
 
         stop: numeric
-                number of data on which the computation is run
+            number of data on which the computation is run
 
         Returns
         -------
@@ -267,19 +267,18 @@ class PVPumpSystem(object):
 
         Returns
         -------
-        df : pandas.DataFrame
+        df: pandas.DataFrame
             pd.Dataframe with following attributes:
-                'I': Current in A at the operating point between
-                    load and pv array.
-                'V': Voltage in V at the operating point.
+                'I': Current in A at operating point
+                'V': Voltage in V at operating point
                 'Qlpm': Flow rate of water in L/minute
 
         Notes
         -----
         Takes ~20 sec for computing 8760 iterations with mppt coupling and
-            atol=0.1lpm
+            atol=0.1 lpm
         Takes ~60 sec for computing 8760 iterations with direct coupling and
-            atol=0.1lpm
+            atol=0.1 lpm
 
         """
         if self.coupling == 'mppt':
@@ -427,7 +426,7 @@ class PVPumpSystem(object):
 def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
                       M_s=1, M_p=1):
     """
-    Deprecated :
+    Deprecated:
     'function_i_from_v' deprecated. Use pvlib.pvsystem.i_from_v instead
 
     Function I=f(V) coming from equation of Single Diode Model
@@ -468,22 +467,22 @@ def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
 
     Returns
     -------
-    I : numeric
+    I: numeric
         Output current of the whole pv source, in A.
 
-    Notes / Issues
-    --------
-    - According to the speed of the computations,
+    Notes
+    -----
+    According to the speed of the computations,
     it seems that the complexity of this function is cubic
     O(n^3), and therefore it takes too much time to compute this way for
     long vectors (around 45min for 8760 elements).
 
-    - Different from pvsystem.i_from_v because it includes M_s and M_p,
+    Different from pvsystem.i_from_v because it includes M_s and M_p,
     so it gives the corresponding current at the output of the array,
     not only the module.
 
     References
-    -------
+    ----------
     [1] Petrone & al (2017), "Photovoltaic Sources Modeling", Wiley, p.5.
         URL: http://doi.wiley.com/10.1002/9781118755877
     """
@@ -652,9 +651,8 @@ def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
     -------
     df: pandas.DataFrame,
         pd.Dataframe with following attributes:
-            'I': Current in A at the operating point between
-                load and pv array.
-            'V': Voltage in V at the operating point.
+            'I': Current in A at operating point
+            'V': Voltage in V at operating point
             'Qlpm': Flow rate of water in L/minute
 
     Notes
@@ -791,9 +789,8 @@ def calc_flow_mppt_coupled(pvgeneration, motorpump, pipes, mppt,
     -------
     df: pandas.DataFrame
         pd.Dataframe with following attributes:
-            'I': Current in A at the operating point between
-                load and pv array.
-            'V': Voltage in V at the operating point.
+            'I': Current in A at operating point
+            'V': Voltage in V at operating point
             'Qlpm': Flow rate of water in L/minute
 
     Notes

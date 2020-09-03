@@ -34,41 +34,39 @@ class Pump:
 
     Attributes
     ----------
-        path: str, default=''
-            The path to the .txt file with the pump specifications.
+    path: str, default=''
+        The path to the .txt file with the pump specifications.
 
-        motor_electrical_architecture: str, default is None
-            'permanent_magnet', 'series_excited', 'shunt_excited',
-            'separately_excited'.
+    motor_electrical_architecture: str, default is None
+        'permanent_magnet', 'series_excited', 'shunt_excited',
+        'separately_excited'.
 
-        modeling_method: str, , default is 'arab'
-            name of the method used for modeling the pump.
+    modeling_method: str, default is 'arab'
+        name of the method used for modeling the pump.
 
-        idname: str, default is None
-            name of the pump
+    idname: str, default is None
+        name of the pump
 
-        price: numeric, default is None
-            The price of the pump
+    price: numeric, default is None
+        The price of the pump
 
-        controller: str, default is None
-            Name of controller
+    controller: str, default is None
+        Name of controller
 
-    Computed Attributes: (available after the object declaration)
+    voltage_list: None or list,
+        list of voltage (the keys of preceding dictionaries) [V]
 
-        voltage_list: list,
-            list of voltage (the keys of preceding dictionaries) [V]
+    specs: None or pandas.DataFrame,
+        Dataframe with columns of following numeric:
+            'voltage': voltage at pump input [V]
+            'current': current at pump input [A]
+            'power': electrical power at pump input [W]]
+            'tdh': total dynamic head in the pipes at output [m]
+            'flow': pump output flow rate [liter per minute]
 
-        specs: pandas.DataFrame,
-            Dataframe with columns of following numeric:
-                'voltage': voltage at pump input [V]
-                'current': current at pump input [A]
-                'power': electrical power at pump input [W]]
-                'tdh': total dynamic head in the pipes at output [m]
-                'flow': pump output flow rate [liter per minute]
-
-        data_completeness: dict,
-            Provides some figures to assess the completeness of the data.
-            (for more details, see pump.specs_completeness() )
+    data_completeness: None or dict,
+        Provides some figures to assess the completeness of the data.
+        (for more details, see pump.specs_completeness() )
 
     """
     _ids = count(1)
@@ -232,9 +230,10 @@ class Pump:
 
         Return
         ------
-        dict with following couples keys:values :
-            I: list of current [A]
-            V: list of voltage [V]
+        dict
+            with following couples keys-values:
+                I: list of current [A]
+                V: list of voltage [V]
         """
 
         fctI, intervals = self.functIforVH()
@@ -256,13 +255,11 @@ class Pump:
 
         Returns
         -------
-        Tuple containing :
-
-        Function giving I according to voltage V and head H for the pump:
-            I = f1(V, H)
-
-        Domains of validity for V and H. Can be functions, so as the
-            range of one depends on the other, or fixed ranges.
+        tuple
+            - Function giving I according to voltage V and head H for the pump:
+                I = f1(V, H)
+            - Domains of validity for V and H. Can be functions, so as the
+                range of one depends on the other, or fixed ranges.
         """
 
         if self.modeling_method == 'kou':
@@ -283,12 +280,9 @@ class Pump:
 
     def functIforVH_Arab(self):
         """
-        Function using [1] for modeling I vs V of pump.
+        Function using Hadj Arab model for modeling I vs V of pump.
 
-        References
-        ----------
-        [1] Hadj Arab A., Benghanem M. & Chenlo F.,
-        "Motor-pump system modelization", 2006, Renewable Energy
+        Check out :py:func:`_curves_coeffs_Arab06` for more details.
         """
 
         coeffs = self.coeffs['coeffs_f1']
@@ -331,13 +325,9 @@ class Pump:
 
     def functIforVH_Kou(self):
         """
-        Function using [1] for modeling I vs V of pump.
+        Function using Kou model for modeling I vs V of pump.
 
-        References
-        ----------
-        [1] Kou Q, Klein S.A. & Beckman W.A., "A method for estimating the
-        long-term performance of direct-coupled PV pumping systems", 1998,
-        Solar Energy
+        Check out :py:func:`_curves_coeffs_Kou98` for more details.
         """
 
         coeffs = self.coeffs['coeffs_f1']
@@ -377,9 +367,7 @@ class Pump:
         """
         Function using electrical architecture for modeling V vs I of pump.
 
-        References
-        ----------
-        cf References of '_curves_coeffs_theoretical()'
+        Check out :py:func:`_curves_coeffs_theoretical` for more details.
         """
 
         coeffs = self.coeffs['coeffs_f1']
@@ -459,9 +447,9 @@ class Pump:
 
         Returns
         -------
-        tuple containing:
+        tuple
             - the function giving Q according to power P and head H
-                for the pump : Q = f2(P, H)
+                for the pump: Q = f2(P, H)
             - the domains of validity for P and H. Can be functions, so as the
                 range of one depends on the other, or fixed ranges.
         """
@@ -484,10 +472,7 @@ class Pump:
         """
         Function using [1] for output flow rate modeling.
 
-        References
-        ----------
-        [1] Hamidat A., Benyoucef B., Mathematic models of photovoltaic
-        motor-pump systems, 2008, Renewable Energy
+        Check out :py:func:`_curves_coeffs_Hamidat08` for more details.
         """
         coeffs = self.coeffs['coeffs_f2']
 
@@ -535,15 +520,10 @@ class Pump:
 
     def functQforPH_Arab(self):
         """
-        Function using [1] and [2] for output flow rate modeling.
+        Function using Hadj Arab model for output flow rate modeling.
 
-        References
-        ----------
-        [1] Hadj Arab A., Benghanem M. & Chenlo F.,
-        "Motor-pump system modelization", 2006, Renewable Energy
-        [2] Djoudi Gherbi, Hadj Arab A., Salhi H., "Improvement and validation
-        of PV motor-pump model for PV pumping system performance analysis",
-        2017
+        Check out :py:func:`_curves_coeffs_Arab06` for more details.
+
         """
 
         coeffs = self.coeffs['coeffs_f2']
@@ -589,13 +569,9 @@ class Pump:
 
     def functQforPH_Kou(self):
         """
-        Function using [1] for output flow rate modeling.
+        Function using Kou model for output flow rate modeling.
 
-        References
-        ----------
-        [1] Kou Q, Klein S.A. & Beckman W.A., "A method for estimating the
-        long-term performance of direct-coupled PV pumping systems", 1998,
-        Solar Energy
+        Check out :py:func:`_curves_coeffs_Kou98` for more details.
         """
 
         coeffs = self.coeffs['coeffs_f2']
@@ -638,9 +614,7 @@ class Pump:
         """
         Function using theoretical approach for output flow rate modeling.
 
-        References
-        ----------
-        cf 'References' sections of '_curves_coeffs_theoretical_*'
+        Check out :py:func:`_curves_coeffs_theoretical` for more details.
         """
 
         if self.data_completeness['data_number'] >= 4 \
@@ -703,21 +677,9 @@ def get_data_pump(path):
 
     Returns
     -------
-    Tuple with:
-
-        pandas.DataFrame containing the following columns:
-            * voltage: list,
-                input voltage given in specifications [V]
-            * flow: dict
-                output flow rate [liter/minute]
-            * tdh: dict
-                total dynamic head [m]
-            * current: dict
-                input current [A]
-            * power: dict
-                electrical power at input [W]
-
-        dict: metadata of the pump
+    tuple
+        A pandas.DataFrame containing the specifications (voltage, flow,
+        current, tdh, power) and a dict with the metadata of the pump.
     """
     # open in read-only option
     csvdata = open(path, 'r')
@@ -748,11 +710,20 @@ def get_data_pump(path):
 def specs_completeness(specs,
                        motor_electrical_architecture):
     """
-    Evaluates the data completeness of a pump.
+    Evaluates the data completeness of a motor-pump.
+
+    Parameters
+    ----------
+    specs: pandas.DataFrame
+        Dataframe with specifications of motor-pump
+
+    motor_electrical_architecture: str
+        Can be 'permanent_magnet', 'series_excited', 'shunt_excited',
+        'separately_excited'.
 
     Returns
     -------
-    dictionary with following keys:
+    dict
         * voltage_number: float
             number of voltage for which data are given
         * data_number: float
@@ -822,7 +793,8 @@ def _curves_coeffs_Arab06(specs, data_completeness):
 
     Returns
     -------
-    * dict: Contains the coeffs resulting from linear regression under
+    dict
+        Coefficients resulting from linear regression under
         keys 'coeffs_f1' and 'coeffs_f2', and statistical figures on
         goodness of fit (keys: 'rmse_f1', 'nrmse_f1', 'r_squared_f1',
         'adjusted_r_squared_f1', 'rmse_f2', 'nrmse_f2',
@@ -834,7 +806,8 @@ def _curves_coeffs_Arab06(specs, data_completeness):
     "Motor-pump system modelization", 2006, Renewable Energy
 
     [2] Djoudi Gherbi, Hadj Arab A., Salhi H., "Improvement and validation
-    of PV motor-pump model for PV pumping system performance analysis", 2017
+    of PV motor-pump model for PV pumping system performance analysis",
+    2017, Solar Energy
 
     """
     # TODO: add check on number of head available (for lin. reg. of coeffs)
@@ -906,7 +879,8 @@ def _curves_coeffs_Kou98(specs, data_completeness):
 
     Returns
     -------
-    * dict: Contains the coeffs resulting from linear regression under
+    dict
+        Coefficients resulting from linear regression under
         keys 'coeffs_f1' and 'coeffs_f2', and statistical figures on
         goodness of fit (keys: 'rmse_f1', 'nrmse_f1', 'r_squared_f1',
         'adjusted_r_squared_f1', 'rmse_f2', 'nrmse_f2',
@@ -974,7 +948,8 @@ def _curves_coeffs_Hamidat08(specs, data_completeness):
 
     Returns
     -------
-    * dict: Contains the coeffs resulting from linear regression under
+    dict
+        Coefficients resulting from linear regression under
         key 'coeffs_f2', and statistical figures on
         goodness of fit (keys: 'rmse_f2', 'nrmse_f2',
         'r_squared_f2', 'adjusted_r_squared_f2')
@@ -1033,7 +1008,8 @@ def _curves_coeffs_theoretical(specs, data_completeness, elec_archi,
 
     Returns
     -------
-    * dict: Contains the coeffs resulting from linear regression under
+    dict
+        Coefficients resulting from linear regression under
         keys 'coeffs_f1' and 'coeffs_f2', and statistical figures on
         goodness of fit (keys: 'rmse_f1', 'nrmse_f1', 'r_squared_f1',
         'adjusted_r_squared_f1', 'rmse_f2', 'nrmse_f2',
@@ -1124,7 +1100,8 @@ def _curves_coeffs_theoretical_variable_efficiency(
 
     Returns
     -------
-    * dict: Contains the coeffs resulting from linear regression under
+    dict
+        Coefficients resulting from linear regression under
         keys 'coeffs_f1' and 'coeffs_f2', and statistical figures on
         goodness of fit (keys: 'rmse_f1', 'nrmse_f1', 'r_squared_f1',
         'adjusted_r_squared_f1', 'rmse_f2', 'nrmse_f2',
@@ -1133,7 +1110,7 @@ def _curves_coeffs_theoretical_variable_efficiency(
     References
     ----------
     [1] Mokkedem & al, 2011, 'Performance of a directly-coupled PV water
-    pumping system', Energy Conversion and Management
+       pumping system', Energy Conversion and Management
 
     [2] Khatib & Elmenreich, 2016, 'Modeling of Photovoltaic Systems
     Using MATLAB', Wiley
@@ -1213,7 +1190,8 @@ def _curves_coeffs_theoretical_constant_efficiency(
 
     Returns
     -------
-    * dict: Contains the coeffs resulting from linear regression under
+    dict
+        Coefficients resulting from linear regression under
         keys 'coeffs_f1' and 'coeffs_f2', and statistical figures on
         goodness of fit (keys: 'rmse_f1', 'nrmse_f1', 'r_squared_f1',
         'adjusted_r_squared_f1', 'rmse_f2', 'nrmse_f2',
@@ -1289,7 +1267,8 @@ def _curves_coeffs_theoretical_basic(specs, data_completeness, elec_archi):
 
     Returns
     -------
-    * dict: Contains the coeffs resulting from linear regression under
+    dict
+        Coefficients resulting from linear regression under
         key 'coeffs_f2', and statistical figures on
         goodness of fit (keys: 'rmse_f2', 'nrmse_f2',
         'r_squared_f2', 'adjusted_r_squared_f2')
@@ -1357,7 +1336,8 @@ def _domain_V_H(specs, data_completeness):
 
     Returns
     -------
-    Tuple containing two lists, the domains on voltage V [V] and on head [m]
+    tuple
+        Two lists, the domains on voltage V [V] and on head [m]
     """
     funct_mod = function_models.polynomial_2
 
@@ -1414,7 +1394,8 @@ def _domain_P_H(specs, data_completeness):
 
     Returns
     -------
-    Tuple containing two lists, the domains on power P [W] and on head [m]
+    tuple
+        Two lists, the domains on power P [W] and on head [m]
 
     """
     funct_mod = function_models.polynomial_1
@@ -1504,7 +1485,7 @@ def _extrapolate_pow_eff_with_cst_efficiency(specs, efficiency_coeff=1):
 
     Parameters
     ----------
-    specs: pandas.DataFrame,
+    specs: pandas.DataFrame
         Attribute specs of Pump().
 
     efficiency_coeff: float, in range [0, 1]
@@ -1513,7 +1494,7 @@ def _extrapolate_pow_eff_with_cst_efficiency(specs, efficiency_coeff=1):
 
     Returns
     -------
-    specs: pandas.DataFrame,
+    pandas.DataFrame
         Attribute specs of Pump().
     """
     # computes all the hydraulic power through tdh and Q
@@ -1544,7 +1525,7 @@ def plot_Q_vs_P_H_3d(pump):
 
     Returns
     -------
-    * Graph Q (H, P): matplotlib.figure
+    Graph Q (H, P): matplotlib.figure
 
     """
 
@@ -1582,7 +1563,7 @@ def plot_I_vs_V_H_3d(pump):
 
     Returns
     -------
-    * Graph I (V, H): matplotlib.figure
+    Graph I (V, H): matplotlib.figure
 
     """
 
@@ -1620,7 +1601,7 @@ def plot_Q_vs_V_H_2d(pump):
 
     Returns
     -------
-    * Graph Q (H, V): matplotlib.figure
+    Graph Q (H, V): matplotlib.figure
 
     """
     # Get the model function

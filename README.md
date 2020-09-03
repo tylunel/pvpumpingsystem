@@ -1,4 +1,5 @@
 [![CI general checks](https://github.com/tylunel/pvpumpingsystem/workflows/CI%20general%20checks/badge.svg)](https://github.com/tylunel/pvpumpingsystem/actions)
+[![Coverage](https://codecov.io/gh/tylunel/pvpumpingsystem/branch/master/graph/badge.svg)](https://codecov.io/gh/tylunel/pvpumpingsystem)
 [![Documentation Status](https://readthedocs.org/projects/pvpumpingsystem/badge/?version=latest)](https://pvpumpingsystem.readthedocs.io/en/latest/?badge=latest)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/tylunel/pvpumpingsystem/master)
 

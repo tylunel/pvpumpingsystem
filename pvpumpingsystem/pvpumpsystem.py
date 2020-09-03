@@ -37,46 +37,41 @@ class PVPumpSystem(object):
 
     Attributes
     ----------
-        pvgeneration: pvpumpingsystem.PVGeneration,
-            //!\\ The weather file used here should not smooth the extreme
-            conditions (avoid TMY or IWEC).
-            //!\\ the pvgeneration.modelchain.dc_model must be a Single Diode
-            model if the system is directly-coupled
+    pvgeneration: pvpumpingsystem.PVGeneration,
+        Note that the weather file used here should ideally not
+        smooth the extreme conditions (avoid TMY or IWEC for example).
+        The pvgeneration.modelchain.dc_model must be a Single Diode
+        model if the system is directly-coupled
 
-        motorpump: pvpumpingsystem.Pump
-            The pump used in the system.
+    motorpump: pvpumpingsystem.Pump
+        The pump used in the system.
 
-        coupling: str,
-            represents the type of coupling between pv generator and pump.
-            Can be 'mppt' or 'direct'
+    coupling: str,
+        represents the type of coupling between pv generator and pump.
+        Can be 'mppt' or 'direct'
 
-        motorpump_model: str, default None
-            The modeling method used to model the motorpump. Can be:
-            'kou', 'arab', 'hamidat' or 'theoretical'.
-            Overwrite the motorpump.modeling_method attribute if not None.
+    motorpump_model: str, default None
+        The modeling method used to model the motorpump. Can be:
+        'kou', 'arab', 'hamidat' or 'theoretical'.
+        Overwrite the motorpump.modeling_method attribute if not None.
 
-        mppt: pvpumpingsystem.MPPT
-            Maximum power point tracker of the system.
+    mppt: pvpumpingsystem.MPPT
+        Maximum power point tracker of the system.
 
-        pipes: pvpumpingsystem.PipeNetwork
+    pipes: pvpumpingsystem.PipeNetwork
 
-        reservoir: pvpumpingsystem.Reservoir
+    reservoir: pvpumpingsystem.Reservoir
 
-        consumption: pvpumpingsystem.Consumption
+    consumption: pvpumpingsystem.Consumption
 
-        labour_price_coefficient: float, default is 0.20
-            Ratio of the price of labour and secondary costs (wires,
-            racks (can be expensive!), transport of materials, etc) on initial
-            investment. It is considered at 0.2 in Gualteros (2017),
-            but is more around 0.40 in Tarpuy(Peru) case.
+    llp: None or float,
+        Loss of Load Probability, i.e. Water shortage probability.
+        It is None until computed by run_model(), and then it
+        ranges between 0 and 1.
 
-        Computed attributes
-        -------------------
-            llp: float, between 0 and 1
-                Loss of Load Probability, i.e. Water shortage probability.
-
-            inital_investment: float
-                Cost of the system at the installation [USD]
+    initial_investment: None or float,
+        Cost of the system at the installation [USD].
+        It is None until computed by run_model()
 
     """
     def __init__(self,
@@ -88,15 +83,11 @@ class PVPumpSystem(object):
                  pipes=None,
                  reservoir=None,
                  consumption=None,
-                 labour_price_coefficient=0.20,  # TODO: realistic value?
-                 discount_rate=0.05,
                  idname=None):
         self.pvgeneration = pvgeneration  # instance of PVArray
         self.motorpump = motorpump  # instance of Pump
         self.coupling = coupling
         self.mppt = mppt
-        self.labour_price_coefficient = labour_price_coefficient
-        self.discount_rate = discount_rate
 
         if motorpump_model is None and motorpump is not None:
             self.motorpump_model = self.motorpump.modeling_method
@@ -145,7 +136,7 @@ class PVPumpSystem(object):
 #    def motorpump_model(self):
 #        return self.motorpump_model
 #
-#    # setter: Permit to recalculate pump coeffs when changing the model
+#    # setter: allows to recalculate pump coeffs when changing the model
 #    @motorpump_model.setter
 #    def motorpump_model(self, model):
 #        if model != self.motorpump.modeling_method:
@@ -172,7 +163,7 @@ class PVPumpSystem(object):
 
         Returns
         -------
-        IV : pandas.DataFrame
+        pandas.DataFrame
             Current ('I') and voltage ('V') at the operating point between
             load and pv array.
 
@@ -387,6 +378,10 @@ class PVPumpSystem(object):
             computation. Turning it to True multiply by three the
             calculation time.
 
+        **kwargs:
+            Keyword arguments that apply to the financial analysis.
+            kwargs are transfered to fin.net_present_value() function.
+
         """
 #        if not hasattr(self.pvgeneration.modelchain, 'diode_params'):
         self.pvgeneration.run_model()
@@ -394,7 +389,7 @@ class PVPumpSystem(object):
         # 'disable' removes the progress bar
         self.calc_flow(disable=True, iteration=iteration)
         self.calc_efficiency()
-        self.calc_reservoir(**kwargs)
+        self.calc_reservoir()
 
         self.consumption.flow_rate = cs.adapt_to_flow_pumped(
                 self.consumption.flow_rate,
@@ -417,10 +412,10 @@ class PVPumpSystem(object):
         # lifespans. Add labour_coefficient as parameter as well.
         self.npv = fin.net_present_value(self,
                                          opex=500,
-                                         discount_rate=self.discount_rate,
                                          lifespan_pv=30,
                                          lifespan_pump=12,
-                                         lifespan_mppt=10)
+                                         lifespan_mppt=10,
+                                         **kwargs)
 
 
 def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,

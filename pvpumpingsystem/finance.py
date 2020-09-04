@@ -15,7 +15,7 @@ import numpy as np
 import numpy_financial as npf
 
 
-def initial_investment(pvps, labour_price_coefficient=0.2):
+def initial_investment(pvps, labour_price_coefficient=0.2, **kwargs):
     """
     Function computing the initial investment cost.
 
@@ -61,9 +61,9 @@ def initial_investment(pvps, labour_price_coefficient=0.2):
 
 
 # TODO: put lifespan of each object in the correponding object itself
-def net_present_value(pvps,  discount_rate=0.02,
-                      labour_price_coefficient=0.2, opex=0,
-                      lifespan_pv=30, lifespan_mppt=10, lifespan_pump=10):
+def net_present_value(pvps, discount_rate=0.02,
+                      labour_price_coefficient=0.2, opex=500,
+                      lifespan_pv=30, lifespan_mppt=10, lifespan_pump=12):
     """
     Function computing the net present value of a PVPS
 
@@ -133,7 +133,3 @@ def net_present_value(pvps,  discount_rate=0.02,
     npv = npf.npv(discount_rate, cashflow_list)
 
     return npv
-
-
-if __name__ == '__main__':
-    pass

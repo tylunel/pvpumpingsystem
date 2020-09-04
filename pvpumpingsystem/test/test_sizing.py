@@ -76,7 +76,6 @@ def test_shrink_weather_worst_month():
 def test_sizing_minimize_npv_mppt(databases):
     """
     Goes through following functions:
-        sizing.subset_respecting_llp_direct() -- NO, not yet
         sizing.subset_respecting_llp_mppt()
         sizing.sizing_minimize_npv()
     """
@@ -100,12 +99,12 @@ def test_sizing_minimize_npv_mppt(databases):
     consum = cs.Consumption(constant_flow=1)
 
     pvps_fixture = pvps.PVPumpSystem(None,
-                                      None,
-                                      coupling='mppt',
-                                      mppt=mppt1,
-                                      consumption=consum,
-                                      reservoir=reservoir1,
-                                      pipes=pipes)
+                                     None,
+                                     coupling='mppt',
+                                     mppt=mppt1,
+                                     consumption=consum,
+                                     reservoir=reservoir1,
+                                     pipes=pipes)
 
     selection, _ = siz.sizing_minimize_npv(
             pv_database, pump_database,
@@ -143,12 +142,12 @@ def test_sizing_minimize_npv_direct(databases):
     consum = cs.Consumption(constant_flow=1)
 
     pvps_fixture = pvps.PVPumpSystem(None,
-                                      None,
-                                      coupling='direct',
-                                      mppt=mppt1,
-                                      consumption=consum,
-                                      reservoir=reservoir1,
-                                      pipes=pipes)
+                                     None,
+                                     coupling='direct',
+                                     mppt=mppt1,
+                                     consumption=consum,
+                                     reservoir=reservoir1,
+                                     pipes=pipes)
 
     selection, _ = siz.sizing_minimize_npv(
             pv_database, pump_database,

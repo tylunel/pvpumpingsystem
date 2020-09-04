@@ -169,7 +169,7 @@ class PVPumpSystem(object):
 
         Note / Issues
         -------------
-        - takes ~10sec to compute 8760 iterations
+        Takes ~10sec to compute 8760 iterations
         """
         params = self.pvgeneration.modelchain.diode_params[0:stop]
         M_s = self.pvgeneration.system.modules_per_string
@@ -245,8 +245,12 @@ class PVPumpSystem(object):
         return pdresult
 
     def calc_flow(self, atol=0.1, stop=8760, **kwargs):
-        """Function computing the flow at the output of the PVPS.
-        cf pvlib_pvpumpsystem.calc_flow_directly_coupled for more details
+        """
+        Computes the flow at the output of the PVPS, and
+        assigns the value to the attribute 'flow'.
+
+        cf :py:func:`calc_flow_directly_coupled` and
+        :py:func:`calc_flow_mppt_coupled` for more details.
 
         Parameters
         ----------
@@ -258,11 +262,7 @@ class PVPumpSystem(object):
 
         Returns
         -------
-        df: pandas.DataFrame
-            pd.Dataframe with following attributes:
-                'I': Current in A at operating point
-                'V': Voltage in V at operating point
-                'Qlpm': Flow rate of water in L/minute
+        None
 
         Notes
         -----
@@ -290,18 +290,16 @@ class PVPumpSystem(object):
                              "It should be 'mppt' or 'direct'.")
 
     def calc_efficiency(self):
-        """Function computing the efficiencies between PV array output and
+        """
+        Computes the efficiencies between PV array output and
         motorpump output, between irradiance and PV output, and global
-        efficiency.
+        efficiency. Assigns the resulting data to the attribute 'efficiency'.
 
-        Parameters
-        ----------
-        self
+        cf :py:func:`calc_efficiency` for more details
 
         Returns
         -------
-        self.efficiency: pd.DataFrame
-            Dataframe with efficiencies
+        None
 
         """
 
@@ -318,21 +316,25 @@ class PVPumpSystem(object):
             self.pvgeneration.modelchain.effective_irradiance,
             pv_area)
 
-    def calc_reservoir(self, starting_soc='morning', **kwargs):
-        """Wrapper of pvlib.pvpumpsystem.calc_reservoir.
+    def calc_reservoir(self, starting_soc='morning'):
+        """
+        Computes the water volume in the reservoir and extra or
+        lacking water compared to the consumption at any time step.
+        Assigns the resulting data to the attribute 'flow'.
+
+        cf :py:func:`calc_reservoir` for more details
 
         Parameters
         ----------
         starting_soc: str or float, default is 'morning'
             State of Charge of the reservoir at the beginning of
-            the simulation [%]
+            the simulation [%].
             Available strings are 'empty' (no water in reservoir),
             'morning' (enough water for one morning consumption) and 'full'.
 
         Return
         ------
-        None, but create new attribute 'water_stored' from
-        pvpumpingsystem.calc_reservoir().
+        None
 
         """
         # set an empty water reservoir at beginning
@@ -360,7 +362,7 @@ class PVPumpSystem(object):
                             'incoherent with reservoir.size')
 
         if self.flow is None:
-            self.calc_flow(**kwargs)
+            self.calc_flow()
 
         self.water_stored = calc_reservoir(self.reservoir, self.flow.Qlpm,
                                            self.consumption.flow_rate.Qlpm)
@@ -383,7 +385,7 @@ class PVPumpSystem(object):
             kwargs are transfered to fin.net_present_value() function.
 
         """
-#        if not hasattr(self.pvgeneration.modelchain, 'diode_params'):
+
         self.pvgeneration.run_model()
 
         # 'disable' removes the progress bar
@@ -406,16 +408,8 @@ class PVPumpSystem(object):
             self.llp = np.nan
 
         # Price of motorpump, pv modules, reservoir, mppt
-        self.initial_investment = fin.initial_investment(self)
-
-        # TODO: add opex in __init__ as attribute and add a way to change
-        # lifespans. Add labour_coefficient as parameter as well.
-        self.npv = fin.net_present_value(self,
-                                         opex=500,
-                                         lifespan_pv=30,
-                                         lifespan_pump=12,
-                                         lifespan_mppt=10,
-                                         **kwargs)
+        self.initial_investment = fin.initial_investment(self, **kwargs)
+        self.npv = fin.net_present_value(self, **kwargs)
 
 
 def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
@@ -462,7 +456,7 @@ def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
 
     Returns
     -------
-    I: numeric
+    numeric
         Output current of the whole pv source, in A.
 
     Notes
@@ -515,11 +509,12 @@ def operating_point_noiteration(  # noqa: C901
         load_interval_V=[-np.inf, np.inf],
         pv_interval_V=[-np.inf, np.inf],
         tdh=0):
-    """Finds the IV operating point(s) of the PV array and the load.
+    """
+    Finds the IV operating point(s) between PV array and load (motor-pump).
 
     Parameters
     ----------
-    params: pd.Dataframe
+    params: pandas.Dataframe
         Dataframe containing the 5 diode parameters. Typically comes from
         PVGeneration.ModelChain.diode_params
 
@@ -537,7 +532,7 @@ def operating_point_noiteration(  # noqa: C901
 
     Returns
     -------
-    IV : pandas.DataFrame
+    pandas.DataFrame
         Current ('I') and voltage ('V') at the operating point between
         load and pv array. I and V are float. It is 0 when there is no
         irradiance, and np.nan when pv array and load don't match.
@@ -616,7 +611,8 @@ def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
                                stop=8760,
                                **kwargs):
     """
-    Function computing the flow at the output of the PVPS.
+    Computes input electrical characteristics, total dynamic head,
+    and flow at pump output.
 
     Parameters
     ----------
@@ -649,6 +645,9 @@ def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
             'I': Current in A at operating point
             'V': Voltage in V at operating point
             'Qlpm': Flow rate of water in L/minute
+            'P': Input power to the pump in W
+            'P_unused': Power unused (because too low or too high)
+            'tdh': Total dynamic head in m
 
     Notes
     -----
@@ -751,7 +750,9 @@ def calc_flow_mppt_coupled(pvgeneration, motorpump, pipes, mppt,
                            atol=0.1,
                            stop=8760,
                            **kwargs):
-    """Function computing the flow at the output of the PVPS.
+    """
+    Computes input electrical characteristics, total dynamic head,
+    and flow at pump output.
 
     Parameters
     ----------
@@ -784,9 +785,10 @@ def calc_flow_mppt_coupled(pvgeneration, motorpump, pipes, mppt,
     -------
     df: pandas.DataFrame
         pd.Dataframe with following attributes:
-            'I': Current in A at operating point
-            'V': Voltage in V at operating point
             'Qlpm': Flow rate of water in L/minute
+            'P': Input power to the pump in W
+            'P_unused': Power unused (because too low or too high)
+            'tdh': Total dynamic head in m
 
     Notes
     -----
@@ -858,7 +860,8 @@ def calc_flow_mppt_coupled(pvgeneration, motorpump, pipes, mppt,
 
 
 def calc_efficiency(df, irradiance, pv_area):
-    """Function computing the efficiencies between PV array output and
+    """
+    Computes the efficiencies between PV array output and
     motorpump output, between irradiance and PV output, and global
     efficiency.
 
@@ -878,7 +881,7 @@ def calc_efficiency(df, irradiance, pv_area):
 
     Returns
     -------
-    efficiencies_df: pd.DataFrame
+    pandas.DataFrame
         Dataframe with efficiencies
 
     """
@@ -905,8 +908,8 @@ def calc_efficiency(df, irradiance, pv_area):
 
 def calc_reservoir(reservoir, Q_pumped, Q_consumption):
     """
-    Function computing the water volume in the reservoir and the extra or
-    lacking water compared to the consumption.
+    Computes the water volume in the reservoir and the extra or
+    lacking water compared to the consumption at any time step.
 
     Parameters
     ----------
@@ -921,7 +924,7 @@ def calc_reservoir(reservoir, Q_pumped, Q_consumption):
 
     Returns
     -------
-    water_stored: pd.DataFrame
+    pandas.DataFrame
         Dataframe with water_volume in tank, and extra or lacking water.
     """
 

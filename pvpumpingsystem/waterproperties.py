@@ -32,7 +32,7 @@ class Switch(object):
 
 # TODO: rewrite this function for more readibility, and remove the issue
 # noticed in 'N.B.:'
-def water_prop(name,  T):
+def water_prop(name, T):
     """
     Function giving water property requested.
 
@@ -65,7 +65,8 @@ def water_prop(name,  T):
 
     Returns
     -------
-    * float
+    float
+        Value of physical quantity requested through parameter 'name'.
     """
 
     properties_table = np.array([

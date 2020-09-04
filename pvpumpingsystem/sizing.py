@@ -33,7 +33,8 @@ def shrink_weather_representative(weather_data, nb_elt=48):
 
     Returns
     -------
-    * pandas.DataFrame: weather object of nb_elt lines
+    pandas.DataFrame
+        Weather data with (nb_elt) lines
 
     """
     # Remove rows with null irradiance
@@ -81,7 +82,8 @@ def shrink_weather_worst_month(weather_data):
 
     Returns
     -------
-    * pandas.DataFrame: weather object of nb_elt lines
+    pandas.DataFrame
+        Weather data with (nb_elt) lines
 
     """
     # TODO: add attribute for selecting which criteria to use for considering
@@ -145,7 +147,7 @@ def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
 
     Returns
     -------
-    preselection: pd.Dataframe,
+    pandas.Dataframe
         All configurations tested respecting the LLP.
     """
     if pvps_fixture.coupling != 'direct':
@@ -256,6 +258,11 @@ def size_nb_pv_direct(pvps_fixture, llp_accepted,    # noqa: C901
     """
     Function sizing the PV generator (i.e. the number of PV modules) for
     a specified llp_accepted.
+
+    Returns
+    -------
+    tuple
+        Number of modules in series and number of strings in parallel.
     """
 
     def funct_llp_for_Ms_Mp(pvps, M_s, M_p, **kwargs):
@@ -341,7 +348,7 @@ def subset_respecting_llp_mppt(pv_database, pump_database,    # noqa: C901
                                **kwargs):
     """
     Function returning the configurations of PV modules and pump
-    that will minimize the net present value of the system and will insure
+    that will minimize the net present value of the system and will ensure
     the Loss of Load Probability (llp) is inferior to the one given.
 
     Parameters
@@ -373,7 +380,7 @@ def subset_respecting_llp_mppt(pv_database, pump_database,    # noqa: C901
 
     Returns
     -------
-    preselection: pd.Dataframe,
+    pandas.Dataframe,
         All configurations tested respecting the LLP.
     """
     if pvps_fixture.coupling != 'mppt':
@@ -453,6 +460,12 @@ def size_nb_pv_mppt(pvps_fixture, llp_accepted, M_s_guess):
     Function sizing the PV generator (i.e. the number of PV modules) for
     a specified llp_accepted. Here 'M_s' represents the total number
     of PV module (because M_p = 1).
+
+    Returns
+    -------
+    float
+        Number of PV modules in the array, regardless of how they are
+        arranged.
     """
 
     def funct_llp_for_Ms(pvps, M_s, **kwargs):
@@ -550,13 +563,11 @@ def sizing_minimize_npv(pv_database, pump_database,
 
     Returns
     -------
-    tuple with:
-        selection: pd.DataFrame,
-            The configurations that minimizes the net present value
-            of the system.
-
-        preselection: pd.Dataframe,
-            All configurations tested respecting the LLP.
+    tuple
+        First element is a pandas.DataFrame containing all configurations
+        that minimizes the net present value of the system.
+        Second element is a pandas.DataFrame containing all configurations
+        tested respecting the LLP.
     """
 
     # TODO: check following for a discrete optimization:

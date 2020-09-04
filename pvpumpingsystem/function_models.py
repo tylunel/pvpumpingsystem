@@ -11,13 +11,18 @@ from sklearn.metrics import r2_score
 def correlation_stats(funct_mod, params, data_input, data_to_fit):
     """
     Compute statistical figures to assess quality of curve fitting.
+    In particular 'root mean square error', 'normalized root mean square
+    error', 'r_squared', 'adjusted_r_squared' and size of data
+    sample 'nb_data' are computed.
 
     Returns
     -------
-    dict with keys:
+    dict
+        Keys are:
         -'rmse'
         -'nrmse'
         -'r_squared'
+        -'adjusted_r_squared'
         -'nb_data'
     """
     data_fitted = funct_mod(data_input, *params)

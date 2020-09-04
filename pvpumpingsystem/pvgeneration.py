@@ -278,6 +278,7 @@ class PVGeneration:
     def run_model(self):
         """
         Runs the modelchain of the PV generation.
+
         See pvlib.modelchain.run_model() for more details.
         """
         # Running of the PV generation model

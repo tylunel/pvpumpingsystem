@@ -77,7 +77,8 @@ def adapt_to_flow_pumped(Q_consumption, Q_pumped):
 
     Return
     ------
-    None, the consumption object is changed internally.
+    pandas.DataFrame
+        Consumption data modified.
     """
 
     timezone = Q_pumped.index.tz

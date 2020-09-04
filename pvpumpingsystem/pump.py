@@ -470,7 +470,7 @@ class Pump:
 
     def functQforPH_Hamidat(self):
         """
-        Function using [1] for output flow rate modeling.
+        Function using Hamidat model for output flow rate modeling.
 
         Check out :py:func:`_curves_coeffs_Hamidat08` for more details.
         """

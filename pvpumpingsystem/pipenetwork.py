@@ -85,7 +85,7 @@ class PipeNetwork(object):
 
         Returns
         --------
-        h_dyna: float,
+        float
             dynamic head [m]
 
         """
@@ -108,10 +108,3 @@ class PipeNetwork(object):
             h_dyna = press_loss/(rho*9.81)
 
         return h_dyna
-
-
-if __name__ == '__main__':
-    pipes1 = PipeNetwork(10, 100, 0.08, material='glass', optimism=True)
-    print('roughness=', pipes1.roughness)
-    h_dyn = pipes1.dynamichead(10)
-    print(h_dyn)

@@ -26,22 +26,22 @@ class MPPT(object):
 
     Attributes
     ----------
-        efficiency: float, default is 0.96
-            Mean efficiency if float.
-            Efficiency according to power if array.
+    efficiency: float, default is 0.96
+        Mean efficiency if float.
+        Efficiency according to power if array.
 
-        price: float, default is 'nan'
-            Price of the MPPT
+    price: float, default is 'nan'
+        Price of the MPPT
 
-        idname: str, default is 'default'
-            Name of the MPPT
+    idname: str, default is 'default'
+        Name of the MPPT
 
-        output_voltage_available: list, default is None
-            Correspond to the list of keys of 'input_voltage_range'
+    output_voltage_available: list, default is None
+        Correspond to the list of keys of 'input_voltage_range'
 
-        input_voltage_range: dict, default is None
-            Input voltage range given as value (tuple) for each output voltage
-            available given as key (float).
+    input_voltage_range: dict, default is None
+        Input voltage range given as value (tuple) for each output voltage
+        available given as key (float).
     """
 
     def __init__(self,

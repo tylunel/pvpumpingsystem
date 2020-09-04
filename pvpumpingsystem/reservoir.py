@@ -14,18 +14,19 @@ import numpy as np
 # later. Need to adapt the rest so as it works well with 0
 
 class Reservoir(object):
-    """Class defining a reservoir.
+    """Class defining a water tank with its main characteristics.
 
     Attributes
     ----------
-    size: float, default is 0, i.e. like if there was no reservoir
-        Volume of reservoir [L]
+    size: float, default is 0
+        Volume of reservoir [L]. '0' means no reservoir is used
     water_volume: float, default is 0
         Volume of water in the reservoir [L]. 0 = empty
     material: str, default is None
         Material of the reservoir
     price: float, default is 0
-        Price of the reservoir [USD]
+        Price of the reservoir and of the pipes [USD] (to be separated
+        ultimately)
     """
 
     def __init__(self, size=0,
@@ -45,12 +46,12 @@ class Reservoir(object):
 
         Parameters
         ----------
-        quantity: numeric
+        quantity: float
             amount of water too add or remove (in liters)
 
         Returns
         -------
-        tuple with:
+        tuple
             (water_volume, extra (+) or lacking water(-))
         """
 

@@ -189,7 +189,7 @@ def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
             dc_model='desoto',  # 'desoto' or 'cec'.
             ac_model='pvwatts',
             aoi_model='physical',
-            spectral_model='first_solar',
+            spectral_model='no_loss',
             temperature_model='sapm',
             losses_model='no_loss'
             )
@@ -234,7 +234,7 @@ def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
 
             M_s, M_p = size_nb_pv_direct(
                     pvps_fixture, llp_accepted,
-                    M_s_min, M_s_max, M_p_min, M_p_max,)
+                    M_s_min, M_s_max, M_p_min, M_p_max, **kwargs)
 
             preselection = preselection.append(
                 pd.Series({
@@ -254,7 +254,8 @@ def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
 
 def size_nb_pv_direct(pvps_fixture, llp_accepted,    # noqa: C901
                       M_s_min, M_s_max, M_p_min, M_p_max,
-                      M_s_guess=None, M_p_guess=None):
+                      M_s_guess=None, M_p_guess=None,
+                      **kwargs):
     """
     Function sizing the PV generator (i.e. the number of PV modules) for
     a specified llp_accepted.
@@ -291,7 +292,7 @@ def size_nb_pv_direct(pvps_fixture, llp_accepted,    # noqa: C901
 
     while True:
         # new LLP
-        llp = funct_llp_for_Ms_Mp(pvps_fixture, M_s, M_p)
+        llp = funct_llp_for_Ms_Mp(pvps_fixture, M_s, M_p, **kwargs)
         # printing (for debug):
         print('module: {0} / pump: {1} / M_s: {2} /'
               '/ M_p: {3} / llp: {4} / npv: {5}'.format(
@@ -315,7 +316,7 @@ def size_nb_pv_direct(pvps_fixture, llp_accepted,    # noqa: C901
         llp_prev_Ms = llp
 
         if not M_s_change_efficient:  # then change M_p
-            llp = funct_llp_for_Ms_Mp(pvps_fixture, M_s, M_p)
+            llp = funct_llp_for_Ms_Mp(pvps_fixture, M_s, M_p, **kwargs)
             print('module: {0} / pump: {1} / M_s: {2} /'
                   '/ M_p: {3} / llp: {4} / npv: {5}'.format(
                       pvps_fixture.pvgeneration.pv_module_name,
@@ -421,7 +422,7 @@ def subset_respecting_llp_mppt(pv_database, pump_database,    # noqa: C901
             dc_model='desoto',  # 'desoto' or 'cec'.
             ac_model='pvwatts',
             aoi_model='physical',
-            spectral_model='first_solar',
+            spectral_model='no_loss',
             temperature_model='sapm',
             losses_model='no_loss'
             )
@@ -437,7 +438,8 @@ def subset_respecting_llp_mppt(pv_database, pump_database,    # noqa: C901
             pvps_fixture.motorpump = pump
 
             # Sizes the PV generator for respecting the llp_accepted
-            M_s = size_nb_pv_mppt(pvps_fixture, llp_accepted, M_s_guess)
+            M_s = size_nb_pv_mppt(pvps_fixture, llp_accepted, M_s_guess,
+                                  **kwargs)
 
             preselection = preselection.append(
                 pd.Series({
@@ -455,7 +457,7 @@ def subset_respecting_llp_mppt(pv_database, pump_database,    # noqa: C901
     return preselection
 
 
-def size_nb_pv_mppt(pvps_fixture, llp_accepted, M_s_guess):
+def size_nb_pv_mppt(pvps_fixture, llp_accepted, M_s_guess, **kwargs):
     """
     Function sizing the PV generator (i.e. the number of PV modules) for
     a specified llp_accepted. Here 'M_s' represents the total number
@@ -475,7 +477,7 @@ def size_nb_pv_mppt(pvps_fixture, llp_accepted, M_s_guess):
         pvps.run_model(**kwargs)
         return pvps.llp
 
-    llp_max = funct_llp_for_Ms(pvps_fixture, 0)
+    llp_max = funct_llp_for_Ms(pvps_fixture, 0, **kwargs)
 
     # Guess a M_s to start with:
     if M_s_guess is None:
@@ -489,7 +491,7 @@ def size_nb_pv_mppt(pvps_fixture, llp_accepted, M_s_guess):
 
     while True:  # while loop with break statement
         # new LLP:
-        llp = funct_llp_for_Ms(pvps_fixture, M_s)
+        llp = funct_llp_for_Ms(pvps_fixture, M_s, **kwargs)
         # printing (useful for debug):
         print('module: {0} / pump: {1} / M_s: {2} /'
               ' llp: {3} / npv: {4}'.format(
@@ -526,7 +528,8 @@ def sizing_minimize_npv(pv_database, pump_database,
                         pvps_fixture,
                         llp_accepted=0.01,
                         M_s_guess=None,
-                        M_p_guess=None):
+                        M_p_guess=None,
+                        **kwargs):
     """
     Function returning the configurations of PV modules and pump
     that will minimize the net present value of the system and will insure
@@ -561,6 +564,11 @@ def sizing_minimize_npv(pv_database, pump_database,
         Estimated number of modules in series in the PV array. Will be sized
         by the function.
 
+    **kwargs: dict,
+        Keyword arguments internally given to
+        py:func:`PVPumpSystem.run_model()`. Made for giving the financial
+        parameters of the project.
+
     Returns
     -------
     tuple
@@ -581,7 +589,8 @@ def sizing_minimize_npv(pv_database, pump_database,
                                                     pvps_fixture,
                                                     llp_accepted=llp_accepted,
                                                     M_s_guess=M_s_guess,
-                                                    M_p_guess=M_p_guess)
+                                                    M_p_guess=M_p_guess,
+                                                    **kwargs)
     elif pvps_fixture.coupling == 'mppt':
         preselection = subset_respecting_llp_mppt(pv_database,
                                                   pump_database,
@@ -589,7 +598,8 @@ def sizing_minimize_npv(pv_database, pump_database,
                                                   weather_metadata,
                                                   pvps_fixture,
                                                   llp_accepted=llp_accepted,
-                                                  M_s_guess=M_s_guess)
+                                                  M_s_guess=M_s_guess,
+                                                  **kwargs)
     else:
         raise ValueError('Unknown coupling method.')
 

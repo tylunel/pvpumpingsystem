@@ -62,8 +62,8 @@ def initial_investment(pvps, labour_price_coefficient=0.2, **kwargs):
 
 # TODO: put lifespan of each object in the correponding object itself
 def net_present_value(pvps, discount_rate=0.02,
-                      labour_price_coefficient=0.2, opex=500,
-                      lifespan_pv=30, lifespan_mppt=10, lifespan_pump=12):
+                      labour_price_coefficient=0.2, opex=0,
+                      lifespan_pv=30, lifespan_mppt=14, lifespan_pump=12):
     """
     Function computing the net present value of a PVPS
 
@@ -81,17 +81,17 @@ def net_present_value(pvps, discount_rate=0.02,
             considered that a 1000 USD PV array will cost 200 USD more
             to be installed on site.
 
-    opex: float,
+    opex: float, default is 0
         Yearly operational expenditure of the pvps.
 
     lifespan_pv: float, default is 30
         Lifespan of the photovoltaic modules in years. It is also
         considered as the lifespan of the whole system.
 
-    lifespan_mppt: float, default is 10
+    lifespan_mppt: float, default is 14
         Lifespan of the mppt in years.
 
-    lifespan_pump: float, default is 10
+    lifespan_pump: float, default is 12
         Lifespan of the pump in years.
 
     Returns

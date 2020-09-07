@@ -367,7 +367,7 @@ class PVPumpSystem(object):
         self.water_stored = calc_reservoir(self.reservoir, self.flow.Qlpm,
                                            self.consumption.flow_rate.Qlpm)
 
-    def run_model(self, iteration=False, **kwargs):
+    def run_model(self, iteration=False, starting_soc='morning', **kwargs):
         """
         Comprehensive modeling of the PVPS. Computes Loss of Power Supply (LLP)
         and stores it as an attribute. Re-run eveything even if already
@@ -391,7 +391,7 @@ class PVPumpSystem(object):
         # 'disable' removes the progress bar
         self.calc_flow(disable=True, iteration=iteration)
         self.calc_efficiency()
-        self.calc_reservoir()
+        self.calc_reservoir(starting_soc=starting_soc)
 
         self.consumption.flow_rate = cs.adapt_to_flow_pumped(
                 self.consumption.flow_rate,

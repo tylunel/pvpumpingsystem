@@ -136,6 +136,8 @@ selection, total = sizing.sizing_minimize_npv(pv_database,
                                               weather_metadata,
                                               pvps_fixture,
                                               llp_accepted=0.05,
-                                              M_s_guess=5)
+                                              M_s_guess=5,
+                                              discount_rate=0.05,
+                                              opex=100)
 
 print('configurations for llp of 0.05:\n', selection)

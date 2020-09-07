@@ -154,7 +154,9 @@ pvps1 = pvps.PVPumpSystem(pvgen1,
 
 # ------------ RUNNING MODEL -----------------
 
-pvps1.run_model(iteration=False, starting_soc='morning')
+pvps1.run_model(iteration=False, starting_soc='morning',
+                discount_rate=0.05, labour_price_coefficient=0.2, opex=200,
+                lifespan_pv=30, lifespan_mppt=15, lifespan_pump=10)
 
 
 # ------------ RESULTS ----------------------

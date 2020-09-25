@@ -162,7 +162,7 @@ pvps1.run_model(iteration=False, starting_soc='morning',
 # ------------ RESULTS ----------------------
 
 print(pvps1)
-print('Total water pumped in the year = ', pvps1.flow.Qlpm.sum())
+print('Total water pumped in the year = ', pvps1.flow.Qlpm.sum()*60)
 print('LLP = ', pvps1.llp)
 print('Initial investment = {0} USD'.format(pvps1.initial_investment))
 print('NPV = {0} USD'.format(pvps1.npv))

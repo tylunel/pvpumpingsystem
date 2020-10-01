@@ -1,4 +1,4 @@
-Ôªø---
+---
 title: 'pvpumpingsystem: a python package for modeling and sizing photovoltaic water pumping systems'
 tags:
   - Python
@@ -15,9 +15,9 @@ authors:
     orcid: 0000-0002-7247-5705
     affiliation: 1
 affiliations:
- - name: Industrial research group in technologies of energy and energy efficiency (t3e), Department of Mechanical Sciences, Ecole de Technologie Sup√©rieure Montreal
+ - name: Industrial research group in technologies of energy and energy efficiency (t3e), Department of Mechanical Sciences, Ecole de Technologie SupÈrieure Montreal
    index: 1
- - name: Department of Material Science and Engineering, Institut National des Sciences Appliqu√©es Rennes
+ - name: Department of Material Science and Engineering, Institut National des Sciences AppliquÈes Rennes
    index: 2
 date: 14 April 2020
 bibliography: paper.bib
@@ -25,7 +25,7 @@ bibliography: paper.bib
 
 # Summary
 
-According to the World Health Organisation, one tenth of the world‚Äôs population still lacks access to 
+According to the World Health Organisation, one tenth of the worldís population still lacks access to 
 basic water supply. One of the reasons for this is the remoteness of these populations from modern 
 water collection and distribution technologies, often coupled with an unfavourable socio-economic 
 situation. Photovoltaic (PV) pumping technology makes it possible to respond both to this problem 
@@ -43,7 +43,7 @@ and to automatize the tests. Each class and function are documented with referen
 literature when applicable. Pvpumpingsystem is released under a GPL-v3 license.
 
 Pvpumpingsystem relies on already existing packages for photovoltaic and fluid mechanics modeling, 
-namely ‚Äúpvlib-python‚Äù [@pvlib-python] and ‚Äúfluids‚Äù [@fluids]. pvpumpingsystem‚Äôs originality lies 
+namely ìpvlib-pythonî [@pvlib-python] and ìfluidsî [@fluids]. pvpumpingsystemís originality lies 
 in the implementation of various motor-pump models for finite power sources and in the coupling 
 of the distinct component models. In order to increase the understandability of the code, 
 each physical component of the PV pumping system corresponds to a class, like for example 
@@ -51,10 +51,11 @@ the classes Pump(), MPPT(), PipeNetwork(), Reservoir() and PVGeneration(). The p
 are then gathered in the class PVPumpSystem() which allows running a comprehensive modeling of 
 the pumping system. 
 
-The main inputs to the model are hourly weather file, water source characteristics, expected water 
+The main inputs to the simulation are hourly weather file, water source characteristics, expected water 
 consumption profile, and specifications of photovoltaic array, motor-pump and water reservoir. 
 Typical outputs are hourly flow rates, unused electric power, efficiency of components, life 
-cycle cost and load losses probability. The sizing module provides functions to help choose 
+cycle cost and loss of load probability. The sizing module then builds on top of the 
+modeling tools, and uses them to provides functions to help choose 
 the best combination of components in order to minimize the total life cycle cost. Nevertheless, 
 sizing such complex systems is still an active field of research, and this module is subsequently 
 expected to be expanded with time.

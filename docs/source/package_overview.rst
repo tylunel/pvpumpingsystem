@@ -37,7 +37,6 @@ life cycle cost of the whole system.
   :width: 700
   :alt: Schema of a simulation on a PV pumping system
 
-
 *Pvpumpingsystem* also offers to automate the process of sizing. In this case,
 the user can provide a set of PV module, a set of motor-pumps and a
 water needs file, and the software looks for the cheapest assembly while

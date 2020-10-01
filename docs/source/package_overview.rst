@@ -24,9 +24,18 @@ User can choose to add a MPPT/DC-DC converter to increase the energy
 yield of the PV array or to directly couple PV array and motor-pump.
 The software also allows to add water tank to mitigate the effect of
 intermittency.
+
+.. image:: ../images/schema_pvps.jpg
+  :width: 700
+  :alt: Basic schema of a PV pumping system
+
 The simulation eventually compute numerous outputs like hourly flow rates of
 a given pump, efficiencies of components, risk of water shortage and
 life cycle cost of the whole system.
+
+.. image:: ../images/schema_simulation.jpg
+  :width: 700
+  :alt: Schema of a simulation on a PV pumping system
 
 
 *Pvpumpingsystem* also offers to automate the process of sizing. In this case,
@@ -34,9 +43,16 @@ the user can provide a set of PV module, a set of motor-pumps and a
 water needs file, and the software looks for the cheapest assembly while
 making sure that it respects a minimum risk of water shortage.
 
+.. image:: ../images/schema_sizing.jpg
+  :width: 700
+  :alt: Schema of standard sizing process
+
 Nevertheless, the number of sizing processes can be infinite, and this module
 is expected to significantly expand with time, welcoming new sizing process
-based on different selection criteria or algorithms.
+based on different selection criteria or algorithms. In particular, 
+the reservoir size, the orientation of the PV array, the coupling strategy 
+or even the diameter of pipes are inputs that could ultimately become outputs of 
+the sizing process as well.
 
 
 To better understand the possibilities of *pvpumpingsystem* and how it works,

@@ -7,15 +7,17 @@
 *pvpumpingsystem* is a package providing tools for modeling and sizing
 photovoltaic water pumping systems.
 
+![Schema of a PV pumping system](/docs/images/schema_pvps.jpg)
+
 It can model the whole functioning of such pumping system on an hourly basis
 and eventually provide key financial and technical findings on a year.
 Conversely it can help choose some elements of the pumping station
 depending on output values wanted (like daily water consumption and
-acceptable risk of water shortage).
+acceptable risk of water shortage). Further details are provided on the [scope page of the documentation](https://pvpumpingsystem.readthedocs.io/en/latest/package_overview.html).
 
 
 # Documentation
-The package documentation is available on readthedocs:
+The full package documentation is available on readthedocs:
 
 [pvpumpingsystem docs](https://pvpumpingsystem.readthedocs.io/en/latest/?badge=latest)
 
@@ -52,14 +54,14 @@ Three examples of how the software can be used are in the folder
 For a given system, the first two show how to obtain the outflows,
 probability of water shortage, life cycle cost and many other results:
 
-[basic usage example](https://nbviewer.jupyter.org/github/tylunel/pvpumpingsystem/blob/master/docs/examples/simulation_tunis_basic.ipynb)
+[Basic usage example](https://nbviewer.jupyter.org/github/tylunel/pvpumpingsystem/blob/master/docs/examples/simulation_tunis_basic.ipynb)
 
-[more advanced usage example](https://nbviewer.jupyter.org/github/tylunel/pvpumpingsystem/blob/master/docs/examples/simulation_tunis_advanced.ipynb)
+[More advanced usage example](https://nbviewer.jupyter.org/github/tylunel/pvpumpingsystem/blob/master/docs/examples/simulation_tunis_advanced.ipynb)
 
 The third shows how to optimize the selection of one or more component
 on the pumping station based on user requirements:
 
-[sizing example](https://nbviewer.jupyter.org/github/tylunel/pvpumpingsystem/blob/master/docs/examples/sizing_example.ipynb)
+[Sizing example](https://nbviewer.jupyter.org/github/tylunel/pvpumpingsystem/blob/master/docs/examples/sizing_example.ipynb)
 
 
 # Contributions

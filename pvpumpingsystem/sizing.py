@@ -169,8 +169,6 @@ def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
             pv_module_name=pv_mod_name,
 
             price_per_watt=2.5,  # in US dollars
-            surface_tilt=45,  # 0 = horizontal, 90 = vertical
-            surface_azimuth=180,  # 180 = South, 90 = East
             albedo=0,  # between 0 and 1
             modules_per_string=1,
             strings_in_parallel=1,
@@ -402,8 +400,6 @@ def subset_respecting_llp_mppt(pv_database, pump_database,    # noqa: C901
             pv_module_name=pv_mod_name,
 
             price_per_watt=2.5,  # in US dollars
-            surface_tilt=45,  # 0 = horizontal, 90 = vertical
-            surface_azimuth=180,  # 180 = South, 90 = East
             albedo=0,  # between 0 and 1
             modules_per_string=1,
             strings_in_parallel=1,
@@ -531,11 +527,16 @@ def sizing_minimize_npv(pv_database, pump_database,
                         M_p_guess=None,
                         **kwargs):
     """
-    Function returning the configurations of PV modules and pump
-    that will minimize the net present value of the system and will insure
-    that the Loss of Load Probability (llp) is inferior to the one given.
-    It selects the pump and the pv module in databases and size the number
-    of pv modules used.
+    Function returning the configuration of PV modules and pump
+    that minimizes the net present value (NPV) of the system and ensures
+    that the Loss of Load Probability (llp) is inferior to the 'llp_accepted'.
+
+    It proceeds by sizing the number of PV module needed to respect
+    'llp_accepted' for each combination of pump and pv module. If the
+    combination does not allow to respect 'llp_accepted' in any case,
+    it is discarded. Then the combination with the lowest NPV is returned
+    as the solution (first element of the tuple returned). All combinations
+    details are also returned (second element of the tuple returned).
 
     Parameters
     ----------
@@ -572,11 +573,20 @@ def sizing_minimize_npv(pv_database, pump_database,
     Returns
     -------
     tuple
-        First element is a pandas.DataFrame containing all configurations
-        that minimizes the net present value of the system.
+        First element is a pandas.DataFrame containing the configuration
+        that minimizes the net present value (NPV) of the system. This first
+        element can contain more than one configuration if multiple
+        configurations have the exact same NPV which also turns to be the
+        minimum.
         Second element is a pandas.DataFrame containing all configurations
         tested respecting the LLP.
     """
+
+    # TODO: Change structure of code so as the PVPumpSystem object accepts
+    # lists as attribute (for ex.: list of pumps, pv modules, reservoir, etc)
+    # and that the factorial design is made across all elements of each
+    # list. The scope of the sizing would be not be restricted
+    # to pv modules and pumps anymore.
 
     # TODO: check following for a discrete optimization:
     # https://towardsdatascience.com/linear-programming-and-discrete-optimization-with-python-using-pulp-449f3c5f6e99
@@ -622,5 +632,14 @@ def sizing_Ms_vs_tank_size():
 
     [1] Bouzidi, 2013, 'New sizing method of PV water pumping systems',
     Sustainable Energy Technologies and Assessments
+    """
+    raise NotImplementedError
+
+
+def sizing_tank_size():
+    """
+    Function optimizing reservoir size. Note that this value is continuous,
+    so several optimization methods from scipy could be applied
+    effiently on it.
     """
     raise NotImplementedError

@@ -38,9 +38,11 @@ class PVGeneration:
 
     surface_tilt: float, default is 0
         Angle the PV modules have with ground [°]
+        Overwritten if orientation_strategy is not None.
 
     surface_azimuth: float, default is 180 (oriented South)
         Azimuth of the PV array [°]
+        Overwritten if orientation_strategy is not None.
 
     albedo: float, default 0
         Albedo of the soil around.
@@ -67,7 +69,7 @@ class PVGeneration:
         the physical location at which to evaluate the model.
 
     orientation_strategy : None or str, default None
-        The strategy for aligning the modules. If not None, sets the
+        The strategy for aligning the modules. If not None, overwrites the
         ``surface_azimuth`` and ``surface_tilt`` properties of the
         ``system``. Allowed strategies include 'flat',
         'south_at_latitude_tilt'. Ignored for SingleAxisTracker systems.
@@ -283,13 +285,3 @@ class PVGeneration:
         """
         # Running of the PV generation model
         self.modelchain.run_model(weather=self.weather_data)
-
-
-if __name__ == '__main__':
-
-    pv_power = PVGeneration(
-        './data/weather_files/CAN_PQ_Montreal.Intl.AP' +
-        '.716270_CWEC_truncated.epw',
-        'Canada solar 270W'
-        )
-    pv_power.run_model()

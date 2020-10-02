@@ -25,12 +25,11 @@ The full package documentation is available on readthedocs:
 # Installation
 *pvpumpingsystem* works with Python 3.5 and superior only.
 
-## With Anaconda and Git already installed
+## With pip
 
-In *Anaconda prompt*, change directory to the one you want to install
-pvpumpingsystem in, and type:
+In a command line interface, change directory to the one you want to install pvpumpingsystem in, and type:
 ```
-pip install -e git+https://github.com/tylunel/pvpumpingsystem#egg=pvpumpingsystem
+pip install pvpumpingsystem
 ```
 
 To ensure *pvpumpingsystem* and its dependencies are properly installed,
@@ -41,8 +40,7 @@ cd src/pvpumpingsystem
 pytest
 ```
 
-## Other installations
-Consult the docs for more information:
+Consult the docs for more information on installation:
 https://pvpumpingsystem.readthedocs.io/en/latest/installation.html
 
 

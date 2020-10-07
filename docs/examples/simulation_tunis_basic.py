@@ -75,7 +75,7 @@ print('LLP = ', pvps1.llp)
 print('Initial investment = {0} USD'.format(pvps1.initial_investment))
 print('NPV = {0} USD'.format(pvps1.npv))
 if pvps1.coupling == 'direct':
-    pvps1.operating_point_noiteration(plot=True)
+    pvps1.operating_point(plot=True)
 
 # ------------ GRAPHS -----------------------
 

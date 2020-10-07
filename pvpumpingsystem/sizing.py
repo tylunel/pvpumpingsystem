@@ -269,7 +269,7 @@ def size_nb_pv_direct(pvps_fixture, llp_accepted,    # noqa: C901
         pvps.pvgeneration.system.strings_per_inverter = M_p
         pvps.pvgeneration.run_model()
         pvps.run_model(**kwargs)
-        # pvps.operating_point_noiteration(plot=True)
+
         return pvps.llp
 
     # Guess a M_s to start with or take the given M_s_guess:

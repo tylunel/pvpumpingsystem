@@ -10,9 +10,6 @@ import numpy as np
 
 # TODO: replace water_volume by state of charge SOC
 
-# TODO: change default value of size by 0. Put +inf here make the LLP false
-# later. Need to adapt the rest so as it works well with 0
-
 class Reservoir(object):
     """Class defining a water tank with its main characteristics.
 

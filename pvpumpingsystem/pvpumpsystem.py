@@ -143,11 +143,11 @@ class PVPumpSystem(object):
 #            self.motorpump.modeling_method = model
 #            self.motorpump_model = model
 
-    def operating_point_noiteration(self, plot=False, nb_pts=50, stop=8760):
+    def operating_point(self, plot=False, nb_pts=50, stop=8760):
         """Finds the IV operating point(s) of the PV array and the pump
         (load).
 
-        cf pvpumpsystem.operating_point_noiteration for more details
+        cf pvpumpsystem.operating_point for more details
 
         Parameters
         ----------
@@ -181,7 +181,7 @@ class PVPumpSystem(object):
 
         tdh = self.pipes.h_stat
 
-        pdresult = operating_point_noiteration(
+        pdresult = operating_point(
                 params,
                 M_s, M_p,
                 load_fctIfromVH=load_fctI,
@@ -244,7 +244,7 @@ class PVPumpSystem(object):
 
         return pdresult
 
-    def calc_flow(self, atol=0.1, stop=8760, **kwargs):
+    def calc_flow(self, friction=False, atol=0.1, stop=8760, **kwargs):
         """
         Computes the flow at the output of the PVPS, and
         assigns the value to the attribute 'flow'.
@@ -254,11 +254,20 @@ class PVPumpSystem(object):
 
         Parameters
         ----------
+        friction: boolean, default is False
+            Decide if the system considers the friction head due to the
+            flow rate of water pump or not.
+            Often can be put to False if the pipes are well sized, because
+            negligible in relation to the static head. When turned to True,
+            it approximately multiplies by 3 the computation time (if atol
+            kept to default value).
+
         atol: numeric
             absolute tolerance on the uncertainty of the flow in L/min
 
         stop: numeric
             number of data on which the computation is run
+
 
         Returns
         -------
@@ -277,12 +286,14 @@ class PVPumpSystem(object):
                                                self.motorpump,
                                                self.pipes,
                                                self.mppt,
+                                               friction=friction,
                                                atol=atol, stop=stop,
                                                **kwargs)
         elif self.coupling == 'direct':
             self.flow = calc_flow_directly_coupled(self.pvgeneration,
                                                    self.motorpump,
                                                    self.pipes,
+                                                   friction=friction,
                                                    atol=atol, stop=stop,
                                                    **kwargs)
         else:
@@ -367,7 +378,7 @@ class PVPumpSystem(object):
         self.water_stored = calc_reservoir(self.reservoir, self.flow.Qlpm,
                                            self.consumption.flow_rate.Qlpm)
 
-    def run_model(self, iteration=False, starting_soc='morning', **kwargs):
+    def run_model(self, friction=False, starting_soc='morning', **kwargs):
         """
         Comprehensive modeling of the PVPS. Computes Loss of Power Supply (LLP)
         and stores it as an attribute. Re-run eveything even if already
@@ -375,7 +386,7 @@ class PVPumpSystem(object):
 
         Parameters
         ----------
-        iteration: boolean, default is False
+        friction: boolean, default is False
             Decide if the friction head is taken into account in the
             computation. Turning it to True multiply by three the
             calculation time.
@@ -389,7 +400,7 @@ class PVPumpSystem(object):
         self.pvgeneration.run_model()
 
         # 'disable' removes the progress bar
-        self.calc_flow(disable=True, iteration=iteration)
+        self.calc_flow(disable=True, friction=friction)
         self.calc_efficiency()
         self.calc_reservoir(starting_soc=starting_soc)
 
@@ -501,7 +512,7 @@ def function_i_from_v(V, I_L, I_o, R_s, R_sh, nNsVth,
 
 
 # TODO: simplify function for removing C901 lint error
-def operating_point_noiteration(  # noqa: C901
+def operating_point(  # noqa: C901
         params,
         modules_per_string,
         strings_per_inverter,
@@ -606,7 +617,7 @@ def operating_point_noiteration(  # noqa: C901
 
 
 def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
-                               iteration=False,
+                               friction=False,
                                atol=0.1,
                                stop=8760,
                                **kwargs):
@@ -625,15 +636,15 @@ def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
     pipes: pipenetwork.PipeNetwork object
         Hydraulic network linked to the pump
 
-    iteration: boolean, default is False
+    friction: boolean, default is False
         Decide if the system takes into account the friction head due to the
-        flow rate of water pump (iteration = True) or if the system just
-        considers the static head of the system (iteration = False).
+        flow rate of water pump (friction = True) or if the system just
+        considers the static head of the system (friction = False).
         Often can be put to False if the pipes are well sized.
 
     atol: numeric
         absolute tolerance on the uncertainty of the flow in l/min.
-        Used if iteration = True.
+        Used if friction = True.
 
     stop: numeric
         number of data on which the computation is run
@@ -670,7 +681,7 @@ def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
                                       **kwargs):
         params = row[1]
 
-        if iteration is True:
+        if friction is True:
             Qlpm = 1
             Qlpmnew = 0
 
@@ -686,7 +697,7 @@ def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
                 h_tot = pipes.h_stat + \
                     pipes.dynamichead(Qlpm, T=temp_water)
                 # compute operating point
-                iv_data = operating_point_noiteration(
+                iv_data = operating_point(
                         params, M_s, M_p,
                         load_fctIfromVH=load_fctIfromVH,
                         load_interval_V=intervalsVH['V'](h_tot),
@@ -715,9 +726,9 @@ def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
                            'P_unused': P_unused,
                            'tdh': h_tot
                            })
-        else:  # iteration is False
+        else:  # friction is False
             # compute operating point
-            iv_data = operating_point_noiteration(
+            iv_data = operating_point(
                     params, M_s, M_p,
                     load_fctIfromVH=load_fctIfromVH,
                     load_interval_V=intervalsVH['V'](pipes.h_stat),
@@ -746,7 +757,7 @@ def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
 
 
 def calc_flow_mppt_coupled(pvgeneration, motorpump, pipes, mppt,
-                           iteration=False,
+                           friction=False,
                            atol=0.1,
                            stop=8760,
                            **kwargs):
@@ -768,15 +779,15 @@ def calc_flow_mppt_coupled(pvgeneration, motorpump, pipes, mppt,
     mppt: mppt.MPPT object,
         The maximum power point tracker of the system.
 
-    iteration: boolean, default is False
+    friction: boolean, default is False
         Decide if the system takes into account the friction head due to the
-        flow rate of water pump (iteration = True) or if the system just
-        considers the static head of the system (iteration = False).
+        flow rate of water pump (friction = True) or if the system just
+        considers the static head of the system (friction = False).
         Often can be put to False if the pipes are well sized.
 
     atol: numeric
         absolute tolerance on the uncertainty of the flow in l/min.
-        Used if iteration=True.
+        Used if friction=True.
 
     stop: numeric
         number of data on which the computation is run
@@ -810,7 +821,7 @@ def calc_flow_mppt_coupled(pvgeneration, motorpump, pipes, mppt,
                               total=stop,
                               **kwargs):
 
-        if iteration is True:
+        if friction is True:
             Qlpm = 1
             Qlpmnew = 0
 
@@ -842,7 +853,7 @@ def calc_flow_mppt_coupled(pvgeneration, motorpump, pipes, mppt,
                            'P_unused': P_unused,
                            'tdh': h_tot
                            })
-        else:  # iteration is False
+        else:  # friction is False
             # simply computes flow
             res_dict = fctQwithPH(power, pipes.h_stat)
             Qlpm = res_dict['Q']

@@ -154,7 +154,9 @@ pvps1 = pvps.PVPumpSystem(pvgen1,
 
 # ------------ RUNNING MODEL -----------------
 
-pvps1.run_model(iteration=False, starting_soc='morning',
+pvps1.run_model(friction=False,  # consideration of friction head in pipes
+                starting_soc='morning',
+                # financial parameters
                 discount_rate=0.05, labour_price_coefficient=0.2, opex=200,
                 lifespan_pv=30, lifespan_mppt=15, lifespan_pump=10)
 
@@ -168,7 +170,7 @@ print('Initial investment = {0} USD'.format(pvps1.initial_investment))
 print('NPV = {0} USD'.format(pvps1.npv))
 
 if pvps1.coupling == 'direct':
-    pvps1.operating_point_noiteration(plot=True)
+    pvps1.operating_point(plot=True)
 
 
 # ------------ GRAPHS -----------------------

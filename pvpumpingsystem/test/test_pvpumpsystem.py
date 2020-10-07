@@ -88,29 +88,25 @@ def test_calc_flow_mppt(pvps_set_up):
     """Test the computing of flows in the case coupled with mppt.
     """
     pvps_set_up.coupling = 'mppt'
-    pvps_set_up.calc_flow(iteration=True, atol=0.1, stop=24)
+    pvps_set_up.calc_flow(friction=True, atol=0.1, stop=24)
     Q = pvps_set_up.flow.Qlpm.values
     Q_expected = np.array([0., 0., 0., 0., 0., 0., 0., 0.,
                            34.02, 52.98, 59.32, 61.18,
                            44.91, 42.06, 34.50, 17.52,
-                           # 32.49, 52.50, 59.05, 61.18,
-                           # 44.40, 41.59, 34.15, 0.,
                            0., 0., 0., 0., 0., 0., 0., 0.])
     np.testing.assert_allclose(Q, Q_expected, rtol=0.1)
 
 
-def test_calc_flow_mppt_no_iteration(pvps_set_up):
+def test_calc_flow_mppt_with_friction(pvps_set_up):
     """Test the computing of flows in the case coupled with mppt, but
     without iterations on the total dynamic head coming from the friction head.
     """
     pvps_set_up.coupling = 'mppt'
-    pvps_set_up.calc_flow(iteration=False, stop=24)
+    pvps_set_up.calc_flow(friction=False, stop=24)
     Q = pvps_set_up.flow.Qlpm.values
     Q_expected = np.array([0., 0., 0., 0., 0., 0., 0., 0.,
                            34.06, 53.02, 59.37, 61.22,
                            44.95, 42.10, 34.53, 17.53,
-                           # 32.52, 52.54, 59.09, 61.23,
-                           # 44.44, 41.63, 34.18, 0.,
                            0., 0., 0., 0., 0., 0., 0., 0.])
     np.testing.assert_allclose(Q, Q_expected, rtol=0.1)
 
@@ -119,7 +115,7 @@ def test_calc_flow_direct(pvps_set_up):
     """Test the computing of flows when pump and pv are directly coupled.
     """
     pvps_set_up.coupling = 'direct'
-    pvps_set_up.calc_flow(iteration=True, atol=0.1, stop=24)
+    pvps_set_up.calc_flow(friction=True, atol=0.1, stop=24)
     Q = pvps_set_up.flow.Qlpm.values
     Q_expected = np.array([0., 0., 0., 0., 0., 0., 0., 0.,
                            26.7413, 28.6602, 29.1504, 29.5732,
@@ -128,11 +124,11 @@ def test_calc_flow_direct(pvps_set_up):
     np.testing.assert_allclose(Q, Q_expected, rtol=1)
 
 
-def test_operating_point_noiteration(pvps_set_up):
+def test_operating_point(pvps_set_up):
     """Test the ability of code to find the operating point between
     pump and pv array when directly-coupled.
     """
-    df_iv = pvps_set_up.operating_point_noiteration()
+    df_iv = pvps_set_up.operating_point()
     arr_iv = np.array(df_iv[11:19], dtype=float)
     arr_iv_expected = np.array([[3.1552, 75.1672],
                                 [3.0930, 74.2068],

@@ -219,12 +219,14 @@ def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
 
             # Check that the current pump is in the range
             if pvps_fixture.pvgeneration.pv_module.V_oc_ref > V_oc_array_max:
-                warnings.warn(('Pump {0} and PV module voltage '
-                               'do not match').format(pump.idname))
+                warnings.warn(('Pump {0} and PV module voltage of {1} '
+                               'do not match').format(pump.idname,
+                                                      pv_mod_name))
                 continue  # skip this round
             if pvps_fixture.pvgeneration.pv_module.I_sc_ref > I_sc_array_max:
-                warnings.warn(('Pump {0} and PV module current '
-                               'do not match').format(pump.idname))
+                warnings.warn(('Pump {0} and PV module current of {1} '
+                               'do not match').format(pump.idname,
+                                                      pv_mod_name))
                 continue  # skip this round
 
             # If the range is ok, update the pump

@@ -26,13 +26,10 @@ test_dir = os.path.dirname(
 def databases():
     # pump database
     pump_sunpump = pp.Pump(
-        os.path.join(test_dir, "../data/pump_files/SCB_10_150_120_BL.txt"),
-        price=1100,
-        idname='SCB_10')
+        os.path.join(test_dir, "../data/pump_files/SCB_10_150_120_BL.txt"))
     pump_shurflo = pp.Pump(
         os.path.join(test_dir, "../data/pump_files/Shurflo_9325.txt"),
-        price=700,
-        idname='Shurflo_9325')
+        price=700)
     pump_database = [pump_shurflo, pump_sunpump]
 
     # pv database
@@ -73,11 +70,17 @@ def test_shrink_weather_worst_month():
     assert worst_month == 12  # 12 = december
 
 
+@pytest.mark.filterwarnings("ignore::scipy.optimize.OptimizeWarning")
 def test_sizing_minimize_npv_mppt(databases):
     """
     Goes through following functions:
         sizing.subset_respecting_llp_mppt()
         sizing.sizing_minimize_npv()
+
+    Note that the OptimizeWarning ignored through pytest.mark above is a
+    warning that comes from the relatively small amount of data on shurflo
+    pump. It warns that scipy and pvpumpingsystem could not provide
+    statistical figures on the quality of the model fitting for this pump.
     """
 
     pump_database = databases['pumps']
@@ -95,16 +98,16 @@ def test_sizing_minimize_npv_mppt(databases):
 
     # rest of pumping system
     pipes = pn.PipeNetwork(h_stat=20, l_tot=100, diam=0.08,
-                            material='plastic', optimism=True)
+                           material='plastic', optimism=True)
     consum = cs.Consumption(constant_flow=1)
 
     pvps_fixture = pvps.PVPumpSystem(None,
-                                     None,
-                                     coupling='mppt',
-                                     mppt=mppt1,
-                                     consumption=consum,
-                                     reservoir=reservoir1,
-                                     pipes=pipes)
+                                      None,
+                                      coupling='mppt',
+                                      mppt=mppt1,
+                                      consumption=consum,
+                                      reservoir=reservoir1,
+                                      pipes=pipes)
 
     selection, _ = siz.sizing_minimize_npv(
             pv_database, pump_database,
@@ -112,15 +115,21 @@ def test_sizing_minimize_npv_mppt(databases):
             pvps_fixture,
             llp_accepted=0.01,
             M_s_guess=1)
-    assert ('Shurflo_9325' in selection.pump.values and
+    assert ('shurflo_9325' in selection.pump.values and
             'Canadian_Solar_Inc__CS5C_80M' in selection.pv_module.values)
 
 
+@pytest.mark.filterwarnings("ignore::scipy.optimize.OptimizeWarning")
 def test_sizing_minimize_npv_direct(databases):
     """
     Goes through following functions:
         sizing.subset_respecting_llp_direct()
         sizing.sizing_minimize_npv()
+
+    Note that the OptimizeWarning ignored through pytest.mark above is a
+    warning that comes from the relatively small amount of data on shurflo
+    pump. It warns that scipy and pvpumpingsystem could not provide
+    statistical figures on the quality of the model fitting for this pump.
     """
 
     pump_database = databases['pumps']
@@ -138,7 +147,7 @@ def test_sizing_minimize_npv_direct(databases):
 
     # rest of pumping system
     pipes = pn.PipeNetwork(h_stat=20, l_tot=100, diam=0.08,
-                            material='plastic', optimism=True)
+                           material='plastic', optimism=True)
     consum = cs.Consumption(constant_flow=1)
 
     pvps_fixture = pvps.PVPumpSystem(None,
@@ -148,15 +157,17 @@ def test_sizing_minimize_npv_direct(databases):
                                      consumption=consum,
                                      reservoir=reservoir1,
                                      pipes=pipes)
+    with pytest.warns(UserWarning) as record:
+        selection, _ = siz.sizing_minimize_npv(
+                pv_database, pump_database,
+                weather_shrunk, weather_metadata,
+                pvps_fixture,
+                llp_accepted=0.01,
+                M_s_guess=1)
+    # Check that the warning is the one expected
+    assert "do not match" in record[0].message.args[0]
 
-    selection, _ = siz.sizing_minimize_npv(
-            pv_database, pump_database,
-            weather_shrunk, weather_metadata,
-            pvps_fixture,
-            llp_accepted=0.01,
-            M_s_guess=1)
-
-    assert ('Shurflo_9325' in selection.pump.values and
+    assert ('shurflo_9325' in selection.pump.values and
             'Canadian_Solar_Inc__CS5C_80M' in selection.pv_module.values)
 
 

@@ -12,9 +12,6 @@ import inspect
 import pvpumpingsystem.pump as pp
 from pvpumpingsystem import errors
 
-# ignore all OptimizeWarning in the module
-pytestmark = pytest.mark.filterwarnings(
-    "ignore::scipy.optimize.OptimizeWarning")
 
 test_dir = os.path.dirname(
     os.path.abspath(inspect.getfile(inspect.currentframe())))
@@ -25,28 +22,48 @@ def pumpset():
     pump_testfile = os.path.join(test_dir,
                                  '../data/pump_files/SCB_10_150_120_BL.txt')
     return pp.Pump(path=pump_testfile,
-                   idname='SCB_10',
-                   modeling_method='arab',
-                   motor_electrical_architecture='permanent_magnet')
+                   modeling_method='arab')
 
 
-def test_init(pumpset):
-    assert type(pumpset.specs) is pd.DataFrame
-    assert type(pumpset.coeffs['coeffs_f1']) is np.ndarray
+def test_init_pumpset_overwritting():
+    pump_testfile = os.path.join(test_dir,
+                                 '../data/pump_files/SCB_10_150_120_BL.txt')
+    with pytest.warns(UserWarning) as record:
+        pump1 = pp.Pump(path=pump_testfile,
+                        idname='SCB_10',
+                        price=1050,
+                        modeling_method='arab',
+                        motor_electrical_architecture='permanent_magnet')
+
+    # check that 2 warnings were raised
+    assert len(record) == 3
+    # check that the messages match
+    assert "price attribute overwritten." in record[0].message.args[0]
+    assert "idname attribute overwritten." in record[1].message.args[0]
+    assert "architecture attribute overwritten." in record[2].message.args[0]
+
+    # check that object is correctly built
+    assert type(pump1.specs) is pd.DataFrame
+    assert type(pump1.coeffs['coeffs_f1']) is np.ndarray
+
 
 
 def test_limited_pump_data_1():
     """Tests 'theoretical_basic' model.
-
     This pump data has only one data point"""
 
     pump_testfile = os.path.join(
             test_dir, '../data/pump_files/min_specs.txt')
     # The pump is modeled with extremely basic model, considering only f2
-    pumpset = pp.Pump(path=pump_testfile,
-                      modeling_method='theoretical',
-                      motor_electrical_architecture='permanent_magnet')
+    with pytest.warns(UserWarning) as record:
+        pumpset = pp.Pump(path=pump_testfile,
+                          modeling_method='theoretical',
+                          motor_electrical_architecture='permanent_magnet')
+    # check that the warnings are the expected ones
+    assert "architecture attribute overwritten." in record[0].message.args[0]
+    assert "recomputed with constant efficiency" in record[1].message.args[0]
 
+    # check functions can work normally then
     functQ, intervals = pumpset.functQforPH()
     res = functQ(540, 50)['Q']
     res_expected = 2.1
@@ -69,9 +86,15 @@ def test_limited_pump_data_2():
             test_dir, '../data/pump_files/rosen_SC33-158-D380-9200.txt')
     # The initialization recalculates the current used based on a constant
     # efficiency
-    pumpset = pp.Pump(path=pump_testfile,
-                      modeling_method='theoretical',
-                      motor_electrical_architecture='permanent_magnet')
+    with pytest.warns(UserWarning) as record:
+        pumpset = pp.Pump(path=pump_testfile,
+                          modeling_method='theoretical',
+                          motor_electrical_architecture='permanent_magnet')
+
+    # check that the warnings are the ones expected
+    assert "recomputed with constant efficiency" in record[0].message.args[0]
+    assert "Simplistic model of constant eff" in record[1].message.args[0]
+
     # check that the current values are not all the same
     assert not (pumpset.specs.current[0] == pumpset.specs.current[1:]).all()
 
@@ -104,6 +127,9 @@ def test_functIforVH(pumpset):
     Test if the output functV works well,
     and if this function is able to correctly raise errors.
     """
+    # ignore RuntimeWarning here
+    np.warnings.filterwarnings('ignore', category=RuntimeWarning)
+
     for model in ['arab', 'kou', 'theoretical']:
         pumpset.modeling_method = model
         # check standard deviation
@@ -140,13 +166,13 @@ def test_functQforPH(pumpset):
         res = functQ(400, 20)['Q']
         res_expected = 36.27
         np.testing.assert_allclose(res, res_expected,
-                                   rtol=0.05)
+                                    rtol=0.05)
 
         # check the processing of unused power when head is too high
         res = functQ(560, 81)['P_unused']
         res_expected = 560
         np.testing.assert_allclose(res, res_expected,
-                                   rtol=0.05)
+                                    rtol=0.05)
 
 
 def test_iv_curve_data(pumpset):
@@ -173,7 +199,7 @@ def test_iv_curve_data(pumpset):
          111.5851987, 112.78731323, 113.98942769, 115.19154215,
          116.3936566, 117.59577108, 118.79788554, 120.])
     np.testing.assert_allclose((IV['I'], IV['V']), IV_expected,
-                               rtol=1e-3)
+                                rtol=1e-3)
 
 
 if __name__ == '__main__':

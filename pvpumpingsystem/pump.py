@@ -682,27 +682,27 @@ def get_data_pump(path):
         current, tdh, power) and a dict with the metadata of the pump.
     """
     # open in read-only option
-    csvdata = open(path, 'r')
+    with open(path, 'r') as csvdata:
 
-    metadata = {}
-    header = True
-    while header is True:
-        # get metadata
-        line = csvdata.readline()
+        metadata = {}
+        header = True
+        while header is True:
+            # get metadata
+            line = csvdata.readline()
 
-        # check that it is still header
-        if line.startswith('# '):
-            header is False
-            break
+            # check that it is still header
+            if line.startswith('# '):
+                header is False
+                break
 
-        # remove carriage return and split at ':'.
-        # .strip() removes leading or trailing whitespace
-        content = re.split(':|#', line.rstrip('\n'))
-        metadata[content[0].lower().strip()] = content[1].strip()
+            # remove carriage return and split at ':'.
+            # .strip() removes leading or trailing whitespace
+            content = re.split(':|#', line.rstrip('\n'))
+            metadata[content[0].lower().strip()] = content[1].strip()
 
-    # Import data
-    # header=0 because firstline already read before
-    data_df = pd.read_csv(csvdata, sep='\t', header=0, comment='#')
+        # Import data
+        # header=0 because firstline already read before
+        data_df = pd.read_csv(csvdata, sep='\t', header=0, comment='#')
 
     return data_df, metadata
 
@@ -1294,8 +1294,7 @@ def _curves_coeffs_theoretical_basic(specs, data_completeness, elec_archi):
         return efficiency * (60000 * P) / (H * 9.81 * 1000)
 
     if data_completeness['data_number'] >= 4:
-        warnings.warn('Simplistic model of constant efficiency applied.'
-                      'Better model could be used if permanent_magnet')
+        warnings.warn('Simplistic model of constant efficiency applied.')
         # TODO: remove the extreme points of the domain as here, because
         # efficiencies are nearly nil at these points
         dataxy = [np.array(specs.power[specs.tdh > 7]),
@@ -1512,7 +1511,7 @@ def _extrapolate_pow_eff_with_cst_efficiency(specs, efficiency_coeff=1):
     efficiency_coeff = 1
     mean_efficiency = efficiency_coeff * rated_efficiency
     specs['efficiency'] = mean_efficiency
-    warnings.warn('Power and current data will be recomputed'
+    warnings.warn('Power and current data will be recomputed '
                   'with constant efficiency assumption.')
     specs.power = hydrau_power / mean_efficiency
     specs.current = specs.power / specs.voltage

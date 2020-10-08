@@ -84,7 +84,7 @@ def pvps_set_up():
     return pvps1
 
 
-def test_calc_flow_mppt(pvps_set_up):
+def test_calc_flow_mppt_with_friction(pvps_set_up):
     """Test the computing of flows in the case coupled with mppt.
     """
     pvps_set_up.coupling = 'mppt'
@@ -97,9 +97,9 @@ def test_calc_flow_mppt(pvps_set_up):
     np.testing.assert_allclose(Q, Q_expected, rtol=0.1)
 
 
-def test_calc_flow_mppt_with_friction(pvps_set_up):
+def test_calc_flow_mppt(pvps_set_up):
     """Test the computing of flows in the case coupled with mppt, but
-    without iterations on the total dynamic head coming from the friction head.
+    without consideration of the friction head.
     """
     pvps_set_up.coupling = 'mppt'
     pvps_set_up.calc_flow(friction=False, stop=24)
@@ -114,6 +114,7 @@ def test_calc_flow_mppt_with_friction(pvps_set_up):
 def test_calc_flow_direct(pvps_set_up):
     """Test the computing of flows when pump and pv are directly coupled.
     """
+    np.warnings.filterwarnings('ignore', category=RuntimeWarning)
     pvps_set_up.coupling = 'direct'
     pvps_set_up.calc_flow(friction=True, atol=0.1, stop=24)
     Q = pvps_set_up.flow.Qlpm.values
@@ -155,4 +156,4 @@ def test_financial_analysis(pvps_set_up):
 
 if __name__ == '__main__':
     # runs all the tests in this module
-    pytest.main(['test_pvpumpsystem.py'])
+    pytest.main(['-s', 'test_pvpumpsystem.py'])

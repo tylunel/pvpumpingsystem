@@ -47,7 +47,6 @@ def test_init_pumpset_overwritting():
     assert type(pump1.coeffs['coeffs_f1']) is np.ndarray
 
 
-
 def test_limited_pump_data_1():
     """Tests 'theoretical_basic' model.
     This pump data has only one data point"""
@@ -166,13 +165,13 @@ def test_functQforPH(pumpset):
         res = functQ(400, 20)['Q']
         res_expected = 36.27
         np.testing.assert_allclose(res, res_expected,
-                                    rtol=0.05)
+                                   rtol=0.05)
 
         # check the processing of unused power when head is too high
         res = functQ(560, 81)['P_unused']
         res_expected = 560
         np.testing.assert_allclose(res, res_expected,
-                                    rtol=0.05)
+                                   rtol=0.05)
 
 
 def test_iv_curve_data(pumpset):
@@ -199,7 +198,7 @@ def test_iv_curve_data(pumpset):
          111.5851987, 112.78731323, 113.98942769, 115.19154215,
          116.3936566, 117.59577108, 118.79788554, 120.])
     np.testing.assert_allclose((IV['I'], IV['V']), IV_expected,
-                                rtol=1e-3)
+                               rtol=1e-3)
 
 
 if __name__ == '__main__':

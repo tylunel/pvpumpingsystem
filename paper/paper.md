@@ -35,7 +35,7 @@ modeled and sized in order to make the water supply cost efficient and reliable.
 Pvpumpingsystem was conceived in order to tackle this issue. It is an open source package 
 providing various tools aimed at facilitating the modeling and the sizing of photovoltaic 
 powered water pumping systems. Even though the package is originally targeted at researchers 
-and engineers, two practical examples are provided in order to help anyone to use pvpumpingsystem.
+and engineers, three practical examples are provided in order to help anyone to use pvpumpingsystem.
 
 Python is the programming language used in the software, and the code is structured within an 
 object-oriented approach. Continuous integration services allow checking for lint in the code 

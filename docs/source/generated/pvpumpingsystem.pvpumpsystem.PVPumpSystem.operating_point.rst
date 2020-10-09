@@ -1,6 +1,6 @@
-pvpumpingsystem.pvpumpsystem.operating\_point\_noiteration
+pvpumpingsystem.pvpumpsystem.PVPumpSystem.operating\_point
 ==========================================================
 
 .. currentmodule:: pvpumpingsystem.pvpumpsystem
 
-.. autofunction:: operating_point_noiteration
+.. automethod:: PVPumpSystem.operating_point

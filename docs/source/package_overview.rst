@@ -14,8 +14,10 @@ pumping systems.
 
 This package helps users to model, test and validate different photovoltaic
 pumping systems before actually installing it in situ. In order to guide the
-user in her/his choice, *pvpumpingsystem* provides both technical and financial
-information on the system.
+designer in her/his choice, *pvpumpingsystem* provides both technical and
+financial information on the system. Even though the package is originally
+targeted at researchers and engineers, three practical examples are provided
+in order to help anyone to use pvpumpingsystem
 
 It models pumping systems minimally made of PV generator, DC motor-pump and
 pipes. Each component can be precisely defined by the user in such a way
@@ -48,9 +50,9 @@ making sure that it respects a minimum risk of water shortage.
 
 Nevertheless, the number of sizing processes can be infinite, and this module
 is expected to significantly expand with time, welcoming new sizing process
-based on different selection criteria or algorithms. In particular, 
-the reservoir size, the orientation of the PV array, the coupling strategy 
-or even the diameter of pipes are inputs that could ultimately become outputs of 
+based on different selection criteria or algorithms. In particular,
+the reservoir size, the orientation of the PV array, the coupling strategy
+or even the diameter of pipes are inputs that could ultimately become outputs of
 the sizing process as well.
 
 

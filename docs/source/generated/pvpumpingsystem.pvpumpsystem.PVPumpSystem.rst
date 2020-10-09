@@ -18,7 +18,7 @@ pvpumpingsystem.pvpumpsystem.PVPumpSystem
       ~PVPumpSystem.calc_flow
       ~PVPumpSystem.calc_reservoir
       ~PVPumpSystem.define_motorpump_model
-      ~PVPumpSystem.operating_point_noiteration
+      ~PVPumpSystem.operating_point
       ~PVPumpSystem.run_model
    
    

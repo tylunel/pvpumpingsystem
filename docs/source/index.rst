@@ -33,7 +33,7 @@ The software is published under the open source license GPL-v3.
 
    package_overview
    installation
-   examples
+   getting_started
    apireference
 
 

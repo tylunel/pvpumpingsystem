@@ -83,13 +83,13 @@ Global modeling
    :toctree: generated/
 
    pvpumpsystem.PVPumpSystem.define_motorpump_model
-   pvpumpsystem.PVPumpSystem.operating_point_noiteration
+   pvpumpsystem.PVPumpSystem.operating_point
    pvpumpsystem.PVPumpSystem.calc_flow
    pvpumpsystem.PVPumpSystem.calc_efficiency
    pvpumpsystem.PVPumpSystem.calc_reservoir
    pvpumpsystem.PVPumpSystem.run_model
    pvpumpsystem.function_i_from_v
-   pvpumpsystem.operating_point_noiteration
+   pvpumpsystem.operating_point
    pvpumpsystem.calc_flow_directly_coupled
    pvpumpsystem.calc_flow_mppt_coupled
    pvpumpsystem.calc_efficiency

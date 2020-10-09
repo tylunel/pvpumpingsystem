@@ -96,6 +96,34 @@ of the distinct components models.
 Pvpumpingsystem is released under a GPL-v3 license.
 
 
+Databases accessible
+--------------------
+
+The PV module database of the California Energy Commission (CEC) is made
+accessible through PVGeneration (being itself a wrapper of pvlib-python).
+As this database is nearly comprehensive (more than 22,000 modules)
+and regularly updated, it was considered that having a function to
+define its own PV module was not relevant yet. Therefore, PV modules must
+be declared by giving the reference in the corresponding attribute in
+declaration of any PVGeneration instance.
+
+Furthermore, the package also provide some pump and weather files
+in the folder ``pvpumpingsystem/data``.
+
+Concerning pump files, a template is provided in the folder in order to help
+anyone fill it in with the specification of the pump they want to model.
+A limited database coming from the company SunPumps is also accessible.
+Nevertheless, it does not mean that the developers particularly encourage
+their use, it rather reflects the difficulty to find other sources easily
+accessible online. Any addition to the database is warmly welcomed here.
+
+The weather files consist in a very restricted list of .epw files coming from
+diverse climates and that users can exploit to learn and test the software.
+Similar files for many location around the world are available at
+`EnergyPlus website <https://energyplus.net/weather>`_, or can be constructed
+using `PVGIS <https://re.jrc.ec.europa.eu/pvg_tools/en/#MR>`_.
+
+
 
 Getting support and contribute
 ------------------------------

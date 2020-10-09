@@ -5,7 +5,7 @@ AUTHORS = 'Tanguy LUNEL'
 
 setup(
    name='pvpumpingsystem',
-   version='1.0',
+   version='0.9',
    description=('Module for simulating off-grid photovoltaic powered '
                 'pumping station'),
    license='GPL3',

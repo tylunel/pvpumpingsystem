@@ -27,17 +27,9 @@ The full package documentation is available on readthedocs:
 
 ## With pip
 
-In a command line interface, change directory to the one you want to install pvpumpingsystem in, and type:
+For a rapid installation with pip, type in a command line interface:
 ```
-pip install pvpumpingsystem
-```
-
-To ensure *pvpumpingsystem* and its dependencies are properly installed,
-run the tests by going to the directory of pvpumpingsystem and
-by running pytest:
-```
-cd src/pvpumpingsystem
-pytest
+python -m pip install pvpumpingsystem
 ```
 
 Consult the docs for more information on installation:

@@ -31,6 +31,7 @@ Install pvpumpingsystem with Anaconda and Git
 The Anaconda distribution is an open source distribution providing Python
 and others softwares and libraries useful for data science. Anaconda includes
 many of the libraries needed for pvpumpingsystem (Pandas, NumPy, SciPy, etc).
+Anaconda is especially recommended when using Windows.
 
 Anaconda Python distribution is available at `<https://www.anaconda.com/download/>`_.
 
@@ -84,24 +85,14 @@ This second option simply uses pip::
     pip install pvpumpingsystem
 
 
-If you want to install it in editable mode, use the `-e` option::
-
-    pip install -e pvpumpingsystem
-
-
 If you have troubles with the use of pip, here is the
 `pip documentation <https://pip.pypa.io/en/stable/user_guide/#installing-packages>`_
 to help you.
 
-
-- Test pvpumpingsystem:
-
 To ensure *pvpumpingsystem* and its dependencies are properly installed,
-run the tests by going to the directory of pvpumpingsystem and by running
-pytest::
+you can consult the package information through pip::
 
-    cd <relative/path/to/pvpumpingsystem/directory>
-    pytest
+    pip show pvpumpingsystem
 
 
 

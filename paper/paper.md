@@ -1,4 +1,4 @@
----
+Ôªø---
 title: 'pvpumpingsystem: a python package for modeling and sizing photovoltaic water pumping systems'
 tags:
   - Python
@@ -15,9 +15,9 @@ authors:
     orcid: 0000-0002-7247-5705
     affiliation: 1
 affiliations:
- - name: Industrial research group in technologies of energy and energy efficiency (t3e), Department of Mechanical Sciences, Ecole de Technologie SupÈrieure Montreal
+ - name: Industrial research group in technologies of energy and energy efficiency (t3e), Department of Mechanical Sciences, Ecole de Technologie Sup√©rieure Montreal
    index: 1
- - name: Department of Material Science and Engineering, Institut National des Sciences AppliquÈes Rennes
+ - name: Department of Material Science and Engineering, Institut National des Sciences Appliqu√©es Rennes
    index: 2
 date: 14 April 2020
 bibliography: paper.bib
@@ -43,7 +43,7 @@ and to automatize the tests. Each class and function are documented with referen
 literature when applicable. Pvpumpingsystem is released under a GPL-v3 license.
 
 Pvpumpingsystem relies on already existing packages for photovoltaic and fluid mechanics modeling,
-namely ìpvlib-pythonî [@pvlib-python] and ìfluidsî [@fluids]. pvpumpingsystem originality lies
+namely ‚Äúpvlib-python‚Äù [@pvlib-python] and ‚Äúfluids‚Äù [@fluids]. pvpumpingsystem originality lies
 in the implementation of various motor-pump models for finite power sources and in the coupling
 of the distinct component models. In order to increase the understandability of the code,
 each physical component of the PV pumping system corresponds to a class, like for example

@@ -66,7 +66,7 @@ on models used internally, and no API is made accessible. Pvpumpingsystem also h
 of providing ways to size PV pumping systems thanks to automation of pump and PV array choices.
 
 Pvpumpingsystem is the second academic contribution of a broader research program on photovoltaic
-water pumping launched in in the Technologies of Energy and Energy Efficiency research group at Ecole de Technologie Supérieure Montreal, and is expected to grow with new
+water pumping launched in the Technologies of Energy and Energy Efficiency research group at Ecole de Technologie Supérieure Montreal, and is expected to grow with new
 features and accuracy assessment provided by experimental studies. The authors also want to give
 full access and help to anyone else interested in the use of the software.
 

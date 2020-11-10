@@ -3,6 +3,7 @@
 [![Documentation Status](https://readthedocs.org/projects/pvpumpingsystem/badge/?version=latest)](https://pvpumpingsystem.readthedocs.io/en/latest/?badge=latest)
 [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/tylunel/pvpumpingsystem/master)
 
+![Logo](/docs/images/logo_pvpumpingsystem.jpg =100x70)
 # pvpumpingsystem
 *pvpumpingsystem* is a package providing tools for modeling and sizing
 photovoltaic water pumping systems.

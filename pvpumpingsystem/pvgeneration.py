@@ -224,8 +224,8 @@ class PVGeneration:
         text = "PV generator made of: " + \
                  "\npv module: " + str(self.pv_module.name) + \
                  "\nnumber of modules: " + \
-                 str(self.system.modules_per_string *
-                     self.system.strings_per_inverter) + \
+                 str(self.system.arrays[0].modules_per_string *
+                     self.system.arrays[0].strings) + \
                  "\nin: " + str(self.location)
         return text
 

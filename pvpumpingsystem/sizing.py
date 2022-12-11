@@ -268,8 +268,8 @@ def size_nb_pv_direct(pvps_fixture, llp_accepted,    # noqa: C901
     """
 
     def funct_llp_for_Ms_Mp(pvps, M_s, M_p, **kwargs):
-        pvps.pvgeneration.system.modules_per_string = M_s
-        pvps.pvgeneration.system.strings_per_inverter = M_p
+        pvps.pvgeneration.system.arrays[0].modules_per_string = M_s
+        pvps.pvgeneration.system.arrays[0].strings = M_p
         pvps.pvgeneration.run_model()
         pvps.run_model(**kwargs)
 
@@ -477,8 +477,8 @@ def size_nb_pv_mppt(pvps_fixture, llp_accepted, M_s_guess, **kwargs):
     """
 
     def funct_llp_for_Ms(pvps, M_s, **kwargs):
-        pvps.pvgeneration.system.modules_per_string = M_s
-        pvps.pvgeneration.system.strings_per_inverter = 1
+        pvps.pvgeneration.system.arrays[0].modules_per_string = M_s
+        pvps.pvgeneration.system.arrays[0].strings = 1
         pvps.pvgeneration.run_model()
         pvps.run_model(**kwargs)
         return pvps.llp

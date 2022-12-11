@@ -36,8 +36,8 @@ def initial_investment(pvps, labour_price_coefficient=0.2, **kwargs):
         Initial investment for the whole pumping system.
     """
     try:
-        pv_modules_price = (pvps.pvgeneration.system.modules_per_string
-                            * pvps.pvgeneration.system.strings_per_inverter
+        pv_modules_price = (pvps.pvgeneration.system.arrays[0].modules_per_string
+                            * pvps.pvgeneration.system.arrays[0].strings
                             * pvps.pvgeneration.price_per_module)
 
         if pvps.coupling == 'mppt' or pvps.coupling == 'mppt_no_iteration':
@@ -104,8 +104,8 @@ def net_present_value(pvps, discount_rate=0.02,
     cashflow_list *= lifespan_pv
 
     try:
-        pv_modules_price = (pvps.pvgeneration.system.modules_per_string
-                            * pvps.pvgeneration.system.strings_per_inverter
+        pv_modules_price = (pvps.pvgeneration.system.arrays[0].modules_per_string
+                            * pvps.pvgeneration.system.arrays[0].strings
                             * pvps.pvgeneration.price_per_module)
 
         cashflow_list[0] += ((pvps.reservoir.price + pv_modules_price)

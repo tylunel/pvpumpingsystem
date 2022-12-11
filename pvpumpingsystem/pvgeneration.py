@@ -178,7 +178,7 @@ class PVGeneration:
         # Import of weather
         self.weather_data_and_metadata = weather_data_and_metadata
 
-        # Choices of models to use
+        # Given a orientation_strategy, calculate surface_tilt and surface_azimuth
         if orientation_strategy is not None:
             surface_tilt, surface_azimuth = pvlib.modelchain.get_orientation(orientation_strategy, latitude=self.location.latitude)
         
@@ -201,7 +201,7 @@ class PVGeneration:
                     name=None  # fixed (overwritten in PVGeneration object)
                     )
 
-
+        # Choices of models to use
         self.modelchain = pvlib.modelchain.ModelChain(
                     system=self.system,
                     location=self.location,

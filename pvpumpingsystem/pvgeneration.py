@@ -178,6 +178,10 @@ class PVGeneration:
         # Import of weather
         self.weather_data_and_metadata = weather_data_and_metadata
 
+        # Choices of models to use
+        if orientation_strategy is not None:
+            surface_tilt, surface_azimuth = pvlib.modelchain.get_orientation(orientation_strategy, latitude=self.location.latitude)
+        
         # Definition of PV generator
         self.system = pvlib.pvsystem.PVSystem(
                     surface_tilt=surface_tilt,
@@ -197,11 +201,13 @@ class PVGeneration:
                     name=None  # fixed (overwritten in PVGeneration object)
                     )
 
-        # Choices of models to use
+
         self.modelchain = pvlib.modelchain.ModelChain(
                     system=self.system,
                     location=self.location,
-                    orientation_strategy=orientation_strategy,
+                    # orientation_strategy=orientation_strategy,
+                    # surface_tilt=0, 
+                    # surface_azimuth=180,
                     clearsky_model=clearsky_model,
                     transposition_model=transposition_model,
                     solar_position_method=solar_position_method,

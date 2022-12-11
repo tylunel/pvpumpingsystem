@@ -42,8 +42,8 @@ def shrink_weather_representative(weather_data, nb_elt=48):
 
     # Get rows with minimum and maximum air temperature
     extreme_temp_df = sub_df[sub_df.temp_air == sub_df.temp_air.max()]
-    extreme_temp_df = extreme_temp_df.append(
-        sub_df[sub_df.temp_air == sub_df.temp_air.min()])
+    extreme_temp_df = pd.concat([extreme_temp_df,
+        sub_df[sub_df.temp_air == sub_df.temp_air.min()]])
 
     # Sort DataFrame according to air temperature
     temp_sorted_df = sub_df.sort_values('temp_air')
@@ -90,14 +90,15 @@ def shrink_weather_worst_month(weather_data):
     # the worst month (could be ghi (like now), dni, dhi, temperature, etc)
 
     # DataFrame for results
-    sum_irradiance = pd.DataFrame()
+    sum_irradiance = pd.DataFrame(columns=['month', 'ghi'])
 
     for month in weather_data.month.drop_duplicates():
         weather_month = weather_data[weather_data.month == month]
         total_ghi = weather_month.ghi.sum()
-        sum_irradiance = sum_irradiance.append({'month': month,
-                                                'ghi': total_ghi},
-                                               ignore_index=True)
+        sum_irradiance = pd.concat([sum_irradiance,
+                                    pd.DataFrame([[month,total_ghi]], columns=['month','ghi'])]
+                                    ,ignore_index=True)
+
     worst_month = sum_irradiance[sum_irradiance.ghi ==
                                  sum_irradiance.ghi.min()].month.iloc[0]
 
@@ -389,7 +390,12 @@ def subset_respecting_llp_mppt(pv_database, pump_database,    # noqa: C901
         warnings.warn("Pvps coupling method changed to 'mppt'.")
 
     # initalization of variables
-    preselection = pd.DataFrame()
+    preselection = pd.DataFrame(columns=['pv_module',
+                                         'M_s',
+                                         'M_p',
+                                         'pump',
+                                         'llp',
+                                         'npv'])
 
     for pv_mod_name in tqdm.tqdm(pv_database,
                                  desc='Research of best combination: ',
@@ -439,15 +445,17 @@ def subset_respecting_llp_mppt(pv_database, pump_database,    # noqa: C901
             M_s = size_nb_pv_mppt(pvps_fixture, llp_accepted, M_s_guess,
                                   **kwargs)
 
-            preselection = preselection.append(
-                pd.Series({
-                    'pv_module': pvps_fixture.pvgeneration.pv_module.name,
-                    'M_s': M_s,
-                    'M_p': 1,
-                    'pump': pump.idname,
-                    'llp': pvps_fixture.llp,
-                    'npv': pvps_fixture.npv}),
-                ignore_index=True)
+            preselection = pd.concat([
+                preselection,
+                pd.DataFrame(
+                    [[ pvps_fixture.pvgeneration.pv_module.name,
+                       M_s,
+                       1,
+                       pump.idname, 
+                       pvps_fixture.llp, 
+                       pvps_fixture.npv
+                    ]],columns=['pv_module','M_s','M_p','pump','llp','npv'])
+            ,], ignore_index=True, axis=0, join='outer')
 
     # Remove not satifying LLP
     preselection = preselection[preselection.llp <= llp_accepted]
@@ -615,7 +623,7 @@ def sizing_minimize_npv(pv_database, pump_database,
     else:
         raise ValueError('Unknown coupling method.')
 
-    if np.isnan(preselection.npv).any():
+    if pd.isna(preselection.npv).any():
         warnings.warn('The NPV could not be calculated, so optimized '
                       'sizing could not be found.')
         selection = preselection

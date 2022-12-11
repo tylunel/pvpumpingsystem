@@ -324,7 +324,7 @@ class PVPumpSystem(object):
 
         self.efficiency = calc_efficiency(
             self.flow,
-            self.pvgeneration.modelchain.effective_irradiance,
+            self.pvgeneration.modelchain.results.effective_irradiance,
             pv_area)
 
     def calc_reservoir(self, starting_soc='morning'):
@@ -675,7 +675,7 @@ def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
     fctQwithPH, sigma2 = motorpump.functQforPH()
 
     for i, row in tqdm.tqdm(enumerate(
-            modelchain.diode_params[0:stop].iterrows()),
+            modelchain.results.diode_params[0:stop].iterrows()),
                                       desc='Computing of Q',
                                       total=stop,
                                       **kwargs):

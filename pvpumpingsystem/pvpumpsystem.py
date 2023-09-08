@@ -194,7 +194,7 @@ class PVPumpSystem(object):
             plt.figure()
             # domain of interest on V
             # (*1.1 is for the case when conditions are better than stc)
-            v_high_boundary = self.pvgeneration.system.module.V_oc_ref * \
+            v_high_boundary = self.pvgeneration.system.array[0].module.V_oc_ref * \
                 M_s*1.1
             Vrange_pv = np.arange(0, v_high_boundary)
 
@@ -355,7 +355,7 @@ class PVPumpSystem(object):
         # set reservoir with enough water to fulfil the need of one morning
         elif starting_soc == 'morning':
             # Get water needed in the first morning (until 12am)
-            vol = float((self.consumption.flow_rate.iloc[0:12]*60).sum())
+            vol = float((self.consumption.flow_rate.iloc[0:12]*60).sum().iloc[0])
             # initialization of water in reservoir
             self.reservoir.water_volume = vol
 
@@ -701,12 +701,12 @@ def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
                         params, M_s, M_p,
                         load_fctIfromVH=load_fctIfromVH,
                         load_interval_V=intervalsVH['V'](h_tot),
-                        pv_interval_V=[0, modelchain.results.dc.v_oc[i] * M_s],
+                        pv_interval_V=[0, modelchain.results.dc.v_oc.iloc[i] * M_s],
                         tdh=h_tot)
                 # consider losses
                 power = iv_data.V*iv_data.I * modelchain.results.losses
                 # type casting
-                power = float(power)
+                power = float(power.iloc[0])
                 # compute flow
                 Qlpmnew = fctQwithPH(power, h_tot)['Q']
 
@@ -720,8 +720,8 @@ def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
             P_unused = fctQwithPH(power, h_tot)['P_unused']
 
             result.append({'Qlpm': Qlpmnew,
-                           'I': float(iv_data.I),
-                           'V': float(iv_data.V),
+                           'I': float(iv_data.I.iloc[0]),
+                           'V': float(iv_data.V.iloc[0]),
                            'P': power,
                            'P_unused': P_unused,
                            'tdh': h_tot
@@ -732,20 +732,20 @@ def calc_flow_directly_coupled(pvgeneration, motorpump, pipes,
                     params, M_s, M_p,
                     load_fctIfromVH=load_fctIfromVH,
                     load_interval_V=intervalsVH['V'](pipes.h_stat),
-                    pv_interval_V=[0, modelchain.results.dc.v_oc[i] * M_s],
+                    pv_interval_V=[0, modelchain.results.dc.v_oc.iloc[i] * M_s],
                     tdh=pipes.h_stat)
             # consider losses
             power = iv_data.V*iv_data.I * modelchain.results.losses
             # type casting
-            power = float(power)
+            power = float(power.iloc[0])
             # compute flow
             res_dict = fctQwithPH(power, pipes.h_stat)
             Qlpm = res_dict['Q']
             P_unused = res_dict['P_unused']
 
             result.append({'Qlpm': Qlpm,
-                           'I': float(iv_data.I),
-                           'V': float(iv_data.V),
+                           'I': float(iv_data.I.iloc[0]),
+                           'V': float(iv_data.V.iloc[0]),
                            'P': power,
                            'P_unused': P_unused,
                            'tdh': pipes.h_stat

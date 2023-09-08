@@ -192,7 +192,7 @@ def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
             temperature_model='sapm',
             losses_model='no_loss'
             )
-
+        all_series = [] 
         for pump in tqdm.tqdm(pump_database,
                               desc='Pump database exploration: ',
                               total=len(pump_database)):
@@ -237,17 +237,28 @@ def subset_respecting_llp_direct(pv_database, pump_database,  # noqa: C901
                     pvps_fixture, llp_accepted,
                     M_s_min, M_s_max, M_p_min, M_p_max, **kwargs)
 
-            preselection = preselection.append(
-                pd.Series({
-                        'pv_module': pvps_fixture.pvgeneration.pv_module.name,
-                        'M_s': M_s,
-                        'M_p': M_p,
-                        'pump': pump.idname,
-                        'llp': pvps_fixture.llp,
-                        'npv': pvps_fixture.npv}),
-                ignore_index=True)
+            new_row = pd.Series({
+                'pv_module': pvps_fixture.pvgeneration.pv_module.name,
+                'M_s': M_s,
+                'M_p': M_p,
+                'pump': pump.idname,
+                'llp': pvps_fixture.llp,
+                'npv': pvps_fixture.npv
+            })
+            
+            all_series.append(new_row)
+            # preselection = preselection.append(
+            #     pd.Series({
+            #             'pv_module': pvps_fixture.pvgeneration.pv_module.name,
+            #             'M_s': M_s,
+            #             'M_p': M_p,
+            #             'pump': pump.idname,
+            #             'llp': pvps_fixture.llp,
+            #             'npv': pvps_fixture.npv}),
+            #     ignore_index=True)
 
     # Remove not satifying LLP
+    preselection = pd.concat(all_series, axis=1).T  # Transpose to make each Series a row
     preselection = preselection[preselection.llp <= llp_accepted]
 
     return preselection

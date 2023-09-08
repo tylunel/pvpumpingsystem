@@ -66,7 +66,7 @@ def test_shrink_weather_worst_month():
     weather_data, weather_metadata = pvlib.iotools.epw.read_epw(
             weather_path, coerce_year=2005)
     weather_shrunk = siz.shrink_weather_worst_month(weather_data)
-    worst_month = int(weather_shrunk.month.drop_duplicates())
+    worst_month = int(weather_shrunk.month.drop_duplicates().iloc[0])
     assert worst_month == 12  # 12 = december
 
 

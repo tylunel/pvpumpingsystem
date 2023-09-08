@@ -127,7 +127,8 @@ def test_functIforVH(pumpset):
     and if this function is able to correctly raise errors.
     """
     # ignore RuntimeWarning here
-    np.warnings.filterwarnings('ignore', category=RuntimeWarning)
+    import warnings
+    warnings.filterwarnings('ignore', category=RuntimeWarning)
 
     for model in ['arab', 'kou', 'theoretical']:
         pumpset.modeling_method = model

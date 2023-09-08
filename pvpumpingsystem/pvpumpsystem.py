@@ -582,9 +582,13 @@ def operating_point(  # noqa: C901
         else:
             # attempt to use only load_fctI here
             def pv_fctI(V):  # does not work
-                return pvlib.pvsystem.i_from_v(R_sh, R_s, nNsVth, V,
-                                               I_o, I_L, method='lambertw')
-
+                return pvlib.pvsystem.i_from_v(voltage=V,
+                                               photocurrent=I_L,
+                                               saturation_current=I_o,
+                                               nNsVth=nNsVth,
+                                               resistance_series=R_s,
+                                               resistance_shunt=R_sh,
+                                               method='lambertw')
             def load_fctI(V):
                 return load_fctIfromVH(V, tdh, error_raising=False)
 

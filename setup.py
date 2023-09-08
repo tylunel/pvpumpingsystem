@@ -15,5 +15,5 @@ setup(
    packages=['pvpumpingsystem'],  # same as name
    # external dependencies packages
    install_requires=['pvlib', 'fluids', 'numpy-financial',
-                     'matplotlib', 'pytest', 'sklearn', 'tqdm'],
+                     'matplotlib', 'pytest', 'scikit-learn', 'tqdm'],
    )

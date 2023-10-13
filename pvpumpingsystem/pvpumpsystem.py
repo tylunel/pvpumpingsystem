@@ -194,7 +194,7 @@ class PVPumpSystem(object):
             plt.figure()
             # domain of interest on V
             # (*1.1 is for the case when conditions are better than stc)
-            v_high_boundary = self.pvgeneration.system.array[0].module.V_oc_ref * \
+            v_high_boundary = self.pvgeneration.system.arrays[0].module.V_oc_ref * \
                 M_s*1.1
             Vrange_pv = np.arange(0, v_high_boundary)
 

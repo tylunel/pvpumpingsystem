@@ -243,7 +243,7 @@ class PVGeneration:
             self.location = pvlib.location.Location.from_epw(metadata)
         else:  # assumed to be dict with weather data (pd.df) and metadata
             self.weather_data = value['weather_data']
-            self.location = pvlib.location.Location.from_epw(
+            self.location = pvlib.location.Location.from_tmy(
                         value['weather_metadata'])
         if hasattr(self, 'modelchain'):  # adapt modelchain to new data
             self.modelchain.location = self.location

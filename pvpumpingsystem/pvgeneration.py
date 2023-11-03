@@ -7,7 +7,7 @@ Module for containing pvlib-python in a more convenient way.
 
 import pvlib
 import difflib
-
+from typing import Union
 
 # TODO: add way to directly give the pv module specs
 class PVGeneration:
@@ -137,7 +137,7 @@ class PVGeneration:
 
     def __init__(self,
                  # Weather
-                 weather_data_and_metadata,  # path or weather data
+                 weather_data_and_metadata: Union[str, dict],  # path or weather data
                  # PV array parameters
                  pv_module_name,  # As precised as possible
                  price_per_watt=float('NaN'),  # in US dollars
@@ -241,10 +241,14 @@ class PVGeneration:
             self.weather_data, metadata = pvlib.iotools.epw.read_epw(
                     value, coerce_year=2005)
             self.location = pvlib.location.Location.from_epw(metadata)
-        else:  # assumed to be dict with weather data (pd.df) and metadata
+        elif isinstance(value, dict) and \
+                isinstance(value['weather_metadata'], dict):
             self.weather_data = value['weather_data']
             self.location = pvlib.location.Location.from_epw(
                         value['weather_metadata'])
+        else:
+            self.weather_data = value['weather_data']
+            self.location = value['weather_metadata']
         if hasattr(self, 'modelchain'):  # adapt modelchain to new data
             self.modelchain.location = self.location
             # activates the setting of array tilt according to location:

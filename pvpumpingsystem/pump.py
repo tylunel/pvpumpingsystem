@@ -17,6 +17,8 @@ from mpl_toolkits.mplot3d import Axes3D  # noqa: F401
 import scipy.optimize as opt
 import warnings
 import re
+import pkg_resources
+
 
 # pvpumpingsystem modules:
 from pvpumpingsystem import inverse
@@ -71,7 +73,7 @@ class Pump:
     """
     _ids = count(1)
 
-    def __init__(self, path,  # noqa: C901
+    def __init__(self, name,  # noqa: C901
                  motor_electrical_architecture=None,
                  idname=None,
                  price=np.nan,
@@ -84,6 +86,8 @@ class Pump:
         self.controller = controller
 
         # retrieve pump data from txt datasheet given by path
+        data_file = 'data/pump_files/{}.txt'.format(name)
+        path = pkg_resources.resource_filename('pvpumpingsystem', data_file)
         self.specs, metadata = get_data_pump(path)
         self.voltage_list = self.specs.voltage.drop_duplicates()
         # retrieve price, or overwrite it if given in __init__

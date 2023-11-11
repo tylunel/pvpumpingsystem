@@ -25,11 +25,8 @@ test_dir = os.path.dirname(
 @pytest.fixture
 def databases():
     # pump database
-    pump_sunpump = pp.Pump(
-        os.path.join(test_dir, "../data/pump_files/SCB_10_150_120_BL.txt"))
-    pump_shurflo = pp.Pump(
-        os.path.join(test_dir, "../data/pump_files/Shurflo_9325.txt"),
-        price=700)
+    pump_sunpump = pp.Pump(name='SCB_10_150_120_BL')
+    pump_shurflo = pp.Pump(name='Shurflo_9325', price=700)
     pump_database = [pump_shurflo, pump_sunpump]
 
     # pv database

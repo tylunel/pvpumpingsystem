@@ -19,17 +19,13 @@ test_dir = os.path.dirname(
 
 @pytest.fixture
 def pumpset():
-    pump_testfile = os.path.join(test_dir,
-                                 '../data/pump_files/SCB_10_150_120_BL.txt')
-    return pp.Pump(path=pump_testfile,
+    return pp.Pump(name='SCB_10_150_120_BL',
                    modeling_method='arab')
 
 
 def test_init_pumpset_overwritting():
-    pump_testfile = os.path.join(test_dir,
-                                 '../data/pump_files/SCB_10_150_120_BL.txt')
     with pytest.warns(UserWarning) as record:
-        pump1 = pp.Pump(path=pump_testfile,
+        pump1 = pp.Pump(name='SCB_10_150_120_BL',
                         idname='SCB_10',
                         price=1050,
                         modeling_method='arab',
@@ -51,11 +47,9 @@ def test_limited_pump_data_1():
     """Tests 'theoretical_basic' model.
     This pump data has only one data point"""
 
-    pump_testfile = os.path.join(
-            test_dir, '../data/pump_files/min_specs.txt')
     # The pump is modeled with extremely basic model, considering only f2
     with pytest.warns(UserWarning) as record:
-        pumpset = pp.Pump(path=pump_testfile,
+        pumpset = pp.Pump(name='min_specs',
                           modeling_method='theoretical',
                           motor_electrical_architecture='permanent_magnet')
     # check that the warnings are the expected ones
@@ -81,12 +75,12 @@ def test_limited_pump_data_2():
     with no information on efficiency.
     """
 
-    pump_testfile = os.path.join(
-            test_dir, '../data/pump_files/rosen_SC33-158-D380-9200.txt')
+    # pump_testfile = os.path.join(
+            # test_dir, '../data/pump_files/.txt')
     # The initialization recalculates the current used based on a constant
     # efficiency
     with pytest.warns(UserWarning) as record:
-        pumpset = pp.Pump(path=pump_testfile,
+        pumpset = pp.Pump(name='rosen_SC33-158-D380-9200',
                           modeling_method='theoretical',
                           motor_electrical_architecture='permanent_magnet')
 

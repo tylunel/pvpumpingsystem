@@ -20,5 +20,9 @@ setup(
                      'matplotlib',
                      'pytest',
                      'scikit-learn',
-                     'tqdm'],
+                     'tqdm',
+                     'setuptools'],
+   package_data={
+       'pvpumpingsystem': ['data/pump_files/*.txt'],
+   }
    )

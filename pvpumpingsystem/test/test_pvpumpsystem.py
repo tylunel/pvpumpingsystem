@@ -62,9 +62,7 @@ def pvps_set_up():
     mppt1 = mppt.MPPT(efficiency=1,
                       price=200)
 
-    pump_testfile = os.path.join(test_dir,
-                                 '../data/pump_files/SCB_10_150_120_BL.txt')
-    pump1 = pp.Pump(path=pump_testfile,
+    pump1 = pp.Pump(name='SCB_10_150_120_BL',
                     modeling_method='arab')
 
     pipes1 = pn.PipeNetwork(h_stat=10, l_tot=100, diam=0.08,
